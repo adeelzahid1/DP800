@@ -1,0 +1,872 @@
+{
+  "subtopic": "d2-monitoring-change",
+  "questions": [
+    {
+      "id": "d2-mon-0001",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-monitoring-change",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "You want Deadlocks and Blocks events from an Azure SQL database to land in a Log Analytics workspace. What must you create?" },
+      "options": [
+        { "id": "a", "text": { "en": "A diagnostic setting on the database that selects those categories and the workspace as destination" } },
+        { "id": "b", "text": { "en": "Nothing; resource logs flow to Log Analytics by default" } },
+        { "id": "c", "text": { "en": "An Application Insights resource linked to the server" } },
+        { "id": "d", "text": { "en": "A SQL Agent job that exports sys.dm_tran_locks" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Resource logs aren't collected until a diagnostic setting routes chosen categories to a destination. Application Insights is for application telemetry, and Azure SQL Database has no SQL Agent." },
+      "example": { "en": "Diagnostic setting 'db-to-law': categories Blocks, Deadlocks, Errors, Timeouts → workspace law-prod." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-sql/database/metrics-diagnostic-telemetry-logging-streaming-export-configure"]
+    },
+    {
+      "id": "d2-mon-0002",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-monitoring-change",
+      "type": "multiple", "difficulty": "easy", "selectCount": 3,
+      "text": { "en": "Which three are valid destinations for an Azure SQL Database diagnostic setting? (Select 3)" },
+      "options": [
+        { "id": "a", "text": { "en": "Log Analytics workspace" } },
+        { "id": "b", "text": { "en": "Azure Storage account" } },
+        { "id": "c", "text": { "en": "Azure Event Hubs" } },
+        { "id": "d", "text": { "en": "Azure Key Vault" } },
+        { "id": "e", "text": { "en": "A table in the same database" } }
+      ],
+      "answer": ["a", "b", "c"],
+      "explanation": { "en": "Diagnostic settings send metrics and resource logs to Log Analytics, Storage, Event Hubs (and partner solutions). Key Vault stores secrets, and logs can't be written back into the monitored database." },
+      "example": { "en": "Send to Log Analytics for queries and to Storage for a seven-year archive." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-sql/database/metrics-diagnostic-telemetry-logging-streaming-export-configure"]
+    },
+    {
+      "id": "d2-mon-0003",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-monitoring-change",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Compliance requires keeping database error logs for seven years at the lowest cost; they're rarely queried. Which destination fits best?" },
+      "options": [
+        { "id": "a", "text": { "en": "Azure Storage account" } },
+        { "id": "b", "text": { "en": "Log Analytics workspace with interactive retention" } },
+        { "id": "c", "text": { "en": "Azure Event Hubs" } },
+        { "id": "d", "text": { "en": "Application Insights" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Storage is the low-cost archive destination for logs that are rarely read. Log Analytics is for querying and costs more to retain, Event Hubs is a streaming buffer rather than storage, and Application Insights is for app telemetry." },
+      "example": { "en": "Archive to Storage; also send a copy to Log Analytics with 30-day retention for troubleshooting." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-sql/database/metrics-diagnostic-telemetry-logging-streaming-export-configure"]
+    },
+    {
+      "id": "d2-mon-0004",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-monitoring-change",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "The security team's third-party SIEM must receive Azure SQL audit and diagnostic logs in near real time. Which destination should you configure?" },
+      "options": [
+        { "id": "a", "text": { "en": "Azure Event Hubs" } },
+        { "id": "b", "text": { "en": "Azure Storage account" } },
+        { "id": "c", "text": { "en": "A Log Analytics workspace only" } },
+        { "id": "d", "text": { "en": "Query Store" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Event Hubs is the streaming destination that external tools subscribe to. Storage is for archives, Log Analytics serves Azure-native analysis (unless the SIEM reads from it), and Query Store is an in-database performance store." },
+      "example": { "en": "Auditing + diagnostic setting → Event Hubs → SIEM connector." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-sql/database/metrics-diagnostic-telemetry-logging-streaming-export-configure"]
+    },
+    {
+      "id": "d2-mon-0005",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-monitoring-change",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "You need to correlate Azure SQL timeouts with API errors from Application Insights using KQL. Where should the database logs go?" },
+      "options": [
+        { "id": "a", "text": { "en": "A Log Analytics workspace (the same one backing the workspace-based Application Insights resource)" } },
+        { "id": "b", "text": { "en": "An Azure Storage account" } },
+        { "id": "c", "text": { "en": "Azure Event Hubs" } },
+        { "id": "d", "text": { "en": "sys.event_log only" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Log Analytics supports KQL across tables and resources; workspace-based Application Insights data lives there too, so you can join them. Storage and Event Hubs aren't queryable with KQL directly, and a DMV only holds limited in-database history." },
+      "example": { "en": "Join AzureDiagnostics (Category == \"Timeouts\") with AppRequests on time windows." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-monitor/logs/log-analytics-overview"]
+    },
+    {
+      "id": "d2-mon-0006",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-monitoring-change",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "On-call engineers must be paged when database CPU stays above 80% for 15 minutes. What do you configure?" },
+      "options": [
+        { "id": "a", "text": { "en": "An Azure Monitor metric alert rule on CPU percentage with an action group" } },
+        { "id": "b", "text": { "en": "A Query Store forced plan" } },
+        { "id": "c", "text": { "en": "A diagnostic setting to Storage" } },
+        { "id": "d", "text": { "en": "An Application Insights availability test" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Metric alerts evaluate platform metrics over a window and notify through action groups (SMS, email, webhooks, automation). Plan forcing doesn't notify anyone, Storage doesn't alert, and availability tests check endpoints, not database CPU." },
+      "example": { "en": "Condition: cpu_percent > 80, aggregation Average, window 15 min; action group 'dba-oncall'." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-sql/database/monitoring-metrics-alerts"]
+    },
+    {
+      "id": "d2-mon-0007",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-monitoring-change",
+      "type": "dragdrop-match", "difficulty": "medium",
+      "text": { "en": "Match each Azure SQL Database diagnostic log category to its content." },
+      "items": [
+        { "id": "i1", "text": { "en": "QueryStoreRuntimeStatistics" } },
+        { "id": "i2", "text": { "en": "Deadlocks" } },
+        { "id": "i3", "text": { "en": "SQLInsights" } },
+        { "id": "i4", "text": { "en": "AutomaticTuning" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "Query CPU and duration statistics" } },
+        { "id": "t2", "text": { "en": "Deadlock events" } },
+        { "id": "t3", "text": { "en": "Intelligent Insights performance diagnostics" } },
+        { "id": "t4", "text": { "en": "Index and plan tuning recommendations" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "Each category carries a specific dataset: Query Store runtime stats, deadlock events, Intelligent Insights, and automatic tuning recommendations. Choose only the categories you need to control cost." },
+      "example": { "en": "Performance workbook: QueryStoreRuntimeStatistics + QueryStoreWaitStatistics + SQLInsights." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-sql/database/metrics-diagnostic-telemetry-logging-streaming-export-configure"]
+    },
+    {
+      "id": "d2-mon-0008",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-monitoring-change",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A .NET API is slow. You need to see which outgoing SQL calls take the longest per request, end to end. What should you recommend?" },
+      "options": [
+        { "id": "a", "text": { "en": "Application Insights, which records request and SQL dependency telemetry with end-to-end transaction views" } },
+        { "id": "b", "text": { "en": "A diagnostic setting for the Errors category only" } },
+        { "id": "c", "text": { "en": "Azure Storage logs" } },
+        { "id": "d", "text": { "en": "Change Tracking on all tables" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Application Insights tracks incoming requests and dependency calls (including SQL), so you can trace a slow request to the slow query call. Database error logs, storage logs and Change Tracking don't show per-request timing." },
+      "example": { "en": "Transaction search → request GET /orders → dependency SQL: 2.3 s." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-monitor/app/app-insights-overview"]
+    },
+    {
+      "id": "d2-mon-0009",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-monitoring-change",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Complete the Data API builder configuration so it sends telemetry to Application Insights without storing the secret in the file." },
+      "code": "\"runtime\": {\n  \"telemetry\": {\n    \"[BLANK1]\": {\n      \"enabled\": true,\n      \"[BLANK2]\": \"[BLANK3]\"\n    }\n  }\n}",
+      "codeLang": "json",
+      "blanks": [
+        { "id": "b1", "label": { "en": "BLANK1" }, "choices": [
+          { "id": "c1", "text": { "en": "application-insights" } },
+          { "id": "c2", "text": { "en": "open-telemetry" } },
+          { "id": "c3", "text": { "en": "azure-monitor" } }
+        ] },
+        { "id": "b2", "label": { "en": "BLANK2" }, "choices": [
+          { "id": "c1", "text": { "en": "instrumentation-key" } },
+          { "id": "c2", "text": { "en": "connection-string" } },
+          { "id": "c3", "text": { "en": "endpoint" } }
+        ] },
+        { "id": "b3", "label": { "en": "BLANK3" }, "choices": [
+          { "id": "c1", "text": { "en": "@env('APPLICATIONINSIGHTS_CONNECTION_STRING')" } },
+          { "id": "c2", "text": { "en": "InstrumentationKey=00000000-…" } },
+          { "id": "c3", "text": { "en": "https://dc.services.visualstudio.com" } }
+        ] }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c2", "b3": "c1" },
+      "explanation": { "en": "DAB's application-insights section needs a connection-string; @env() reads it from the environment so it isn't committed. open-telemetry uses endpoint, azure-monitor isn't a DAB key, and a pasted key/URL would sit in source control." },
+      "example": { "en": "Set APPLICATIONINSIGHTS_CONNECTION_STRING as a Container Apps secret-backed environment variable; DAB reads it at startup." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/configuration/runtime"]
+    },
+    {
+      "id": "d2-mon-0010",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-monitoring-change",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "DAB exports OpenTelemetry to a collector. Which exporter protocol does DAB use when you don't set exporter-protocol?" },
+      "options": [
+        { "id": "a", "text": { "en": "grpc" } },
+        { "id": "b", "text": { "en": "httpprotobuf" } },
+        { "id": "c", "text": { "en": "json over WebSockets" } },
+        { "id": "d", "text": { "en": "AMQP" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "open-telemetry.exporter-protocol defaults to grpc (typically port 4317); httpprotobuf (port 4318) is the alternative. The other protocols aren't options." },
+      "example": { "en": "\"open-telemetry\": { \"endpoint\": \"http://otel-collector:4317\", \"service-name\": \"dab-books\" }" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/configuration/runtime"]
+    },
+    {
+      "id": "d2-mon-0011",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-monitoring-change",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "With DAB 2.0 you want DAB's logs written directly to a custom table in a Log Analytics workspace. Which values must the azure-log-analytics auth section provide?" },
+      "options": [
+        { "id": "a", "text": { "en": "custom-table-name, dcr-immutable-id and dce-endpoint" } },
+        { "id": "b", "text": { "en": "workspace-id and shared-key" } },
+        { "id": "c", "text": { "en": "An Application Insights instrumentation key" } },
+        { "id": "d", "text": { "en": "An Event Hubs connection string" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "DAB's Log Analytics sink sends through the Logs Ingestion API: a data collection endpoint, a data collection rule (immutable ID) and the target custom table. The legacy workspace-key approach isn't used, and App Insights or Event Hubs settings belong to other sinks." },
+      "example": { "en": "\"auth\": { \"custom-table-name\": \"DabTelemetry_CL\", \"dcr-immutable-id\": \"dcr-…\", \"dce-endpoint\": \"https://my-dce.eastus-1.ingest.monitor.azure.com\" }" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/configuration/runtime"]
+    },
+    {
+      "id": "d2-mon-0012",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-monitoring-change",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "For each statement about monitoring Azure SQL Database, answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "Platform metrics such as CPU percentage are available without configuring diagnostic settings." } },
+        { "id": "s2", "text": { "en": "Resource logs such as Deadlocks are collected by default." } },
+        { "id": "s3", "text": { "en": "SQL Insights is the recommended tool for new monitoring deployments." } },
+        { "id": "s4", "text": { "en": "Diagnostic settings let you pick which log categories to send." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "no", "s3": "no", "s4": "yes" },
+      "explanation": { "en": "Metrics are automatic; resource logs require a diagnostic setting where you choose categories and destinations. SQL Insights has been retired, so don't recommend it." },
+      "example": { "en": "Use metrics for alerts, diagnostic logs in Log Analytics for investigation." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-sql/database/metrics-diagnostic-telemetry-logging-streaming-export-configure", "https://learn.microsoft.com/en-us/azure/azure-sql/database/sql-insights-overview"]
+    },
+    {
+      "id": "d2-mon-0013",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-monitoring-change",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "During an incident you need more detailed DAB logs from a production instance without restarting it. Which configuration change takes effect immediately?" },
+      "options": [
+        { "id": "a", "text": { "en": "runtime.telemetry.log-level" } },
+        { "id": "b", "text": { "en": "runtime.host.mode set to development" } },
+        { "id": "c", "text": { "en": "Adding an application-insights section" } },
+        { "id": "d", "text": { "en": "Entity permissions" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "log-level is the only setting DAB hot-reloads in production. Switching mode, adding sinks or changing permissions requires a restart in production (and development mode shouldn't be used in production anyway)." },
+      "example": { "en": "\"log-level\": { \"Azure.DataApiBuilder.Core\": \"debug\", \"default\": \"warning\" }" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/configuration/runtime"]
+    },
+    {
+      "id": "d2-mon-0014",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-monitoring-change",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Auditors want Azure SQL audit records queryable with KQL alongside other security data. How should you configure auditing?" },
+      "options": [
+        { "id": "a", "text": { "en": "Enable auditing with a Log Analytics workspace as the audit log destination" } },
+        { "id": "b", "text": { "en": "Enable Change Tracking on all tables" } },
+        { "id": "c", "text": { "en": "Turn on Query Store" } },
+        { "id": "d", "text": { "en": "Enable CDC and query the change tables" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Azure SQL auditing can write to Log Analytics, Storage or Event Hubs; Log Analytics gives KQL access. Change Tracking and CDC record data changes, not who ran what, and Query Store records query performance." },
+      "example": { "en": "Server auditing → Log Analytics; query SQLSecurityAuditEvents for failed logins." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-sql/database/auditing-overview"]
+    },
+    {
+      "id": "d2-mon-0015",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-monitoring-change",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which service should you recommend to monitor failure rates, latency and exceptions of an Azure Functions app that writes to Azure SQL?" },
+      "options": [
+        { "id": "a", "text": { "en": "Application Insights" } },
+        { "id": "b", "text": { "en": "Azure SQL auditing" } },
+        { "id": "c", "text": { "en": "Change data capture" } },
+        { "id": "d", "text": { "en": "SQL Server Profiler" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Functions integrates with Application Insights for invocations, failures, dependencies and logs. Auditing tracks database actions, CDC tracks data changes, and Profiler is a deprecated client tool for SQL Server tracing." },
+      "example": { "en": "Set APPLICATIONINSIGHTS_CONNECTION_STRING in the function app settings." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-functions/functions-monitoring"]
+    },
+    {
+      "id": "d2-mon-0016",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-monitoring-change",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which diagnostic log category carries Intelligent Insights performance diagnostics for an Azure SQL database?" },
+      "options": [
+        { "id": "a", "text": { "en": "SQLInsights" } },
+        { "id": "b", "text": { "en": "Errors" } },
+        { "id": "c", "text": { "en": "Basic" } },
+        { "id": "d", "text": { "en": "DevOpsOperationsAudit" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The SQLInsights category contains Intelligent Insights. Errors has SQL errors, Basic is a metrics category, and DevOps audit relates to Microsoft support operations auditing." },
+      "example": { "en": "Enable SQLInsights to get root-cause analysis of performance degradations." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-sql/database/metrics-diagnostic-telemetry-logging-streaming-export-configure"]
+    },
+    {
+      "id": "d2-mon-0017",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-monitoring-change",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Users report intermittent 'execution timeout expired' errors. Which diagnostic category records query timeout (attention) events?" },
+      "options": [
+        { "id": "a", "text": { "en": "Timeouts" } },
+        { "id": "b", "text": { "en": "AutomaticTuning" } },
+        { "id": "c", "text": { "en": "QueryStoreWaitStatistics" } },
+        { "id": "d", "text": { "en": "Basic" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The Timeouts category logs timeout events on the database. Automatic tuning and Query Store waits help find causes, and Basic is metrics." },
+      "example": { "en": "Pair Timeouts with Blocks to see whether blocking causes the timeouts." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-sql/database/metrics-diagnostic-telemetry-logging-streaming-export-configure"]
+    },
+    {
+      "id": "d2-mon-0018",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-monitoring-change",
+      "type": "dragdrop-match", "difficulty": "medium",
+      "text": { "en": "Match each monitoring need to the Azure Monitor capability you'd recommend." },
+      "items": [
+        { "id": "i1", "text": { "en": "Page on-call when DTU usage spikes" } },
+        { "id": "i2", "text": { "en": "Investigate last week's deadlocks with KQL" } },
+        { "id": "i3", "text": { "en": "Trace a slow web request to its SQL call" } },
+        { "id": "i4", "text": { "en": "Forward logs to an external SIEM" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "Metric alert + action group" } },
+        { "id": "t2", "text": { "en": "Diagnostic setting → Log Analytics" } },
+        { "id": "t3", "text": { "en": "Application Insights" } },
+        { "id": "t4", "text": { "en": "Diagnostic setting → Event Hubs" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "Alerts act on metrics; Log Analytics holds queryable logs; Application Insights traces application requests and dependencies; Event Hubs streams logs to external consumers." },
+      "example": { "en": "Most production setups combine all four." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-sql/database/monitoring-metrics-alerts"]
+    },
+    {
+      "id": "d2-mon-0019",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-monitoring-change",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What does Change Tracking record about a changed row?" },
+      "options": [
+        { "id": "a", "text": { "en": "That the row changed: its primary key, the operation, a version and optionally which columns changed — but not old or new values" } },
+        { "id": "b", "text": { "en": "Full before and after images of every update" } },
+        { "id": "c", "text": { "en": "The T-SQL statement and the login that ran it" } },
+        { "id": "d", "text": { "en": "Only inserts" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Change Tracking answers 'which rows changed since version N?' Readers join back to the table for current values. Before/after images are CDC, statements and logins are auditing, and CT covers inserts, updates and deletes." },
+      "example": { "en": "SYS_CHANGE_OPERATION = 'U', ProductId = 42 → re-read product 42." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/track-changes/about-change-tracking-sql-server"]
+    },
+    {
+      "id": "d2-mon-0020",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-monitoring-change",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Enable Change Tracking for dbo.Products, keeping changes for 3 days and recording which columns changed." },
+      "code": "ALTER DATABASE CURRENT\n  SET [BLANK1] = ON (CHANGE_RETENTION = 3 DAYS, AUTO_CLEANUP = ON);\n\nALTER TABLE dbo.Products\n  [BLANK2]\n  WITH ([BLANK3] = ON);",
+      "blanks": [
+        { "id": "b1", "label": { "en": "BLANK1" }, "choices": [
+          { "id": "c1", "text": { "en": "CHANGE_TRACKING" } },
+          { "id": "c2", "text": { "en": "CHANGE_DATA_CAPTURE" } },
+          { "id": "c3", "text": { "en": "QUERY_STORE" } }
+        ] },
+        { "id": "b2", "label": { "en": "BLANK2" }, "choices": [
+          { "id": "c1", "text": { "en": "ENABLE TRIGGER ALL" } },
+          { "id": "c2", "text": { "en": "ENABLE CHANGE_TRACKING" } },
+          { "id": "c3", "text": { "en": "ADD PERIOD FOR SYSTEM_TIME" } }
+        ] },
+        { "id": "b3", "label": { "en": "BLANK3" }, "choices": [
+          { "id": "c1", "text": { "en": "TRACK_COLUMNS_UPDATED" } },
+          { "id": "c2", "text": { "en": "SYSTEM_VERSIONING" } },
+          { "id": "c3", "text": { "en": "DATA_COMPRESSION" } }
+        ] }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c2", "b3": "c1" },
+      "explanation": { "en": "Change Tracking is enabled at database level (with retention and cleanup) and then per table; TRACK_COLUMNS_UPDATED records which columns changed (default OFF). CDC is enabled with procedures, not this option; system versioning is temporal tables." },
+      "example": { "en": "CHANGE_TRACKING_IS_COLUMN_IN_MASK(COLUMNPROPERTY(OBJECT_ID('dbo.Products'),'Price','ColumnId'), SYS_CHANGE_COLUMNS)" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/track-changes/enable-and-disable-change-tracking-sql-server"]
+    },
+    {
+      "id": "d2-mon-0021",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-monitoring-change",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A sync job stored @last = 5120 after its previous run. Which query returns the rows of dbo.Products changed since then?" },
+      "options": [
+        { "id": "a", "text": { "en": "SELECT * FROM CHANGETABLE(CHANGES dbo.Products, @last) AS ct;" } },
+        { "id": "b", "text": { "en": "SELECT * FROM cdc.fn_cdc_get_all_changes_dbo_Products(@last, NULL, N'all');" } },
+        { "id": "c", "text": { "en": "SELECT * FROM dbo.Products FOR SYSTEM_TIME AS OF @last;" } },
+        { "id": "d", "text": { "en": "SELECT * FROM sys.dm_tran_version_store WHERE version > @last;" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "CHANGETABLE(CHANGES table, last_sync_version) lists rows changed after that version. The CDC function takes LSNs, FOR SYSTEM_TIME is for temporal tables, and the version store DMV is about row versioning for isolation." },
+      "example": { "en": "Then save CHANGE_TRACKING_CURRENT_VERSION() for the next run." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-functions/changetable-transact-sql"]
+    },
+    {
+      "id": "d2-mon-0022",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-monitoring-change",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A mobile sync client was offline for a week. Its stored version is lower than CHANGE_TRACKING_MIN_VALID_VERSION(OBJECT_ID('dbo.Products')). What should the sync logic do?" },
+      "options": [
+        { "id": "a", "text": { "en": "Reinitialize: do a full reload of the table's data, then continue incremental sync from the current version" } },
+        { "id": "b", "text": { "en": "Query CHANGETABLE anyway; it returns all missed changes" } },
+        { "id": "c", "text": { "en": "Raise CHANGE_RETENTION so the old changes reappear" } },
+        { "id": "d", "text": { "en": "Switch to CDC to recover the history" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "When the client's version is older than the minimum valid version, cleanup has removed some change information and incremental results would be incomplete, so the client must reinitialize. Raising retention doesn't restore cleaned data, and enabling CDC now can't recover past changes." },
+      "example": { "en": "IF @last < CHANGE_TRACKING_MIN_VALID_VERSION(OBJECT_ID('dbo.Products')) → full sync." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/track-changes/work-with-change-tracking-sql-server"]
+    },
+    {
+      "id": "d2-mon-0023",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-monitoring-change",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "ALTER TABLE dbo.EventLog ENABLE CHANGE_TRACKING fails. dbo.EventLog is a heap with no keys. What's required?" },
+      "options": [
+        { "id": "a", "text": { "en": "A primary key on the table" } },
+        { "id": "b", "text": { "en": "A clustered columnstore index" } },
+        { "id": "c", "text": { "en": "A ROWVERSION column" } },
+        { "id": "d", "text": { "en": "The full recovery model" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Change Tracking identifies changed rows by primary key, so the table must have one. Columnstore, ROWVERSION and the full recovery model aren't Change Tracking requirements (full recovery is a CES requirement)." },
+      "example": { "en": "ALTER TABLE dbo.EventLog ADD CONSTRAINT PK_EventLog PRIMARY KEY (EventId);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/track-changes/enable-and-disable-change-tracking-sql-server"]
+    },
+    {
+      "id": "d2-mon-0024",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-monitoring-change",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "How does Change Tracking capture changes compared with CDC?" },
+      "options": [
+        { "id": "a", "text": { "en": "Change Tracking writes tracking info synchronously as part of the DML transaction; CDC reads the transaction log asynchronously afterward" } },
+        { "id": "b", "text": { "en": "Both read the transaction log asynchronously" } },
+        { "id": "c", "text": { "en": "Change Tracking uses SQL Agent jobs; CDC uses triggers" } },
+        { "id": "d", "text": { "en": "Change Tracking stores full row history; CDC only stores keys" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Change Tracking updates its internal tables in the same transaction (small synchronous overhead, no lag). CDC's capture process scans the log later, so there's some latency. Neither uses DML triggers, and history with values is CDC's job." },
+      "example": { "en": "A CDC change may appear in the change table seconds after commit." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/track-changes/track-data-changes-sql-server"]
+    },
+    {
+      "id": "d2-mon-0025",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-monitoring-change",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A sync query reads CHANGE_TRACKING_CURRENT_VERSION() and then CHANGETABLE results, but occasionally misses or double-processes rows under heavy writes. What's the recommended fix?" },
+      "options": [
+        { "id": "a", "text": { "en": "Run the version read and change query in one transaction under SNAPSHOT isolation" } },
+        { "id": "b", "text": { "en": "Use NOLOCK on CHANGETABLE" } },
+        { "id": "c", "text": { "en": "Disable AUTO_CLEANUP" } },
+        { "id": "d", "text": { "en": "Increase CHANGE_RETENTION to 30 days" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Snapshot isolation gives a consistent view, so the saved version matches the changes and data you read. NOLOCK makes it worse, and cleanup/retention settings don't fix read consistency." },
+      "example": { "en": "ALTER DATABASE CURRENT SET ALLOW_SNAPSHOT_ISOLATION ON; SET TRANSACTION ISOLATION LEVEL SNAPSHOT; BEGIN TRAN; …" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/track-changes/work-with-change-tracking-sql-server"]
+    },
+    {
+      "id": "d2-mon-0026",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-monitoring-change",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "For each statement comparing Change Tracking (CT) and change data capture (CDC), answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "CDC can return the values a row had before an update." } },
+        { "id": "s2", "text": { "en": "CT can tell you every intermediate value a row had between two syncs." } },
+        { "id": "s3", "text": { "en": "CT is generally lighter-weight than CDC." } },
+        { "id": "s4", "text": { "en": "The Azure Functions SQL trigger is built on CT." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "no", "s3": "yes", "s4": "yes" },
+      "explanation": { "en": "CDC stores before and after images. CT only reports the net fact that a row changed (you read its current values), which makes it lighter. The Functions SQL trigger requires Change Tracking on the database and table." },
+      "example": { "en": "Price audit with old/new values → CDC; cache invalidation → CT." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/track-changes/track-data-changes-sql-server"]
+    },
+    {
+      "id": "d2-mon-0027",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-monitoring-change",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "A data warehouse ETL must load every change to dbo.Orders, including the values before and after each update. Which feature fits?" },
+      "options": [
+        { "id": "a", "text": { "en": "Change data capture (CDC)" } },
+        { "id": "b", "text": { "en": "Change Tracking" } },
+        { "id": "c", "text": { "en": "Dynamic data masking" } },
+        { "id": "d", "text": { "en": "Query Store" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "CDC records inserts, deletes and before/after update images in change tables designed for ETL. Change Tracking lacks values, masking hides data, and Query Store tracks query performance." },
+      "example": { "en": "cdc.fn_cdc_get_all_changes_dbo_Orders(@from, @to, N'all update old')" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/track-changes/about-change-data-capture-sql-server"]
+    },
+    {
+      "id": "d2-mon-0028",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-monitoring-change",
+      "type": "dragdrop-match", "difficulty": "medium",
+      "text": { "en": "Match each CDC __$operation value to its meaning." },
+      "items": [
+        { "id": "i1", "text": { "en": "1" } },
+        { "id": "i2", "text": { "en": "2" } },
+        { "id": "i3", "text": { "en": "3" } },
+        { "id": "i4", "text": { "en": "4" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "Delete" } },
+        { "id": "t2", "text": { "en": "Insert" } },
+        { "id": "t3", "text": { "en": "Update — values before" } },
+        { "id": "t4", "text": { "en": "Update — values after" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "An update produces two rows (3 before image, 4 after image); inserts (2) hold new values and deletes (1) hold the values before deletion." },
+      "example": { "en": "WHERE __$operation IN (2, 4) to get the latest values written." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/track-changes/about-change-data-capture-sql-server"]
+    },
+    {
+      "id": "d2-mon-0029",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-monitoring-change",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "In Azure SQL Database (no SQL Server Agent), what runs CDC capture and cleanup?" },
+      "options": [
+        { "id": "a", "text": { "en": "A built-in CDC scheduler: capture about every 20 seconds and cleanup hourly" } },
+        { "id": "b", "text": { "en": "You must create Elastic Jobs" } },
+        { "id": "c", "text": { "en": "An Azure Function you deploy" } },
+        { "id": "d", "text": { "en": "CDC isn't available in Azure SQL Database" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Azure SQL Database replaces the Agent jobs with a scheduler that runs inside the database scope; you can also run sp_cdc_scan manually. Elastic Jobs or Functions aren't needed, and CDC is supported." },
+      "example": { "en": "Monitor with sys.dm_cdc_log_scan_sessions and sys.dm_cdc_errors." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-sql/database/change-data-capture-overview"]
+    },
+    {
+      "id": "d2-mon-0030",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-monitoring-change",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "sys.sp_cdc_enable_db fails on an Azure SQL Database in the DTU model at tier S1. What's the issue?" },
+      "options": [
+        { "id": "a", "text": { "en": "CDC needs S3 or higher in the DTU model (any vCore tier works); scale up" } },
+        { "id": "b", "text": { "en": "CDC requires Hyperscale" } },
+        { "id": "c", "text": { "en": "CDC must be enabled from the Azure portal only" } },
+        { "id": "d", "text": { "en": "The database must use the simple recovery model" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Basic, S0, S1 and S2 aren't supported for CDC; S3 and up, and all vCore tiers, are. Hyperscale isn't required, enabling is done with T-SQL (as db_owner), and recovery model isn't configurable in Azure SQL Database." },
+      "example": { "en": "Scale to S3 or move to General Purpose vCore, then EXEC sys.sp_cdc_enable_db." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-sql/database/change-data-capture-overview"]
+    },
+    {
+      "id": "d2-mon-0031",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-monitoring-change",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "You enable CDC on dbo.Orders with @supports_net_changes = 1. What must the table have?" },
+      "options": [
+        { "id": "a", "text": { "en": "A primary key or a unique index (named in @index_name)" } },
+        { "id": "b", "text": { "en": "A ROWVERSION column" } },
+        { "id": "c", "text": { "en": "Change Tracking enabled" } },
+        { "id": "d", "text": { "en": "A clustered columnstore index" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The net changes function returns one row per changed row, so CDC needs a unique row identifier: the primary key or a specified unique index. The other options aren't requirements." },
+      "example": { "en": "cdc.fn_cdc_get_net_changes_dbo_Orders(@from, @to, N'all')" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-sql/database/change-data-capture-overview"]
+    },
+    {
+      "id": "d2-mon-0032",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-monitoring-change",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "By default, how long does CDC keep rows in its change tables before cleanup removes them?" },
+      "options": [
+        { "id": "a", "text": { "en": "3 days (4,320 minutes)" } },
+        { "id": "b", "text": { "en": "2 days" } },
+        { "id": "c", "text": { "en": "30 days" } },
+        { "id": "d", "text": { "en": "Forever" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "CDC cleanup retains 4,320 minutes by default (adjustable). Two days is the Change Tracking default retention; CDC data isn't kept forever." },
+      "example": { "en": "EXEC sys.sp_cdc_change_job @job_type = N'cleanup', @retention = 1440;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/track-changes/about-change-data-capture-sql-server"]
+    },
+    {
+      "id": "d2-mon-0033",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-monitoring-change",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "On SQL Server 2022 with CDC enabled, the transaction log keeps growing even after log backups. SQL Server Agent was stopped last week. Why?" },
+      "options": [
+        { "id": "a", "text": { "en": "The CDC capture job isn't running, so log records marked for capture can't be truncated" } },
+        { "id": "b", "text": { "en": "CDC stores change tables inside the log file" } },
+        { "id": "c", "text": { "en": "Log backups are disabled when CDC is enabled" } },
+        { "id": "d", "text": { "en": "CDC switches the database to bulk-logged" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The log can't truncate past changes that the capture process hasn't harvested, and on SQL Server the capture job runs under SQL Server Agent. Restart Agent (or the capture job). Change tables are normal tables, log backups still work, and recovery model is unchanged." },
+      "example": { "en": "SELECT log_reuse_wait_desc FROM sys.databases WHERE name = DB_NAME(); -- REPLICATION" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/track-changes/about-change-data-capture-sql-server"]
+    },
+    {
+      "id": "d2-mon-0034",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-monitoring-change",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Enable CDC for dbo.Orders without a gating role, then read all changes captured so far." },
+      "code": "EXEC sys.[BLANK1];\nEXEC sys.sp_cdc_enable_table @source_schema = N'dbo', @source_name = N'Orders', @role_name = NULL;\n\nDECLARE @from BINARY(10) = sys.[BLANK2](N'dbo_Orders'),\n        @to   BINARY(10) = sys.fn_cdc_get_max_lsn();\nSELECT * FROM cdc.[BLANK3](@from, @to, N'all');",
+      "blanks": [
+        { "id": "b1", "label": { "en": "BLANK1" }, "choices": [
+          { "id": "c1", "text": { "en": "sp_cdc_enable_db" } },
+          { "id": "c2", "text": { "en": "sp_enable_event_stream" } },
+          { "id": "c3", "text": { "en": "sp_cdc_scan" } }
+        ] },
+        { "id": "b2", "label": { "en": "BLANK2" }, "choices": [
+          { "id": "c1", "text": { "en": "fn_cdc_map_time_to_lsn" } },
+          { "id": "c2", "text": { "en": "fn_cdc_get_min_lsn" } },
+          { "id": "c3", "text": { "en": "fn_cdc_increment_lsn" } }
+        ] },
+        { "id": "b3", "label": { "en": "BLANK3" }, "choices": [
+          { "id": "c1", "text": { "en": "fn_cdc_get_all_changes_dbo_Orders" } },
+          { "id": "c2", "text": { "en": "fn_cdc_get_all_changes_Orders" } },
+          { "id": "c3", "text": { "en": "Orders_CT" } }
+        ] }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c2", "b3": "c1" },
+      "explanation": { "en": "CDC is enabled for the database first, then per table. The extraction window starts at the capture instance's minimum LSN, and the default capture instance name is schema_table, so the function is fn_cdc_get_all_changes_dbo_Orders. sp_enable_event_stream is CES; querying dbo_Orders_CT directly is possible but the function respects the LSN window." },
+      "example": { "en": "Store @to after each run and use sys.fn_cdc_increment_lsn(@to) as the next @from." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-functions/cdc-fn-cdc-get-all-changes-capture-instance-transact-sql"]
+    },
+    {
+      "id": "d2-mon-0035",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-monitoring-change",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Who can enable CDC on an Azure SQL database?" },
+      "options": [
+        { "id": "a", "text": { "en": "A member of the db_owner role" } },
+        { "id": "b", "text": { "en": "Any user with SELECT on the table" } },
+        { "id": "c", "text": { "en": "Only Microsoft support" } },
+        { "id": "d", "text": { "en": "Any member of db_datawriter" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Enabling CDC requires db_owner in Azure SQL Database. SELECT or db_datawriter aren't enough, and support isn't involved." },
+      "example": { "en": "Use a gating role (@role_name) to control who can read the change data." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-sql/database/change-data-capture-overview"]
+    },
+    {
+      "id": "d2-mon-0036",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-monitoring-change",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Several microservices must react within seconds to order changes, without polling the database. Which SQL feature pushes changes to them?" },
+      "options": [
+        { "id": "a", "text": { "en": "Change event streaming (CES) to Azure Event Hubs, which the services consume" } },
+        { "id": "b", "text": { "en": "Change Tracking queried every minute by each service" } },
+        { "id": "c", "text": { "en": "Temporal tables" } },
+        { "id": "d", "text": { "en": "Database snapshots" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "CES streams DML events as CloudEvents to Event Hubs (or Fabric Eventstream) in near real time, and Event Hubs supports many independent consumers. Change Tracking needs polling, temporal tables keep history in the database, and snapshots are static copies." },
+      "example": { "en": "Orders table → CES → Event Hubs 'orders' → shipping, billing and analytics consumer groups." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/track-changes/change-event-streaming/overview"]
+    },
+    {
+      "id": "d2-mon-0037",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-monitoring-change",
+      "type": "dragdrop-order", "difficulty": "medium",
+      "text": { "en": "Order the steps to configure change event streaming from an Azure SQL database to Azure Event Hubs." },
+      "items": [
+        { "id": "i1", "text": { "en": "Grant the server's managed identity the Azure Event Hubs Data Sender role on the event hub" } },
+        { "id": "i2", "text": { "en": "Create a master key and a database scoped credential WITH IDENTITY = 'Managed Identity'" } },
+        { "id": "i3", "text": { "en": "EXEC sys.sp_enable_event_stream" } },
+        { "id": "i4", "text": { "en": "EXEC sys.sp_create_event_stream_group (destination, credential, partitioning)" } },
+        { "id": "i5", "text": { "en": "EXEC sys.sp_add_object_to_event_stream_group for each table" } }
+      ],
+      "answer": ["i1", "i2", "i3", "i4", "i5"],
+      "explanation": { "en": "Access to the destination comes first, then the credential that uses it; CES must be enabled for the database before a stream group exists, and tables are added to an existing group." },
+      "example": { "en": "Check with sys.sp_help_change_feed_settings and sys.dm_change_feed_errors." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/track-changes/change-event-streaming/configure"]
+    },
+    {
+      "id": "d2-mon-0038",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-monitoring-change",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A database already uses CDC for an ETL tool. The team now wants to add change event streaming in the same database. What should you tell them?" },
+      "options": [
+        { "id": "a", "text": { "en": "CES isn't supported on databases with CDC (or transactional replication, Fabric mirroring, Synapse Link); choose one approach" } },
+        { "id": "b", "text": { "en": "CES automatically reads from the CDC change tables" } },
+        { "id": "c", "text": { "en": "CES requires CDC to be enabled first" } },
+        { "id": "d", "text": { "en": "They can coexist only in SQL Server 2022" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "CES documents that it doesn't support databases configured with CDC, transactional replication, Fabric mirroring or Synapse Link; Change Tracking can coexist. CES doesn't depend on CDC, and SQL Server 2022 doesn't have CES at all." },
+      "example": { "en": "Option: move the ETL to consume CES events from Event Hubs, then disable CDC." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/track-changes/change-event-streaming/configure"]
+    },
+    {
+      "id": "d2-mon-0039",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-monitoring-change",
+      "type": "multiple", "difficulty": "hard", "selectCount": 3,
+      "text": { "en": "Which three are documented limitations of change event streaming? (Select 3)" },
+      "options": [
+        { "id": "a", "text": { "en": "Rows that existed before CES was enabled aren't sent as an initial snapshot" } },
+        { "id": "b", "text": { "en": "DDL changes don't produce events" } },
+        { "id": "c", "text": { "en": "TRUNCATE TABLE isn't supported on streamed tables" } },
+        { "id": "d", "text": { "en": "It needs SQL Server Agent to run" } },
+        { "id": "e", "text": { "en": "It can only serialize events as XML" } }
+      ],
+      "answer": ["a", "b", "c"],
+      "explanation": { "en": "CES streams only new DML, emits no DDL events (later events just carry the new schema), and blocks TRUNCATE on streamed tables. It doesn't use Agent, and events are CloudEvents serialized as JSON or Avro." },
+      "example": { "en": "Seed downstream systems with a one-time bulk export before enabling CES." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/track-changes/change-event-streaming/configure"]
+    },
+    {
+      "id": "d2-mon-0040",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-monitoring-change",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What's the most secure way for an Azure SQL database to authenticate to Event Hubs for change event streaming?" },
+      "options": [
+        { "id": "a", "text": { "en": "The logical server's managed identity with the Azure Event Hubs Data Sender role on that event hub, used through a credential WITH IDENTITY = 'Managed Identity'" } },
+        { "id": "b", "text": { "en": "A namespace-level shared access policy with Manage rights" } },
+        { "id": "c", "text": { "en": "The Event Hubs connection string stored in a table" } },
+        { "id": "d", "text": { "en": "Anonymous access on the event hub" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Microsoft Entra authentication with a managed identity is recommended, scoped to the specific event hub (least privilege). A namespace-wide Manage policy is far too broad, secrets in tables are exposed, and Event Hubs doesn't allow anonymous sends." },
+      "example": { "en": "Role assignment scope: /…/namespaces/contoso-ns/eventhubs/orders." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/track-changes/change-event-streaming/configure"]
+    },
+    {
+      "id": "d2-mon-0041",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-monitoring-change",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "dbo.Customers uses dynamic data masking on Email and row-level security per region. You add it to a CES stream group. What do consumers receive?" },
+      "options": [
+        { "id": "a", "text": { "en": "Changes for all rows with unmasked values; masking and RLS don't apply to streamed data" } },
+        { "id": "b", "text": { "en": "Masked Email values only" } },
+        { "id": "c", "text": { "en": "Only rows the stream group owner can see under RLS" } },
+        { "id": "d", "text": { "en": "Nothing; CES refuses tables with masking" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "CES emits changes for all rows regardless of RLS, and data is streamed unmasked. Treat the event hub as sensitive: restrict listeners, or don't stream the sensitive columns' table." },
+      "example": { "en": "Grant Listen only to approved consumer identities; consider a separate projection table without PII." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/track-changes/change-event-streaming/configure"]
+    },
+    {
+      "id": "d2-mon-0042",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-monitoring-change",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "After someone rotated an Event Hubs key, the CES-enabled database's transaction log keeps growing. What's happening, and where do you look?" },
+      "options": [
+        { "id": "a", "text": { "en": "CES can't deliver (credential errors), so log truncation is held; check sys.dm_change_feed_errors and fix the credential" } },
+        { "id": "b", "text": { "en": "CES writes events into the log file permanently" } },
+        { "id": "c", "text": { "en": "Event Hubs is replaying events back into SQL" } },
+        { "id": "d", "text": { "en": "Query Store is full" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Because delivery is guaranteed, undelivered changes keep the log from truncating; persistent errors (bad credentials, network, message size) cause growth. sys.dm_change_feed_errors shows delivery errors. Nothing writes events into the log permanently or replays them back." },
+      "example": { "en": "ALTER DATABASE SCOPED CREDENTIAL EhCred WITH IDENTITY = '<policy>', SECRET = '<new key>';" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/track-changes/change-event-streaming/configure"]
+    },
+    {
+      "id": "d2-mon-0043",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-monitoring-change",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "An Azure Function uses [SqlTrigger(\"[dbo].[Products]\", \"SqlConnectionString\")] but never fires. What's the most likely missing setup?" },
+      "options": [
+        { "id": "a", "text": { "en": "Change Tracking isn't enabled on the database and the dbo.Products table" } },
+        { "id": "b", "text": { "en": "CDC isn't enabled on dbo.Products" } },
+        { "id": "c", "text": { "en": "The table lacks an AFTER INSERT trigger" } },
+        { "id": "d", "text": { "en": "Query Store is off" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The Azure SQL trigger polls Change Tracking; it must be enabled on both the database and the table. It doesn't use CDC, DML triggers or Query Store." },
+      "example": { "en": "ALTER DATABASE CURRENT SET CHANGE_TRACKING = ON (CHANGE_RETENTION = 2 DAYS, AUTO_CLEANUP = ON); ALTER TABLE dbo.Products ENABLE CHANGE_TRACKING;" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-functions/functions-bindings-azure-sql-trigger"]
+    },
+    {
+      "id": "d2-mon-0044",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-monitoring-change",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "With default settings, how does the Azure Functions SQL trigger deliver changes?" },
+      "options": [
+        { "id": "a", "text": { "en": "It polls about every 1,000 ms and passes up to 100 changes per invocation" } },
+        { "id": "b", "text": { "en": "SQL pushes each change instantly over a WebSocket" } },
+        { "id": "c", "text": { "en": "It polls hourly and passes all changes at once" } },
+        { "id": "d", "text": { "en": "It invokes the function once per changed column" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The trigger runs a polling loop: read up to MaxBatchSize (default 100) changes, invoke the function, wait PollingIntervalMs (default 1,000). It isn't push-based, hourly or per column." },
+      "example": { "en": "host.json: \"extensions\": { \"Sql\": { \"MaxBatchSize\": 300, \"PollingIntervalMs\": 500 } }" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-functions/functions-bindings-azure-sql-trigger"]
+    },
+    {
+      "id": "d2-mon-0045",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-monitoring-change",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "Product 42's price is updated three times between two polling cycles of a SQL-triggered function. What does the function receive?" },
+      "options": [
+        { "id": "a", "text": { "en": "One change for product 42 reflecting its current state" } },
+        { "id": "b", "text": { "en": "Three Update changes with each intermediate price" } },
+        { "id": "c", "text": { "en": "Nothing until the next day" } },
+        { "id": "d", "text": { "en": "An error because of concurrent updates" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Because it's built on Change Tracking, multiple changes to a row between iterations are batched into a single entry showing the difference from the last processed state. If you need every intermediate value, use CDC or CES." },
+      "example": { "en": "Price history audit → CDC; 'notify when a product changes' → SQL trigger." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-functions/functions-bindings-azure-sql-trigger"]
+    },
+    {
+      "id": "d2-mon-0046",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-monitoring-change",
+      "type": "multiple", "difficulty": "hard", "selectCount": 2,
+      "text": { "en": "A function app's managed identity has db_datareader and db_datawriter, but its SQL trigger fails with permission errors. Which two grants are required? (Select 2)" },
+      "options": [
+        { "id": "a", "text": { "en": "SELECT and VIEW CHANGE TRACKING on the monitored table" } },
+        { "id": "b", "text": { "en": "Permissions to create and use the az_func schema and its lease tables (e.g., CREATE SCHEMA/TABLE or ALTER and DML on SCHEMA::az_func)" } },
+        { "id": "c", "text": { "en": "Membership in sysadmin" } },
+        { "id": "d", "text": { "en": "EXECUTE ANY EXTERNAL ENDPOINT" } },
+        { "id": "e", "text": { "en": "ALTER ANY EXTERNAL MODEL" } }
+      ],
+      "answer": ["a", "b"],
+      "explanation": { "en": "The trigger reads changes (VIEW CHANGE TRACKING + SELECT) and keeps state in lease tables in az_func, which it creates and updates. sysadmin is excessive (and not available in Azure SQL Database); the external endpoint and model permissions are for REST calls and AI models." },
+      "example": { "en": "GRANT VIEW CHANGE TRACKING ON dbo.Products TO [func-sync]; GRANT ALTER, SELECT, INSERT, UPDATE, DELETE ON SCHEMA::az_func TO [func-sync];" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-functions/functions-bindings-azure-sql-trigger"]
+    },
+    {
+      "id": "d2-mon-0047",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-monitoring-change",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A SQL-triggered function keeps throwing for one bad row. What does the trigger do?" },
+      "options": [
+        { "id": "a", "text": { "en": "Retries that batch after 60 seconds; after 5 consecutive failures for a row, that row is ignored for future changes" } },
+        { "id": "b", "text": { "en": "Retries forever and blocks all other changes" } },
+        { "id": "c", "text": { "en": "Deletes the row from the table" } },
+        { "id": "d", "text": { "en": "Disables Change Tracking on the table" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Failed batches are retried after 60 seconds while other changes continue; a row that fails five times in a row is skipped. The trigger never deletes data or changes Change Tracking settings. Log and alert on failures so skipped rows are handled." },
+      "example": { "en": "Wrap per-row logic in try/catch and write failures to a dead-letter table." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-functions/functions-bindings-azure-sql-trigger"]
+    },
+    {
+      "id": "d2-mon-0048",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-monitoring-change",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A Logic App should email sales when a new row is inserted into dbo.Leads, using the SQL Server connector trigger 'When an item is created (V2)'. What must dbo.Leads have?" },
+      "options": [
+        { "id": "a", "text": { "en": "An IDENTITY column" } },
+        { "id": "b", "text": { "en": "A ROWVERSION column" } },
+        { "id": "c", "text": { "en": "CDC enabled" } },
+        { "id": "d", "text": { "en": "A clustered columnstore index" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The created (V2) trigger detects new rows through an IDENTITY column. ROWVERSION is required by the modified (V2) trigger; CDC and columnstore aren't connector requirements." },
+      "example": { "en": "LeadId INT IDENTITY(1,1) PRIMARY KEY" },
+      "sources": ["https://learn.microsoft.com/en-us/connectors/sql/"]
+    },
+    {
+      "id": "d2-mon-0049",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-monitoring-change",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A Logic App must start whenever a row in dbo.Tickets is inserted or updated. Which trigger and table requirement apply?" },
+      "options": [
+        { "id": "a", "text": { "en": "'When an item is modified (V2)', which needs a ROWVERSION column and fires on inserts and updates" } },
+        { "id": "b", "text": { "en": "'When an item is created (V2)', which also detects updates" } },
+        { "id": "c", "text": { "en": "'When an item is deleted', which needs a temporal table" } },
+        { "id": "d", "text": { "en": "Any trigger; no table requirements" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The modified (V2) trigger uses a ROWVERSION column and fires for both inserts and updates. The created trigger only sees new IDENTITY values, there's no delete trigger in the connector, and the triggers do have column requirements." },
+      "example": { "en": "ALTER TABLE dbo.Tickets ADD RowVer ROWVERSION;" },
+      "sources": ["https://learn.microsoft.com/en-us/connectors/sql/"]
+    },
+    {
+      "id": "d2-mon-0050",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-monitoring-change",
+      "type": "dragdrop-match", "difficulty": "hard",
+      "text": { "en": "Match each requirement to the most appropriate change-handling method." },
+      "items": [
+        { "id": "i1", "text": { "en": "Push order events to many subscribers in near real time" } },
+        { "id": "i2", "text": { "en": "Offline mobile clients fetch which rows changed since their last sync" } },
+        { "id": "i3", "text": { "en": "Nightly ETL needs before/after values of every change" } },
+        { "id": "i4", "text": { "en": "Business users build an approval email flow on new rows, no code" } },
+        { "id": "i5", "text": { "en": "Run C# code for each changed row without writing a poller" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "Change event streaming (CES)" } },
+        { "id": "t2", "text": { "en": "Change Tracking" } },
+        { "id": "t3", "text": { "en": "Change data capture (CDC)" } },
+        { "id": "t4", "text": { "en": "Azure Logic Apps SQL trigger" } },
+        { "id": "t5", "text": { "en": "Azure Functions SQL trigger binding" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4", "i5": "t5" },
+      "explanation": { "en": "CES pushes events to Event Hubs; Change Tracking is the lightweight 'what changed' sync source; CDC keeps history with values; Logic Apps gives low-code workflows; the Functions SQL trigger runs code per change on top of Change Tracking." },
+      "example": { "en": "One system can use several: CES for events, Change Tracking for mobile sync." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/track-changes/track-data-changes-sql-server", "https://learn.microsoft.com/en-us/sql/relational-databases/track-changes/change-event-streaming/overview"]
+    }
+  ]
+}

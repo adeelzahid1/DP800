@@ -1,0 +1,58 @@
+{
+  "subtopic": "f-json-basics",
+  "title": { "en": "JSON & semi-structured data from scratch" },
+  "sections": [
+    {
+      "heading": { "en": "What \"semi-structured\" means" },
+      "body": {
+        "en": "Relational tables are **structured**: every row has the same columns. JSON documents are **semi-structured**: each document carries its own shape, and two documents in the same collection can differ. Modern applications mix both — a product row with fixed columns (id, name, price) plus a JSON column for attributes that vary per product category. DP-800 tests exactly this mixed modeling."
+      }
+    },
+    {
+      "heading": { "en": "JSON syntax in two minutes" },
+      "body": {
+        "en": "JSON has objects (`{ \"key\": value }`), arrays (`[1, 2, 3]`), strings (double quotes only), numbers, booleans (`true`/`false`) and `null`. Keys are case-sensitive strings. No comments, no trailing commas, no single quotes. A **path** addresses a value: `$.customer.address.city` starts at the root `$` and walks down; `$.items[0].price` indexes into an array."
+      },
+      "code": "{\n  \"orderId\": 1001,\n  \"customer\": { \"name\": \"Adeel\", \"city\": \"Lahore\" },\n  \"items\": [\n    { \"sku\": \"A1\", \"qty\": 2, \"price\": 15.5 },\n    { \"sku\": \"B7\", \"qty\": 1, \"price\": 99.0 }\n  ],\n  \"paid\": true\n}",
+      "codeLang": "json"
+    },
+    {
+      "heading": { "en": "How SQL Server stores JSON" },
+      "body": {
+        "en": "Historically JSON text was stored in `nvarchar(max)` and validated with `ISJSON()`. SQL Server 2025, Azure SQL Database and SQL database in Fabric add a native **json data type** that stores documents in an optimized binary format — smaller, faster to parse, and still presented to you as text. The dedicated JSON subtopic in Domain 1 covers the type, JSON indexes and when to choose each option."
+      },
+      "code": "-- Old pattern: text column + validation\nCREATE TABLE dbo.OrdersOld (\n    OrderId INT PRIMARY KEY,\n    Doc NVARCHAR(MAX) CHECK (ISJSON(Doc) = 1)\n);\n\n-- Modern pattern: native json type (SQL Server 2025 / Azure SQL / Fabric)\nCREATE TABLE dbo.Orders (\n    OrderId INT PRIMARY KEY,\n    Doc JSON NOT NULL\n);"
+    },
+    {
+      "heading": { "en": "Reading JSON: JSON_VALUE, JSON_QUERY, OPENJSON" },
+      "body": {
+        "en": "- `JSON_VALUE(doc, '$.path')` extracts a **scalar** (string, number, bool).\n- `JSON_QUERY(doc, '$.path')` extracts an **object or array** (keeps it as JSON).\n- `OPENJSON(doc, '$.path')` turns JSON into **rows** — essential for joining JSON arrays against tables. With a `WITH` clause you project typed columns.\nMixing these up is a favorite exam trap: `JSON_VALUE` on an array returns `NULL` (in lax mode) rather than the array."
+      },
+      "code": "SELECT o.OrderId,\n       JSON_VALUE(o.Doc, '$.customer.name') AS CustomerName,\n       i.sku, i.qty, i.price\nFROM dbo.Orders AS o\nCROSS APPLY OPENJSON(o.Doc, '$.items')\n     WITH (sku VARCHAR(10) '$.sku',\n           qty INT          '$.qty',\n           price DECIMAL(9,2) '$.price') AS i;"
+    },
+    {
+      "heading": { "en": "Building JSON: JSON_OBJECT, JSON_ARRAY, FOR JSON" },
+      "body": {
+        "en": "`JSON_OBJECT('key': value, …)` and `JSON_ARRAY(v1, v2, …)` construct JSON from relational values. Aggregates `JSON_ARRAYAGG(expr)` and `JSON_OBJECTAGG(k: v)` fold a whole group into one array/object. `FOR JSON PATH` turns an entire result set into a JSON document — the classic way to feed structured data to a language model or REST client, which returns in the RAG topics."
+      },
+      "code": "SELECT JSON_OBJECT(\n    'id': p.ProductId,\n    'name': p.Name,\n    'tags': JSON_QUERY('[\"sql\",\"ai\"]')\n) AS ProductJson\nFROM Production.Product AS p;"
+    },
+    {
+      "heading": { "en": "Lax vs strict paths" },
+      "body": {
+        "en": "Paths default to **lax** mode: a missing property returns `NULL`. Prefix the path with `strict` (`'strict $.customer.vip'`) and a missing property raises an error instead. Use strict when silently missing data would corrupt results."
+      }
+    }
+  ],
+  "examTips": [
+    { "en": "JSON_VALUE → scalars, JSON_QUERY → objects/arrays, OPENJSON → rows. Picking the wrong one returns NULL, not an error (lax mode)." },
+    { "en": "The native json type (binary, optimized) is the modern default on SQL Server 2025 / Azure SQL / Fabric; nvarchar(max) + ISJSON() remains for older compatibility." },
+    { "en": "OPENJSON without WITH returns key/value/type triples; with WITH it returns typed columns." },
+    { "en": "Strict path mode ('strict $.a.b') errors on missing properties; lax (default) returns NULL." }
+  ],
+  "sources": [
+    "https://learn.microsoft.com/en-us/sql/relational-databases/json/json-data-sql-server",
+    "https://learn.microsoft.com/en-us/sql/t-sql/data-types/json-data-type",
+    "https://learn.microsoft.com/en-us/sql/t-sql/functions/openjson-transact-sql"
+  ]
+}

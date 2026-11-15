@@ -1,0 +1,62 @@
+{
+  "subtopic": "d1-procs-triggers",
+  "title": { "en": "Stored procedures & triggers" },
+  "prerequisiteRecap": [
+    {
+      "heading": { "en": "Procedures vs functions, once and for all" },
+      "body": {
+        "en": "A **stored procedure** is callable code (EXEC) that may read AND modify data, manage transactions, and return result sets, OUTPUT parameters and a status code. A **function** is an expression component: no side effects, used inside queries. If the requirement says 'modify data', 'transaction', or 'business operation' — procedure. If it says 'use in a SELECT/WHERE' — function."
+      }
+    }
+  ],
+  "sections": [
+    {
+      "heading": { "en": "Stored procedure essentials" },
+      "body": {
+        "en": "Create with `CREATE [OR ALTER] PROCEDURE name @param type [= default] [OUTPUT] AS BEGIN … END`. Call with `EXEC name @param = value`. Return data three ways: result sets (SELECT inside), `OUTPUT` parameters (scalar values back to caller), and the integer `RETURN` code (0 = success convention). `SET NOCOUNT ON` suppresses 'rows affected' chatter — a standard first line. Benefits the exam cites: plan reuse (compiled plan cached), security boundary (grant EXECUTE only — ownership chaining covers the tables), reduced network traffic, single place for business logic."
+      },
+      "code": "CREATE OR ALTER PROCEDURE Sales.PlaceOrder\n    @CustomerId INT,\n    @Total      DECIMAL(12,2),\n    @OrderId    INT OUTPUT\nAS\nBEGIN\n    SET NOCOUNT ON;\n    BEGIN TRY\n        BEGIN TRANSACTION;\n        INSERT INTO Sales.Orders (CustomerId, Total) VALUES (@CustomerId, @Total);\n        SET @OrderId = SCOPE_IDENTITY();\n        COMMIT;\n    END TRY\n    BEGIN CATCH\n        IF XACT_STATE() <> 0 ROLLBACK;\n        THROW;\n    END CATCH;\nEND;\nGO\nDECLARE @id INT;\nEXEC Sales.PlaceOrder @CustomerId = 7, @Total = 99.50, @OrderId = @id OUTPUT;"
+    },
+    {
+      "heading": { "en": "Parameters, sniffing and recompilation" },
+      "body": {
+        "en": "The first execution's parameter values shape the cached plan (**parameter sniffing**). Usually good; harmful when data is skewed (a plan for @CustomerId=1 with 2 rows is wrong for one with 2M). Mitigations: `OPTION (RECOMPILE)` on the statement, `OPTIMIZE FOR` hints, Parameter Sensitive Plan optimization (SQL Server 2022+/compat 160, automatic), or local-variable rewrites. `WITH RECOMPILE` on the whole procedure avoids caching entirely (last resort)."
+      }
+    },
+    {
+      "heading": { "en": "DML triggers: AFTER and INSTEAD OF" },
+      "body": {
+        "en": "A trigger is a procedure bound to a table event.\n- **AFTER (FOR) triggers** run after the DML completes (per statement, NOT per row!) and can inspect changes via the pseudo-tables **inserted** and **deleted** (UPDATE populates both: deleted = old, inserted = new). ROLLBACK inside aborts the whole statement.\n- **INSTEAD OF triggers** replace the DML entirely — the standard way to make multi-table views updatable or intercept writes.\nTriggers must be written **set-based**: assume inserted/deleted hold many rows. The single-row assumption (`SELECT @id = Id FROM inserted`) is the most common trigger bug and a guaranteed exam trap. Nested triggers fire up to 32 levels; a trigger can be disabled (`DISABLE TRIGGER`)."
+      },
+      "code": "CREATE TRIGGER Sales.trg_Orders_Audit\nON Sales.Orders\nAFTER UPDATE\nAS\nBEGIN\n    SET NOCOUNT ON;\n    INSERT INTO Sales.OrderAudit (OrderId, OldTotal, NewTotal, ChangedAt)\n    SELECT d.OrderId, d.Total, i.Total, SYSUTCDATETIME()\n    FROM inserted AS i\n    JOIN deleted  AS d ON d.OrderId = i.OrderId   -- set-based: handles any row count\n    WHERE i.Total <> d.Total;\nEND;"
+    },
+    {
+      "heading": { "en": "DDL and logon triggers" },
+      "body": {
+        "en": "**DDL triggers** fire on CREATE/ALTER/DROP (database- or server-scoped) — classic use: block or audit schema changes (`ON DATABASE FOR DROP_TABLE`). **Logon triggers** fire on session establishment — e.g. restricting connection times or counts. Both use `EVENTDATA()` (XML) for event details."
+      },
+      "code": "CREATE TRIGGER trg_BlockTableDrops\nON DATABASE\nFOR DROP_TABLE\nAS\nBEGIN\n    RAISERROR ('Tables cannot be dropped directly. Use the deployment pipeline.', 16, 1);\n    ROLLBACK;\nEND;"
+    },
+    {
+      "heading": { "en": "Triggers vs alternatives" },
+      "body": {
+        "en": "Triggers are powerful but hidden — they surprise developers and add per-statement cost. Prefer: **constraints** for validation (declarative beats procedural), **temporal tables** for history, **CDC/Change Tracking/CES** for downstream change propagation, **OUTPUT clause** for capturing changes in the same statement. Keep triggers for true in-transaction reactions (complex cross-row integrity, denormalization maintenance, embedding refresh marking — the AI domain uses triggers as one embedding-maintenance option)."
+      }
+    }
+  ],
+  "examTips": [
+    { "en": "AFTER triggers fire once per STATEMENT; inserted/deleted may hold 0, 1 or many rows — always write set-based." },
+    { "en": "UPDATE in a trigger: deleted = old values, inserted = new values." },
+    { "en": "INSTEAD OF triggers enable updates through multi-table views." },
+    { "en": "OUTPUT parameters need OUTPUT at declaration AND call site." },
+    { "en": "Parameter sniffing: skewed data + cached plan; fixes = RECOMPILE / OPTIMIZE FOR / PSP optimization (2022+)." },
+    { "en": "Grant EXECUTE on procedures instead of table permissions — ownership chaining handles the inside." },
+    { "en": "Trigger-based auditing/history questions: check whether temporal tables or CDC are offered as cleaner answers." }
+  ],
+  "sources": [
+    "https://learn.microsoft.com/en-us/sql/relational-databases/stored-procedures/stored-procedures-database-engine",
+    "https://learn.microsoft.com/en-us/sql/relational-databases/triggers/dml-triggers",
+    "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-trigger-transact-sql",
+    "https://learn.microsoft.com/en-us/sql/relational-databases/performance/parameter-sensitive-plan-optimization"
+  ]
+}

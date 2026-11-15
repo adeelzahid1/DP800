@@ -1,0 +1,497 @@
+{
+  "version": 1,
+  "locales": [
+    {
+      "code": "en",
+      "label": "English",
+      "enabled": true
+    },
+    {
+      "code": "roman",
+      "label": "Roman English",
+      "enabled": false
+    }
+  ],
+  "domains": [
+    {
+      "id": "foundations",
+      "title": {
+        "en": "Foundations (prerequisites)"
+      },
+      "weightLow": 0,
+      "weightHigh": 0,
+      "examWeight": 0,
+      "lessonOnly": true,
+      "topics": [
+        {
+          "id": "t-foundations",
+          "title": {
+            "en": "Start here if you are new"
+          },
+          "subtopics": [
+            {
+              "id": "f-tsql-refresher",
+              "title": {
+                "en": "T-SQL refresher"
+              },
+              "lessonFile": "lessons/f-tsql-refresher.json",
+              "questionCount": 0
+            },
+            {
+              "id": "f-json-basics",
+              "title": {
+                "en": "JSON & semi-structured data from scratch"
+              },
+              "lessonFile": "lessons/f-json-basics.json",
+              "questionCount": 0
+            },
+            {
+              "id": "f-vectors-basics",
+              "title": {
+                "en": "Vectors, embeddings & AI concepts from scratch"
+              },
+              "lessonFile": "lessons/f-vectors-basics.json",
+              "questionCount": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "design-develop",
+      "title": {
+        "en": "Design and develop database solutions"
+      },
+      "weightLow": 35,
+      "weightHigh": 40,
+      "examWeight": 0.375,
+      "topics": [
+        {
+          "id": "t-db-objects",
+          "title": {
+            "en": "Design and implement database objects"
+          },
+          "subtopics": [
+            {
+              "id": "d1-tables-indexes",
+              "title": {
+                "en": "Tables, data types & indexes"
+              },
+              "lessonFile": "lessons/d1-tables-indexes.json",
+              "questionFile": "questions/d1-tables-indexes.json",
+              "questionCount": 50
+            },
+            {
+              "id": "d1-specialized-tables",
+              "title": {
+                "en": "Specialized tables (in-memory, temporal, external, ledger, graph)"
+              },
+              "lessonFile": "lessons/d1-specialized-tables.json",
+              "questionFile": "questions/d1-specialized-tables.json",
+              "questionCount": 50
+            },
+            {
+              "id": "d1-json-columns",
+              "title": {
+                "en": "JSON columns & JSON indexes"
+              },
+              "lessonFile": "lessons/d1-json-columns.json",
+              "questionFile": "questions/d1-json-columns.json",
+              "questionCount": 50
+            },
+            {
+              "id": "d1-constraints-sequences",
+              "title": {
+                "en": "Constraints & sequences"
+              },
+              "lessonFile": "lessons/d1-constraints-sequences.json",
+              "questionFile": "questions/d1-constraints-sequences.json",
+              "questionCount": 50
+            },
+            {
+              "id": "d1-partitioning",
+              "title": {
+                "en": "Partitioning tables & indexes"
+              },
+              "lessonFile": "lessons/d1-partitioning.json",
+              "questionFile": "questions/d1-partitioning.json",
+              "questionCount": 50
+            }
+          ]
+        },
+        {
+          "id": "t-programmability",
+          "title": {
+            "en": "Implement programmability objects"
+          },
+          "subtopics": [
+            {
+              "id": "d1-views-functions",
+              "title": {
+                "en": "Views & user-defined functions"
+              },
+              "lessonFile": "lessons/d1-views-functions.json",
+              "questionFile": "questions/d1-views-functions.json",
+              "questionCount": 50
+            },
+            {
+              "id": "d1-procs-triggers",
+              "title": {
+                "en": "Stored procedures & triggers"
+              },
+              "lessonFile": "lessons/d1-procs-triggers.json",
+              "questionFile": "questions/d1-procs-triggers.json",
+              "questionCount": 50
+            }
+          ]
+        },
+        {
+          "id": "t-advanced-tsql",
+          "title": {
+            "en": "Write advanced T-SQL code"
+          },
+          "subtopics": [
+            {
+              "id": "d1-cte-window",
+              "title": {
+                "en": "CTEs, window functions & correlated queries"
+              },
+              "lessonFile": "lessons/d1-cte-window.json",
+              "questionFile": "questions/d1-cte-window.json",
+              "questionCount": 50
+            },
+            {
+              "id": "d1-json-functions",
+              "title": {
+                "en": "JSON functions"
+              },
+              "lessonFile": "lessons/d1-json-functions.json",
+              "questionFile": "questions/d1-json-functions.json",
+              "questionCount": 50
+            },
+            {
+              "id": "d1-regex-fuzzy",
+              "title": {
+                "en": "Regular expressions & fuzzy matching"
+              },
+              "lessonFile": "lessons/d1-regex-fuzzy.json",
+              "questionFile": "questions/d1-regex-fuzzy.json",
+              "questionCount": 50
+            },
+            {
+              "id": "d1-graph-error",
+              "title": {
+                "en": "Graph queries (MATCH) & error handling"
+              },
+              "lessonFile": "lessons/d1-graph-error.json",
+              "questionFile": "questions/d1-graph-error.json",
+              "questionCount": 50
+            }
+          ]
+        },
+        {
+          "id": "t-ai-assisted",
+          "title": {
+            "en": "AI-assisted development tools"
+          },
+          "subtopics": [
+            {
+              "id": "d1-copilot",
+              "title": {
+                "en": "GitHub Copilot & Copilot in Fabric"
+              },
+              "lessonFile": "lessons/d1-copilot.json",
+              "questionFile": "questions/d1-copilot.json",
+              "questionCount": 50
+            },
+            {
+              "id": "d1-mcp-config",
+              "title": {
+                "en": "MCP servers, instruction files & model configuration"
+              },
+              "lessonFile": "lessons/d1-mcp-config.json",
+              "questionFile": "questions/d1-mcp-config.json",
+              "questionCount": 50
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "secure-optimize-deploy",
+      "title": {
+        "en": "Secure, optimize, and deploy database solutions"
+      },
+      "weightLow": 35,
+      "weightHigh": 40,
+      "examWeight": 0.375,
+      "topics": [
+        {
+          "id": "t-security",
+          "title": {
+            "en": "Implement data security and compliance"
+          },
+          "subtopics": [
+            {
+              "id": "d2-encryption",
+              "title": {
+                "en": "Encryption (Always Encrypted, column-level)"
+              },
+              "lessonFile": "lessons/d2-encryption.json",
+              "questionFile": "questions/d2-encryption.json",
+              "questionCount": 50
+            },
+            {
+              "id": "d2-masking-rls",
+              "title": {
+                "en": "Dynamic Data Masking & Row-Level Security"
+              },
+              "lessonFile": "lessons/d2-masking-rls.json",
+              "questionFile": "questions/d2-masking-rls.json",
+              "questionCount": 50
+            },
+            {
+              "id": "d2-permissions-auditing",
+              "title": {
+                "en": "Permissions, passwordless access & auditing"
+              },
+              "lessonFile": "lessons/d2-permissions-auditing.json",
+              "questionFile": "questions/d2-permissions-auditing.json",
+              "questionCount": 50
+            },
+            {
+              "id": "d2-endpoint-security",
+              "title": {
+                "en": "Securing model, REST, GraphQL & MCP endpoints"
+              },
+              "lessonFile": "lessons/d2-endpoint-security.json",
+              "questionFile": "questions/d2-endpoint-security.json",
+              "questionCount": 50
+            }
+          ]
+        },
+        {
+          "id": "t-performance",
+          "title": {
+            "en": "Optimize database performance"
+          },
+          "subtopics": [
+            {
+              "id": "d2-config-concurrency",
+              "title": {
+                "en": "Database configuration, isolation levels & concurrency"
+              },
+              "lessonFile": "lessons/d2-config-concurrency.json",
+              "questionFile": "questions/d2-config-concurrency.json",
+              "questionCount": 50
+            },
+            {
+              "id": "d2-query-analysis",
+              "title": {
+                "en": "Query analysis (plans, DMVs, Query Store)"
+              },
+              "lessonFile": "lessons/d2-query-analysis.json",
+              "questionFile": "questions/d2-query-analysis.json",
+              "questionCount": 50
+            },
+            {
+              "id": "d2-performance-issues",
+              "title": {
+                "en": "Resolving performance issues (blocking, deadlocks, indexing)"
+              },
+              "lessonFile": "lessons/d2-performance-issues.json",
+              "questionFile": "questions/d2-performance-issues.json",
+              "questionCount": 50
+            }
+          ]
+        },
+        {
+          "id": "t-cicd",
+          "title": {
+            "en": "Implement CI/CD by using SQL Database Projects"
+          },
+          "subtopics": [
+            {
+              "id": "d2-sql-projects",
+              "title": {
+                "en": "SQL Database Projects (SDK-style, build & validate)"
+              },
+              "lessonFile": "lessons/d2-sql-projects.json",
+              "questionFile": "questions/d2-sql-projects.json",
+              "questionCount": 50
+            },
+            {
+              "id": "d2-source-control",
+              "title": {
+                "en": "Source control, branching, PRs & secrets"
+              },
+              "lessonFile": "lessons/d2-source-control.json",
+              "questionFile": "questions/d2-source-control.json",
+              "questionCount": 50
+            },
+            {
+              "id": "d2-testing-deployment",
+              "title": {
+                "en": "Testing, schema drift & deployment controls"
+              },
+              "lessonFile": "lessons/d2-testing-deployment.json",
+              "questionFile": "questions/d2-testing-deployment.json",
+              "questionCount": 50
+            }
+          ]
+        },
+        {
+          "id": "t-azure-integration",
+          "title": {
+            "en": "Integrate SQL solutions with Azure services"
+          },
+          "subtopics": [
+            {
+              "id": "d2-dab-config",
+              "title": {
+                "en": "Data API builder configuration"
+              },
+              "lessonFile": "lessons/d2-dab-config.json",
+              "questionFile": "questions/d2-dab-config.json",
+              "questionCount": 50
+            },
+            {
+              "id": "d2-dab-endpoints",
+              "title": {
+                "en": "DAB endpoints, relationships & deployment"
+              },
+              "lessonFile": "lessons/d2-dab-endpoints.json",
+              "questionFile": "questions/d2-dab-endpoints.json",
+              "questionCount": 50
+            },
+            {
+              "id": "d2-monitoring-change",
+              "title": {
+                "en": "Monitoring & change handling (CES, CDC, Change Tracking)"
+              },
+              "lessonFile": "lessons/d2-monitoring-change.json",
+              "questionFile": "questions/d2-monitoring-change.json",
+              "questionCount": 50
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ai-capabilities",
+      "title": {
+        "en": "Implement AI capabilities in database solutions"
+      },
+      "weightLow": 25,
+      "weightHigh": 30,
+      "examWeight": 0.25,
+      "topics": [
+        {
+          "id": "t-models-embeddings",
+          "title": {
+            "en": "Design and implement models and embeddings"
+          },
+          "subtopics": [
+            {
+              "id": "d3-external-models",
+              "title": {
+                "en": "External models (evaluate, create, manage)"
+              },
+              "lessonFile": "lessons/d3-external-models.json",
+              "questionFile": "questions/d3-external-models.json",
+              "questionCount": 50
+            },
+            {
+              "id": "d3-embedding-design",
+              "title": {
+                "en": "Embedding design: column selection & chunking"
+              },
+              "lessonFile": "lessons/d3-embedding-design.json",
+              "questionFile": "questions/d3-embedding-design.json",
+              "questionCount": 50
+            },
+            {
+              "id": "d3-embedding-maintenance",
+              "title": {
+                "en": "Generating & maintaining embeddings"
+              },
+              "lessonFile": "lessons/d3-embedding-maintenance.json",
+              "questionFile": "questions/d3-embedding-maintenance.json",
+              "questionCount": 50
+            }
+          ]
+        },
+        {
+          "id": "t-intelligent-search",
+          "title": {
+            "en": "Design and implement intelligent search"
+          },
+          "subtopics": [
+            {
+              "id": "d3-search-strategy",
+              "title": {
+                "en": "Search strategy & full-text search"
+              },
+              "lessonFile": "lessons/d3-search-strategy.json",
+              "questionFile": "questions/d3-search-strategy.json",
+              "questionCount": 50
+            },
+            {
+              "id": "d3-vector-data",
+              "title": {
+                "en": "Vector data type, functions & indexes"
+              },
+              "lessonFile": "lessons/d3-vector-data.json",
+              "questionFile": "questions/d3-vector-data.json",
+              "questionCount": 50
+            },
+            {
+              "id": "d3-ann-enn",
+              "title": {
+                "en": "ANN vs ENN & implementing vector search"
+              },
+              "lessonFile": "lessons/d3-ann-enn.json",
+              "questionFile": "questions/d3-ann-enn.json",
+              "questionCount": 50
+            },
+            {
+              "id": "d3-hybrid-rrf",
+              "title": {
+                "en": "Hybrid search, RRF & performance evaluation"
+              },
+              "lessonFile": "lessons/d3-hybrid-rrf.json",
+              "questionFile": "questions/d3-hybrid-rrf.json",
+              "questionCount": 50
+            }
+          ]
+        },
+        {
+          "id": "t-rag",
+          "title": {
+            "en": "Design and implement retrieval-augmented generation (RAG)"
+          },
+          "subtopics": [
+            {
+              "id": "d3-rag-usecases",
+              "title": {
+                "en": "RAG use cases & architecture in SQL"
+              },
+              "lessonFile": "lessons/d3-rag-usecases.json",
+              "questionFile": "questions/d3-rag-usecases.json",
+              "questionCount": 50
+            },
+            {
+              "id": "d3-rag-implementation",
+              "title": {
+                "en": "Implementing RAG (sp_invoke_external_rest_endpoint)"
+              },
+              "lessonFile": "lessons/d3-rag-implementation.json",
+              "questionFile": "questions/d3-rag-implementation.json",
+              "questionCount": 50
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

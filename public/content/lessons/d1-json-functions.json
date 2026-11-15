@@ -1,0 +1,64 @@
+{
+  "subtopic": "d1-json-functions",
+  "title": { "en": "JSON functions" },
+  "prerequisiteRecap": [
+    {
+      "heading": { "en": "The function families" },
+      "body": {
+        "en": "Think of T-SQL's JSON functions in four families: **extractors** (JSON_VALUE, JSON_QUERY), **shredders** (OPENJSON), **constructors** (JSON_OBJECT, JSON_ARRAY and the aggregates JSON_OBJECTAGG, JSON_ARRAYAGG, plus FOR JSON), and **testers/modifiers** (ISJSON, JSON_PATH_EXISTS, JSON_CONTAINS, JSON_MODIFY). The storage side (json type, indexes) was covered in the JSON columns subtopic — this one drills the query syntax the exam names explicitly."
+      }
+    }
+  ],
+  "sections": [
+    {
+      "heading": { "en": "OPENJSON in depth" },
+      "body": {
+        "en": "`OPENJSON(doc [, path])` is a table-valued function.\n- **Without WITH**: returns key / value / type triples (type: 0 null, 1 string, 2 number, 3 bool, 4 array, 5 object) — great for exploring unknown shapes.\n- **With WITH**: projects typed columns; each column spec is `name type ['json path'] [AS JSON]`. `AS JSON` is required to return a nested object/array as JSON (type must be nvarchar(max)).\nUse CROSS APPLY to shred a JSON column per row of a table. OPENJSON requires database compatibility level 130+."
+      },
+      "code": "DECLARE @doc JSON = '{\n  \"orderId\": 7, \"customer\": {\"name\": \"Sara\"},\n  \"items\": [ {\"sku\":\"A1\",\"qty\":2}, {\"sku\":\"B9\",\"qty\":1} ]\n}';\n\nSELECT o.orderId, o.customerName, i.sku, i.qty\nFROM OPENJSON(@doc)\n     WITH (orderId INT,\n           customerName NVARCHAR(100) '$.customer.name',\n           items NVARCHAR(MAX) AS JSON) AS o\nCROSS APPLY OPENJSON(o.items)\n     WITH (sku VARCHAR(10), qty INT) AS i;"
+    },
+    {
+      "heading": { "en": "Constructors: JSON_OBJECT, JSON_ARRAY" },
+      "body": {
+        "en": "`JSON_OBJECT('key': value, …)` and `JSON_ARRAY(v1, v2, …)` build documents expression-by-expression. NULL handling: both accept `NULL ON NULL` (include nulls) or `ABSENT ON NULL`; JSON_OBJECT defaults to NULL ON NULL, JSON_ARRAY defaults to ABSENT ON NULL — an asymmetry worth memorizing. Nest constructors for structure; wrap pre-existing JSON strings in JSON_QUERY so they are embedded as JSON rather than escaped strings."
+      },
+      "code": "SELECT JSON_OBJECT(\n         'id': p.ProductId,\n         'name': p.Name,\n         'price': p.ListPrice,\n         'tags': JSON_ARRAY('sql', 'ai'),\n         'spec': JSON_QUERY(p.SpecJson)   -- embed, don't escape\n       ) AS Doc\nFROM Production.Product AS p;"
+    },
+    {
+      "heading": { "en": "Aggregates: JSON_ARRAYAGG and JSON_OBJECTAGG" },
+      "body": {
+        "en": "SQL Server 2025 adds ANSI JSON aggregates:\n- `JSON_ARRAYAGG(expr [ORDER BY …])` folds a group's values into one JSON array.\n- `JSON_OBJECTAGG(key: value)` folds key/value pairs into one JSON object.\nThey replace the FOR JSON-subquery and STRING_AGG hacks for building JSON from groups — and they compose with GROUP BY like any aggregate."
+      },
+      "code": "SELECT o.CustomerId,\n       JSON_ARRAYAGG(o.OrderId ORDER BY o.OrderId) AS OrderIds,\n       JSON_OBJECTAGG(CAST(o.OrderId AS VARCHAR(20)): o.Total) AS Totals\nFROM Sales.Orders AS o\nGROUP BY o.CustomerId;"
+    },
+    {
+      "heading": { "en": "Testers: JSON_PATH_EXISTS and JSON_CONTAINS" },
+      "body": {
+        "en": "`JSON_PATH_EXISTS(doc, path)` → 1/0: does the path exist (regardless of value)? `JSON_CONTAINS(doc, value [, path])` (SQL Server 2025) → 1/0: does the value occur within the document/path? Use PATH_EXISTS for shape checks, CONTAINS for value search. Both pair well with JSON indexes."
+      },
+      "code": "SELECT *\nFROM dbo.Orders\nWHERE JSON_PATH_EXISTS(Doc, '$.discount') = 1\n  AND JSON_CONTAINS(Doc, 'express', '$.shipping.method') = 1;"
+    },
+    {
+      "heading": { "en": "FOR JSON: result sets out as documents" },
+      "body": {
+        "en": "`FOR JSON PATH` (dot-aliases define nesting; full control) and `FOR JSON AUTO` (nesting from join order). Options: `ROOT('name')` wraps the array in an object; `WITHOUT_ARRAY_WRAPPER` returns a single object instead of [ … ] (only sensible for single-row results); `INCLUDE_NULL_VALUES` keeps nulls (omitted by default). This is the standard way to produce model-ready JSON for RAG prompts — Domain 3 uses it to 'convert structured data to JSON for language model processing'."
+      },
+      "code": "SELECT TOP (3) ProductId AS [product.id], Name AS [product.name], ListPrice AS price\nFROM Production.Product\nORDER BY ListPrice DESC\nFOR JSON PATH, ROOT('topProducts');"
+    }
+  ],
+  "examTips": [
+    { "en": "OPENJSON without WITH → key/value/type; with WITH → typed columns; AS JSON needed for nested fragments (nvarchar(max) only)." },
+    { "en": "JSON_OBJECT defaults NULL ON NULL; JSON_ARRAY defaults ABSENT ON NULL." },
+    { "en": "JSON_ARRAYAGG/JSON_OBJECTAGG are the 2025 group-to-JSON aggregates — spot them replacing FOR JSON subqueries." },
+    { "en": "JSON_PATH_EXISTS = does the path exist; JSON_CONTAINS = does the value occur. Different questions!" },
+    { "en": "FOR JSON PATH = you control nesting via aliases; AUTO = engine derives it. WITHOUT_ARRAY_WRAPPER for a single object." },
+    { "en": "OPENJSON needs compatibility level 130+ — a classic 'why does it fail' answer." },
+    { "en": "JSON_VALUE returns nvarchar(4000) by default — CAST for numbers/dates, or use OPENJSON WITH typed columns." }
+  ],
+  "sources": [
+    "https://learn.microsoft.com/en-us/sql/t-sql/functions/openjson-transact-sql",
+    "https://learn.microsoft.com/en-us/sql/t-sql/functions/json-object-transact-sql",
+    "https://learn.microsoft.com/en-us/sql/t-sql/functions/json-arrayagg-transact-sql",
+    "https://learn.microsoft.com/en-us/sql/relational-databases/json/format-query-results-as-json-with-for-json-sql-server"
+  ]
+}

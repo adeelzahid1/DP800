@@ -1,0 +1,59 @@
+{
+  "subtopic": "d3-embedding-maintenance",
+  "title": { "en": "Generating & maintaining embeddings" },
+  "prerequisiteRecap": [
+    {
+      "heading": { "en": "Embeddings go stale" },
+      "body": {
+        "en": "An embedding is a snapshot of the text at the moment you generated it. When a description is edited, a row is deleted, the chunking rules change or you switch models, stored vectors no longer match reality and search/RAG answers degrade. This lesson covers (1) generating embeddings efficiently and (2) the maintenance methods the study guide lists — **table triggers, Change Tracking, CDC, Azure Functions SQL trigger binding, Azure Logic Apps, change event streaming (CES) and Microsoft Foundry** — and how to choose among them. It builds on the Change Tracking/CDC/CES lesson in Domain 2."
+      }
+    }
+  ],
+  "sections": [
+    {
+      "heading": { "en": "Generating embeddings" },
+      "body": {
+        "en": "- **In the database**: `AI_GENERATE_EMBEDDINGS(text USE MODEL m)` in `UPDATE`/`INSERT … SELECT`, often with `AI_GENERATE_CHUNKS`.\n- **Backfill in batches**: process a few hundred rows per statement and commit, instead of one giant transaction (long transactions hold locks and grow the log, and one throttled call can fail everything). Use the model's `retry_count`, pace batches, and stay within your deployment's quota.\n- **In the application**: generate with the OpenAI/Azure OpenAI SDK and write with `Microsoft.Data.SqlClient` 6.1+ (`SqlVector<float>` sends vectors in binary); older drivers send JSON strings.\n- **Track state**: store the model/version and a hash of the embedded text (e.g., `HASHBYTES('SHA2_256', text)`) so you re-embed only when text really changed, and can find stale rows."
+      },
+      "code": "WHILE 1 = 1\nBEGIN\n    UPDATE TOP (500) e\n    SET    e.Embedding = AI_GENERATE_EMBEDDINGS(p.Description USE MODEL ProductEmbedder),\n           e.TextHash  = HASHBYTES('SHA2_256', p.Description),\n           e.ModelVersion = 'text-embedding-3-small'\n    FROM   dbo.ProductEmbeddings AS e\n    JOIN   dbo.Products AS p ON p.ProductId = e.ProductId\n    WHERE  e.Embedding IS NULL;\n\n    IF @@ROWCOUNT = 0 BREAK;\nEND;"
+    },
+    {
+      "heading": { "en": "In-database maintenance options" },
+      "body": {
+        "en": "- **Table triggers** run inside the writing transaction: fastest freshness, but they add work to every write. Calling the model synchronously in a trigger adds network latency, holds locks and can fail the user's write when the endpoint is slow or down — acceptable for prototypes or low-volume tables. A safer pattern: the trigger only **marks** rows (queue table/flag) and a background process embeds them.\n- **Change Tracking**: records *which* rows changed; a scheduled job (Elastic Jobs, SQL Agent, an app or Function timer) reads `CHANGETABLE(CHANGES …)` since the last version and re-embeds in batches — a balance of latency and load. Use `TRACK_COLUMNS_UPDATED` with `CHANGE_TRACKING_IS_COLUMN_IN_MASK` (or a text hash) to skip changes that don't touch embedded columns. Retention must exceed the longest possible job outage.\n- **CDC**: log-based and asynchronous, with before/after values — suits high-volume tables and lets you compare old vs new text before re-embedding."
+      }
+    },
+    {
+      "heading": { "en": "Azure-based and event-driven options" },
+      "body": {
+        "en": "- **Azure Functions with SQL trigger binding** (built on Change Tracking): your function receives `SqlChange<T>` batches and calls the embedding API outside the engine, scaling independently. **Beware loops**: if the function writes the embedding back into the *same tracked table*, that update is itself a change. Write to a separate embeddings table, or skip rows whose text hash didn't change.\n- **Azure Logic Apps**: low-code orchestration — SQL connector triggers (created/modified) or a recurrence that queries changed rows, an action that calls the embedding endpoint, and an action that writes back; easy to combine with approvals and other systems.\n- **Change event streaming (CES)**: streams DML events to Event Hubs/Fabric Eventstream in near real time without extra work in the transaction; consumers (e.g., a Function with an Event Hubs trigger) regenerate embeddings, and several consumers can share the stream. CES doesn't snapshot existing rows (backfill separately) and skips some types, including `vector`.\n- **Microsoft Foundry**: manages, evaluates and hosts the embedding models (deployments, versions, quotas). It typically pairs with one of the change-detection methods above; it centralizes model management rather than detecting changes itself."
+      }
+    },
+    {
+      "heading": { "en": "Choosing and handling special cases" },
+      "body": {
+        "en": "Decide on **data volume, update frequency, freshness requirement, where compute should run and team skills**:\n- low volume + must be instant → trigger (ideally mark-and-process);\n- moderate volume, minutes of lag OK, T-SQL team → Change Tracking job;\n- .NET team, scale-out, near real time → Functions SQL trigger;\n- low-code, business workflow → Logic Apps;\n- high volume with history → CDC;\n- many consumers, event-driven architecture → CES.\n**Deletes**: cascade-delete chunk/embedding rows (`ON DELETE CASCADE`) or handle delete operations in your processor. **Model changes**: re-embed every row (track `ModelVersion`), switch queries when done, and **drop and recreate the vector index** after a near-complete replacement so it fits the new data distribution."
+      },
+      "code": "-- Change Tracking-driven refresh (runs every few minutes)\nDECLARE @last BIGINT = (SELECT LastVersion FROM dbo.EmbeddingSync WHERE TableName = 'Products');\nDECLARE @now  BIGINT = CHANGE_TRACKING_CURRENT_VERSION();\n\nMERGE dbo.ProductEmbeddings AS e\nUSING (SELECT ct.ProductId, ct.SYS_CHANGE_OPERATION AS op, p.Description\n       FROM CHANGETABLE(CHANGES dbo.Products, @last) AS ct\n       LEFT JOIN dbo.Products AS p ON p.ProductId = ct.ProductId) AS s\nON e.ProductId = s.ProductId\nWHEN MATCHED AND s.op = 'D' THEN DELETE\nWHEN MATCHED AND e.TextHash <> HASHBYTES('SHA2_256', s.Description) THEN\n    UPDATE SET Embedding = AI_GENERATE_EMBEDDINGS(s.Description USE MODEL ProductEmbedder),\n               TextHash  = HASHBYTES('SHA2_256', s.Description)\nWHEN NOT MATCHED AND s.op <> 'D' THEN\n    INSERT (ProductId, Embedding, TextHash)\n    VALUES (s.ProductId, AI_GENERATE_EMBEDDINGS(s.Description USE MODEL ProductEmbedder),\n            HASHBYTES('SHA2_256', s.Description));\n\nUPDATE dbo.EmbeddingSync SET LastVersion = @now WHERE TableName = 'Products';"
+    }
+  ],
+  "examTips": [
+    { "en": "Generation isn't one-time: re-embed on text changes, deletes, chunking changes and model changes." },
+    { "en": "Backfill in batches with commits; use retry_count and respect quotas." },
+    { "en": "Triggers = immediate but add work to writes; avoid synchronous model calls in high-volume triggers (mark-and-process instead)." },
+    { "en": "Change Tracking = which rows changed, batch job, balanced; CDC = before/after values, async, high volume." },
+    { "en": "Functions SQL trigger = Change Tracking + code outside the engine; don't write embeddings back into the tracked table (loop)." },
+    { "en": "Logic Apps = low-code orchestration; CES = near-real-time events to Event Hubs, multiple consumers, no extra transaction work." },
+    { "en": "Microsoft Foundry = model management/evaluation/hosting, paired with a change-detection method." },
+    { "en": "After replacing most embeddings (new model), drop and recreate the vector index." }
+  ],
+  "sources": [
+    "https://learn.microsoft.com/en-us/training/modules/design-implement-models-embeddings-with-sql/05-generate-maintain-embeddings-sql-database-workloads",
+    "https://learn.microsoft.com/en-us/sql/t-sql/functions/ai-generate-embeddings-transact-sql",
+    "https://learn.microsoft.com/en-us/azure/azure-functions/functions-bindings-azure-sql-trigger",
+    "https://learn.microsoft.com/en-us/sql/relational-databases/track-changes/about-change-tracking-sql-server",
+    "https://learn.microsoft.com/en-us/sql/relational-databases/track-changes/change-event-streaming/overview",
+    "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-vector-index-transact-sql",
+    "https://devblogs.microsoft.com/azure-sql/database-and-ai-solutions-for-keeping-embeddings-updated/"
+  ]
+}

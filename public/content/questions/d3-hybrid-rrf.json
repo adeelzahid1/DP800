@@ -1,0 +1,839 @@
+{
+  "subtopic": "d3-hybrid-rrf",
+  "cases": [
+    {
+      "id": "case-hr-docs",
+      "title": { "en": "Tailwind developer docs search" },
+      "scenario": {
+        "en": "Tailwind Traders hosts 1.2 million documentation chunks in Azure SQL Database with a full-text index on `ChunkText` and a cosine vector index on `Embedding`.\n- Developers search both with exact API names (`AddDbContextPool`) and with questions (\"how do I reuse database connections?\").\n- Product wants evidence that the new search is better than the old full-text search.\n- After the dataset doubled, p95 latency rose from 120 ms to 900 ms."
+      }
+    }
+  ],
+  "questions": [
+    {
+      "id": "d3-hr-0001",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-hybrid-rrf",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "What is hybrid search?" },
+      "options": [
+        { "id": "a", "text": { "en": "Running full-text and vector searches over the same data and merging their ranked results" } },
+        { "id": "b", "text": { "en": "Searching two databases at once" } },
+        { "id": "c", "text": { "en": "Using float16 and float32 vectors together" } },
+        { "id": "d", "text": { "en": "Combining LIKE and REGEXP_LIKE" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Hybrid search blends keyword precision with semantic recall by fusing two ranked lists. It isn't about multiple databases, vector precisions or pattern operators." },
+      "example": { "en": "FREETEXTTABLE + VECTOR_SEARCH + RRF" },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/06-implement-hybrid-search-ranking"]
+    },
+    {
+      "id": "d3-hr-0002",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-hybrid-rrf",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Why does RRF use rank positions instead of adding the raw full-text RANK and vector distance?" },
+      "options": [
+        { "id": "a", "text": { "en": "The raw scores use different scales and directions (RANK 0–1000 higher is better; distance 0–2 lower is better), so positions avoid normalization and keep either source from dominating" } },
+        { "id": "b", "text": { "en": "Raw scores aren't available in T-SQL" } },
+        { "id": "c", "text": { "en": "Positions are more precise than scores" } },
+        { "id": "d", "text": { "en": "RRF requires integer arithmetic" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Fusing ranks sidesteps incompatible score scales. Raw scores are available but not comparable; positions aren't 'more precise', and RRF uses fractions." },
+      "example": { "en": "Adding 850 (RANK) to 0.12 (distance) would let keywords dominate meaninglessly." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/06-implement-hybrid-search-ranking"]
+    },
+    {
+      "id": "d3-hr-0003",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-hybrid-rrf",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "What's the RRF formula for a document found by two searches?" },
+      "options": [
+        { "id": "a", "text": { "en": "1/(k + rank₁) + 1/(k + rank₂)" } },
+        { "id": "b", "text": { "en": "rank₁ + rank₂" } },
+        { "id": "c", "text": { "en": "(score₁ + score₂) / 2" } },
+        { "id": "d", "text": { "en": "k × rank₁ × rank₂" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "RRF sums reciprocals of each position offset by a constant k. Summing raw ranks or averaging scores isn't RRF." },
+      "example": { "en": "With k = 60, rank 1 contributes 1/61." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/02-choose-intelligent-search-approach"]
+    },
+    {
+      "id": "d3-hr-0004",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-hybrid-rrf",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "What value of k is standard in RRF?" },
+      "options": [
+        { "id": "a", "text": { "en": "60" } },
+        { "id": "b", "text": { "en": "1" } },
+        { "id": "c", "text": { "en": "100" } },
+        { "id": "d", "text": { "en": "1,536" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "k = 60 comes from the original RRF research and is used by Azure AI Search; it's a good default to tune from." },
+      "example": { "en": "DECLARE @rrfK INT = 60;" },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/02-choose-intelligent-search-approach"]
+    },
+    {
+      "id": "d3-hr-0005",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-hybrid-rrf",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "With k = 60, a product ranks 1st in full-text and 3rd in vector search. What's its RRF score (approximately)?" },
+      "options": [
+        { "id": "a", "text": { "en": "0.0323" } },
+        { "id": "b", "text": { "en": "0.0164" } },
+        { "id": "c", "text": { "en": "4" } },
+        { "id": "d", "text": { "en": "0.5" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "1/61 + 1/63 ≈ 0.0164 + 0.0159 = 0.0323. 0.0164 is a single rank-1 contribution." },
+      "example": { "en": "This product beats one ranked 1st in only one list." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/02-choose-intelligent-search-approach"]
+    },
+    {
+      "id": "d3-hr-0006",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-hybrid-rrf",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Product A is ranked 1st by vector search only. Product B is 2nd in full-text and 2nd in vector search. With k = 60, which ranks higher after RRF?" },
+      "options": [
+        { "id": "a", "text": { "en": "B (≈ 0.0323) ranks above A (≈ 0.0164)" } },
+        { "id": "b", "text": { "en": "A, because it's first somewhere" } },
+        { "id": "c", "text": { "en": "They tie" } },
+        { "id": "d", "text": { "en": "It can't be determined" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "B: 1/62 + 1/62 ≈ 0.0323; A: 1/61 ≈ 0.0164. RRF rewards agreement across methods." },
+      "example": { "en": "Appearing in both lists roughly doubles the score." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/02-choose-intelligent-search-approach"]
+    },
+    {
+      "id": "d3-hr-0007",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-hybrid-rrf",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What happens if you lower k from 60 to 5?" },
+      "options": [
+        { "id": "a", "text": { "en": "Top positions gain a much larger advantage over lower positions" } },
+        { "id": "b", "text": { "en": "All positions contribute equally" } },
+        { "id": "c", "text": { "en": "The vector branch is ignored" } },
+        { "id": "d", "text": { "en": "Scores become negative" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "With small k, 1/(k + 1) is far larger than 1/(k + 10); larger k smooths differences. It never ignores a branch or produces negative scores." },
+      "example": { "en": "k = 5: rank 1 → 0.167, rank 10 → 0.067; k = 60: 0.0164 vs 0.0143." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/06-implement-hybrid-search-ranking"]
+    },
+    {
+      "id": "d3-hr-0008",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-hybrid-rrf",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Why join the keyword and vector branches with a FULL OUTER JOIN?" },
+      "options": [
+        { "id": "a", "text": { "en": "So items found by either search are kept, not just items found by both" } },
+        { "id": "b", "text": { "en": "Because INNER JOIN isn't allowed with VECTOR_SEARCH" } },
+        { "id": "c", "text": { "en": "To remove duplicates" } },
+        { "id": "d", "text": { "en": "To sort the results" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "An INNER JOIN would drop items found by only one method, losing hybrid's recall benefit. INNER JOIN is allowed with VECTOR_SEARCH in general; the join doesn't sort." },
+      "example": { "en": "FROM kw FULL OUTER JOIN vec ON kw.ProductID = vec.ProductID" },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/06-implement-hybrid-search-ranking"]
+    },
+    {
+      "id": "d3-hr-0009",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-hybrid-rrf",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "In the fused result, kw_rank is NULL for a product found only by vector search. How should the RRF expression handle it?" },
+      "options": [
+        { "id": "a", "text": { "en": "Treat the missing list's contribution as 0, e.g., ISNULL(1.0 / (@k + kw.kw_rank), 0)" } },
+        { "id": "b", "text": { "en": "Drop the product" } },
+        { "id": "c", "text": { "en": "Assign it rank 1 in the missing list" } },
+        { "id": "d", "text": { "en": "Let the whole score become NULL" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "1.0 / (k + NULL) is NULL; wrapping with ISNULL/COALESCE makes the missing list contribute 0. Dropping or inventing ranks distorts results; a NULL score would sort incorrectly." },
+      "example": { "en": "COALESCE(1.0 / (@k + vs.vector_rank), 0.0)" },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/06-implement-hybrid-search-ranking"]
+    },
+    {
+      "id": "d3-hr-0010",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-hybrid-rrf",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Users mostly describe needs, so the team wants vector results to count twice as much as keyword results. Which expression?" },
+      "options": [
+        { "id": "a", "text": { "en": "ISNULL(1.0 / (@k + kw_rank), 0) + ISNULL(2.0 / (@k + vec_rank), 0)" } },
+        { "id": "b", "text": { "en": "ISNULL(1.0 / (@k + kw_rank), 0) + ISNULL(1.0 / (2 * @k + vec_rank), 0)" } },
+        { "id": "c", "text": { "en": "kw_rank + 2 * vec_rank" } },
+        { "id": "d", "text": { "en": "Weighting isn't possible with RRF" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Multiplying a source's reciprocal contribution weights it. Doubling k for vectors would reduce their weight, and adding raw ranks isn't RRF." },
+      "example": { "en": "Tune weights against a labeled query set." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/06-implement-hybrid-search-ranking"]
+    },
+    {
+      "id": "d3-hr-0011",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-hybrid-rrf",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What's the trade-off when increasing the number of candidates (@topN) each branch returns?" },
+      "options": [
+        { "id": "a", "text": { "en": "RRF gets more candidates (potentially better recall) but the query takes longer; start around 50 and tune" } },
+        { "id": "b", "text": { "en": "It always lowers relevance" } },
+        { "id": "c", "text": { "en": "It has no effect on performance" } },
+        { "id": "d", "text": { "en": "It changes the embedding model" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "More candidates widen the pool for fusion at the cost of time. Microsoft suggests starting with 50 and adjusting based on relevance testing." },
+      "example": { "en": "@topN = 50, final TOP (10)." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/06-implement-hybrid-search-ranking"]
+    },
+    {
+      "id": "d3-hr-0012",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-hybrid-rrf",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A hybrid query applies WHERE InStock = 1 only after RRF and often returns 2–3 results instead of 10. What's the fix?" },
+      "options": [
+        { "id": "a", "text": { "en": "Apply the filter inside both branches before fusion, so each branch ranks only eligible items" } },
+        { "id": "b", "text": { "en": "Increase k to 600" } },
+        { "id": "c", "text": { "en": "Remove the FULL OUTER JOIN" } },
+        { "id": "d", "text": { "en": "Use VECTOR_NORMALIZE" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Filtering after fusion can eliminate highly ranked results; filtering inside the branches keeps candidate lists relevant. Changing k, joins or normalization doesn't restore filtered-out candidates." },
+      "example": { "en": "Vector branch: … WHERE t.InStock = 1 ORDER BY r.distance (iterative filtering)." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/06-implement-hybrid-search-ranking"]
+    },
+    {
+      "id": "d3-hr-0013",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-hybrid-rrf",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Complete the RRF fusion step." },
+      "code": "WITH kw AS (\n    SELECT ft.[KEY] AS Id,\n           [BLANK1] OVER (ORDER BY ft.[RANK] DESC) AS kw_rank\n    FROM FREETEXTTABLE(dbo.Docs, Body, @q, 50) AS ft\n), vec AS ( … vec_rank … )\nSELECT TOP (10) COALESCE(kw.Id, vec.Id) AS Id,\n       ISNULL(1.0 / (60 + kw.kw_rank), 0) + ISNULL(1.0 / (60 + vec.vec_rank), 0) AS rrf\nFROM kw [BLANK2] vec ON kw.Id = vec.Id\nORDER BY rrf [BLANK3];",
+      "blanks": [
+        { "id": "b1", "label": { "en": "BLANK1" }, "choices": [
+          { "id": "c1", "text": { "en": "ROW_NUMBER()" } },
+          { "id": "c2", "text": { "en": "SUM(ft.[RANK])" } },
+          { "id": "c3", "text": { "en": "NTILE(4)" } }
+        ] },
+        { "id": "b2", "label": { "en": "BLANK2" }, "choices": [
+          { "id": "c1", "text": { "en": "INNER JOIN" } },
+          { "id": "c2", "text": { "en": "FULL OUTER JOIN" } },
+          { "id": "c3", "text": { "en": "CROSS JOIN" } }
+        ] },
+        { "id": "b3", "label": { "en": "BLANK3" }, "choices": [
+          { "id": "c1", "text": { "en": "ASC" } },
+          { "id": "c2", "text": { "en": "DESC" } },
+          { "id": "c3", "text": { "en": "(nothing — order doesn't matter)" } }
+        ] }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c2", "b3": "c2" },
+      "explanation": { "en": "ROW_NUMBER (or RANK) converts relevance into positions. FULL OUTER JOIN keeps items from either branch. Higher RRF means better, so sort descending." },
+      "example": { "en": "Add a tie-breaker: ORDER BY rrf DESC, Id." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/06-implement-hybrid-search-ranking"]
+    },
+    {
+      "id": "d3-hr-0014",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-hybrid-rrf",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "How should each branch order its results before assigning positions?" },
+      "options": [
+        { "id": "a", "text": { "en": "Keyword branch by RANK descending; vector branch by distance ascending" } },
+        { "id": "b", "text": { "en": "Both by RANK descending" } },
+        { "id": "c", "text": { "en": "Both by distance descending" } },
+        { "id": "d", "text": { "en": "Both by primary key" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Higher full-text RANK is better, while smaller distance is better. Getting either direction wrong reverses that branch's contribution." },
+      "example": { "en": "ROW_NUMBER() OVER (ORDER BY ft.[RANK] DESC) / ROW_NUMBER() OVER (ORDER BY v.distance)" },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/06-implement-hybrid-search-ranking"]
+    },
+    {
+      "id": "d3-hr-0015",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-hybrid-rrf",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "Two keyword matches have RANK 900 and 450 and sit at positions 1 and 2. How much does that score gap affect their RRF contributions?" },
+      "options": [
+        { "id": "a", "text": { "en": "Only through position: they contribute 1/61 and 1/62, regardless of the raw score gap" } },
+        { "id": "b", "text": { "en": "The first contributes twice as much because 900 = 2 × 450" } },
+        { "id": "c", "text": { "en": "Both contribute 0" } },
+        { "id": "d", "text": { "en": "RRF uses the raw RANK directly" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "RRF ignores raw score magnitudes and uses ordinal positions, which is what makes it robust across sources." },
+      "example": { "en": "A huge score gap and a tiny one yield the same contributions for positions 1 and 2." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/06-implement-hybrid-search-ranking"]
+    },
+    {
+      "id": "d3-hr-0016",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-hybrid-rrf",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "In the vector branch you need ROW_NUMBER() over approximate results. How must the branch be written?" },
+      "options": [
+        { "id": "a", "text": { "en": "Approximate search in an inner query (SELECT TOP (@n) WITH APPROXIMATE … ORDER BY r.distance), ROW_NUMBER in the outer query" } },
+        { "id": "b", "text": { "en": "ROW_NUMBER directly in the SELECT TOP … WITH APPROXIMATE list" } },
+        { "id": "c", "text": { "en": "Use TOP_N and ROW_NUMBER together with a latest-version index" } },
+        { "id": "d", "text": { "en": "Window functions can't be used in hybrid search" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Window functions require the subquery pattern with TOP … WITH APPROXIMATE. TOP_N fails on latest-version indexes." },
+      "example": { "en": "SELECT Id, ROW_NUMBER() OVER (ORDER BY distance) FROM (SELECT TOP (50) WITH APPROXIMATE …) AS v" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-search-transact-sql"]
+    },
+    {
+      "id": "d3-hr-0017",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-hybrid-rrf",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which full-text constructs suit the keyword branch of a hybrid query?" },
+      "options": [
+        { "id": "a", "text": { "en": "FREETEXTTABLE or CONTAINSTABLE, because they return [KEY] and a relevance RANK" } },
+        { "id": "b", "text": { "en": "CONTAINS in WHERE only" } },
+        { "id": "c", "text": { "en": "LIKE '%term%'" } },
+        { "id": "d", "text": { "en": "VECTOR_DISTANCE" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Fusion needs a ranked list; the *TABLE functions provide relevance scores to convert into positions. CONTAINS alone has no score, LIKE has no ranking, and VECTOR_DISTANCE is the semantic branch." },
+      "example": { "en": "FREETEXTTABLE(dbo.Products, Description, @q, 50)" },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/06-implement-hybrid-search-ranking"]
+    },
+    {
+      "id": "d3-hr-0018",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-hybrid-rrf",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What does Mean Reciprocal Rank (MRR) measure?" },
+      "options": [
+        { "id": "a", "text": { "en": "How high the first relevant result appears, averaged over queries as 1/position" } },
+        { "id": "b", "text": { "en": "The fraction of relevant documents found" } },
+        { "id": "c", "text": { "en": "The fraction of returned results that are relevant" } },
+        { "id": "d", "text": { "en": "Average query latency" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "MRR rewards placing the best result at the top. Options B and C are recall and precision; latency is a performance metric." },
+      "example": { "en": "First relevant at position 2 → reciprocal rank 0.5." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/06-implement-hybrid-search-ranking"]
+    },
+    {
+      "id": "d3-hr-0019",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-hybrid-rrf",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "For three test queries, the first relevant result appears at positions 1, 2 and 4. What's the MRR?" },
+      "options": [
+        { "id": "a", "text": { "en": "≈ 0.583 ((1 + 0.5 + 0.25) / 3)" } },
+        { "id": "b", "text": { "en": "2.33" } },
+        { "id": "c", "text": { "en": "0.25" } },
+        { "id": "d", "text": { "en": "1.75" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Average the reciprocals: (1/1 + 1/2 + 1/4) / 3 = 1.75 / 3 ≈ 0.583. 2.33 is the average position, and 1.75 is the unaveraged sum." },
+      "example": { "en": "Compare MRR for full-text only, vector only and hybrid." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/06-implement-hybrid-search-ranking"]
+    },
+    {
+      "id": "d3-hr-0020",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-hybrid-rrf",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What do you need before you can compute precision, recall and MRR for your search?" },
+      "options": [
+        { "id": "a", "text": { "en": "A test set of representative queries with known relevant documents" } },
+        { "id": "b", "text": { "en": "A vector index with the dot metric" } },
+        { "id": "c", "text": { "en": "Query Store in read-only mode" } },
+        { "id": "d", "text": { "en": "Nothing; the database computes them" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Relevance metrics compare results with human (or curated) judgments. Indexes and Query Store don't know what's relevant." },
+      "example": { "en": "200 real queries, each labeled with its relevant document IDs." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/06-implement-hybrid-search-ranking"]
+    },
+    {
+      "id": "d3-hr-0021",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-hybrid-rrf",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "How do you show that hybrid search improves on the existing approaches?" },
+      "options": [
+        { "id": "a", "text": { "en": "Run full-text only, vector only and hybrid on the same labeled test set and compare precision, recall and MRR (plus latency)" } },
+        { "id": "b", "text": { "en": "Ask one user which they prefer" } },
+        { "id": "c", "text": { "en": "Compare the number of indexes" } },
+        { "id": "d", "text": { "en": "Check that hybrid returns more rows" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "A controlled comparison on the same queries isolates the effect of the approach. Anecdotes, index counts and row counts aren't relevance evidence." },
+      "example": { "en": "Hybrid typically raises recall with minimal precision loss." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/06-implement-hybrid-search-ranking"]
+    },
+    {
+      "id": "d3-hr-0022",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-hybrid-rrf",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Compared with either single approach, what does hybrid search typically do to relevance metrics?" },
+      "options": [
+        { "id": "a", "text": { "en": "Improves recall, often with minimal precision loss" } },
+        { "id": "b", "text": { "en": "Halves recall" } },
+        { "id": "c", "text": { "en": "Always lowers MRR" } },
+        { "id": "d", "text": { "en": "Has no effect" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Combining keyword and semantic signals finds more relevant items; Microsoft notes recall typically improves with little precision cost. Verify on your data." },
+      "example": { "en": "Recall 0.71 (full-text) → 0.88 (hybrid)." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/06-implement-hybrid-search-ranking"]
+    },
+    {
+      "id": "d3-hr-0023",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-hybrid-rrf",
+      "type": "multiple", "difficulty": "medium", "selectCount": 2,
+      "text": { "en": "Which two settings show a hybrid query's elapsed/CPU time and logical reads in SSMS? (Select 2)" },
+      "options": [
+        { "id": "a", "text": { "en": "SET STATISTICS TIME ON" } },
+        { "id": "b", "text": { "en": "SET STATISTICS IO ON" } },
+        { "id": "c", "text": { "en": "SET NOCOUNT ON" } },
+        { "id": "d", "text": { "en": "SET ANSI_NULLS ON" } },
+        { "id": "e", "text": { "en": "SET XACT_ABORT ON" } }
+      ],
+      "answer": ["a", "b"],
+      "explanation": { "en": "STATISTICS TIME reports parse/compile and execution times; STATISTICS IO reports reads per table. The others control row-count messages, NULL semantics and error handling." },
+      "example": { "en": "Compare reads for the vector branch with and without the index." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/set-statistics-time-transact-sql"]
+    },
+    {
+      "id": "d3-hr-0024",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-hybrid-rrf",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which tool helps detect that the hybrid search procedure got slower over the last month and which plan changed?" },
+      "options": [
+        { "id": "a", "text": { "en": "Query Store" } },
+        { "id": "b", "text": { "en": "sys.external_models" } },
+        { "id": "c", "text": { "en": "DBCC CHECKDB" } },
+        { "id": "d", "text": { "en": "VECTORPROPERTY" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Query Store keeps runtime statistics and plans over time, exposing regressions and plan changes. The others are unrelated to performance history." },
+      "example": { "en": "Regressed Queries report in SSMS." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/performance/monitoring-performance-by-using-the-query-store"]
+    },
+    {
+      "id": "d3-hr-0025",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-hybrid-rrf",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "End-to-end search latency is 450 ms but both SQL branches together take 60 ms. Where's the likely remaining time, and what helps?" },
+      "options": [
+        { "id": "a", "text": { "en": "In generating the query embedding over the network; measure it separately and consider caching embeddings for frequent queries" } },
+        { "id": "b", "text": { "en": "In the FULL OUTER JOIN; replace it with CROSS JOIN" } },
+        { "id": "c", "text": { "en": "In VECTORPROPERTY calls" } },
+        { "id": "d", "text": { "en": "It's impossible to tell" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "AI_GENERATE_EMBEDDINGS calls an external endpoint and can dominate latency. Measuring each stage reveals it; caching repeated query embeddings or keeping the endpoint close (same region) helps. A cross join would be wrong and slower." },
+      "example": { "en": "dbo.QueryEmbeddingCache(QueryHash, Embedding, CreatedAt)" },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/06-implement-hybrid-search-ranking"]
+    },
+    {
+      "id": "d3-hr-0026",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-hybrid-rrf",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What should you look for in the actual execution plan of the vector branch?" },
+      "options": [
+        { "id": "a", "text": { "en": "Whether the vector index is used or a full kNN scan computes distances for every row" } },
+        { "id": "b", "text": { "en": "Whether the plan uses a hash join for full-text" } },
+        { "id": "c", "text": { "en": "The number of columns in the table" } },
+        { "id": "d", "text": { "en": "Whether STRING_SPLIT is called" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "A kNN scan on a large table explains slow searches (missing index, metric mismatch, or optimizer choice). The other items don't diagnose vector performance." },
+      "example": { "en": "If unexpected, check index metric and use WITH (FORCE_ANN_ONLY) to compare." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-search-transact-sql"]
+    },
+    {
+      "id": "d3-hr-0027",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-hybrid-rrf",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "How do you evaluate the quality of the approximate vector branch specifically?" },
+      "options": [
+        { "id": "a", "text": { "en": "Measure its recall@k against exact search on sample queries" } },
+        { "id": "b", "text": { "en": "Count the rows in the vector index" } },
+        { "id": "c", "text": { "en": "Check the RRF k value" } },
+        { "id": "d", "text": { "en": "Compare full-text RANK values" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "ANN quality is recall relative to ENN. Index size, the fusion constant and full-text scores don't measure the approximation." },
+      "example": { "en": "Target recall@50 ≥ 0.95 for the vector candidates." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/sql-server/ai/vectors"]
+    },
+    {
+      "id": "d3-hr-0028",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-hybrid-rrf",
+      "type": "dragdrop-order", "difficulty": "medium",
+      "text": { "en": "Order the steps to introduce and tune hybrid search." },
+      "items": [
+        { "id": "i1", "text": { "en": "Build a labeled test set of real queries" } },
+        { "id": "i2", "text": { "en": "Measure baselines: full-text only and vector only" } },
+        { "id": "i3", "text": { "en": "Implement hybrid with RRF (k = 60, @topN = 50)" } },
+        { "id": "i4", "text": { "en": "Tune k, candidate counts and weights against the test set" } },
+        { "id": "i5", "text": { "en": "Monitor latency and plans in production (Query Store)" } }
+      ],
+      "answer": ["i1", "i2", "i3", "i4", "i5"],
+      "explanation": { "en": "You need ground truth before measuring, baselines before claiming improvement, a working implementation before tuning, and monitoring after release." },
+      "example": { "en": "Re-run the test set after model or index changes." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/06-implement-hybrid-search-ranking"]
+    },
+    {
+      "id": "d3-hr-0029",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-hybrid-rrf",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "For each statement about RRF, answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "RRF requires normalizing full-text and vector scores to the same range first." } },
+        { "id": "s2", "text": { "en": "A document ranked highly in both lists usually beats one ranked first in only one list." } },
+        { "id": "s3", "text": { "en": "RRF can produce ties." } },
+        { "id": "s4", "text": { "en": "Higher RRF scores mean more relevant results." } }
+      ],
+      "answerMap": { "s1": "no", "s2": "yes", "s3": "yes", "s4": "yes" },
+      "explanation": { "en": "RRF uses positions, so no normalization is needed. Agreement across lists adds contributions. Equal position combinations can tie. Results are sorted by RRF descending." },
+      "example": { "en": "Ranks (3, absent) and (absent, 3) tie at 1/63." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/02-choose-intelligent-search-approach"]
+    },
+    {
+      "id": "d3-hr-0030",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-hybrid-rrf",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Two products end with identical RRF scores. How should you make the final order stable?" },
+      "options": [
+        { "id": "a", "text": { "en": "Add a deterministic tie-breaker to ORDER BY, e.g., ORDER BY rrf DESC, ProductID" } },
+        { "id": "b", "text": { "en": "Change k for those rows only" } },
+        { "id": "c", "text": { "en": "Remove one of them" } },
+        { "id": "d", "text": { "en": "Ties can't happen" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Without a tie-breaker, the order of tied rows is arbitrary and may change between runs. Tied results are equally relevant; a secondary key just makes paging consistent." },
+      "example": { "en": "ORDER BY rrf DESC, PublishedAt DESC, Id" },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/02-choose-intelligent-search-approach"]
+    },
+    {
+      "id": "d3-hr-0031",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-hybrid-rrf",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Analytics show most users type exact product codes, but some describe needs. How should you tune hybrid ranking?" },
+      "options": [
+        { "id": "a", "text": { "en": "Give the keyword branch a higher weight in the RRF sum, then validate with the test set" } },
+        { "id": "b", "text": { "en": "Drop the keyword branch" } },
+        { "id": "c", "text": { "en": "Set k = 0" } },
+        { "id": "d", "text": { "en": "Use VECTOR_NORMALIZE on the codes" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Weights let you favor the signal that matters most for your users while keeping the other. Dropping a branch loses those queries, k = 0 makes rank 1 extremely dominant, and normalizing doesn't apply to codes." },
+      "example": { "en": "1.5 / (@k + kw_rank) + 1.0 / (@k + vec_rank)" },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/06-implement-hybrid-search-ranking"]
+    },
+    {
+      "id": "d3-hr-0032",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-hybrid-rrf",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A developer fuses results with ORDER BY ft.[RANK] + (1 - r.distance) DESC. What's wrong?" },
+      "options": [
+        { "id": "a", "text": { "en": "It mixes incompatible scales — RANK spans 0–1000 while 1 − distance spans about −1 to 1 — so keyword scores dominate; use rank-based fusion such as RRF" } },
+        { "id": "b", "text": { "en": "Nothing; it's equivalent to RRF" } },
+        { "id": "c", "text": { "en": "It should use multiplication" } },
+        { "id": "d", "text": { "en": "Distances must be squared first" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Raw-score fusion is dominated by the larger-scale source. RRF avoids this by using positions. Multiplying or squaring doesn't fix incompatible scales." },
+      "example": { "en": "Convert both to positions with ROW_NUMBER first." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/06-implement-hybrid-search-ranking"]
+    },
+    {
+      "id": "d3-hr-0033",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-hybrid-rrf",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "In EF Core 10, how is hybrid search typically expressed?" },
+      "options": [
+        { "id": "a", "text": { "en": "FreeTextTable() joined to the entities, FullJoin with VectorSearch(...).OrderBy(Distance).Take(k).WithApproximate(), then an RRF score in Select and OrderByDescending" } },
+        { "id": "b", "text": { "en": "context.Hybrid(query)" } },
+        { "id": "c", "text": { "en": "Only with raw SQL strings" } },
+        { "id": "d", "text": { "en": "It isn't possible in EF Core" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The EF Core SQL Server provider documents hybrid search by combining FreeTextTable and VectorSearch with a full join and an RRF score. There's no Hybrid() method, and raw SQL isn't required." },
+      "example": { "en": "The generated SQL uses FREETEXTTABLE, FULL JOIN and SELECT TOP(@k) WITH APPROXIMATE." },
+      "sources": ["https://learn.microsoft.com/en-us/ef/core/providers/sql-server/vector-search"]
+    },
+    {
+      "id": "d3-hr-0034",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-hybrid-rrf",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "An item appears only in the keyword list, at position 2. With k = 60, what does it score?" },
+      "options": [
+        { "id": "a", "text": { "en": "1/62 ≈ 0.0161, from the keyword list only" } },
+        { "id": "b", "text": { "en": "0, because it's missing from the vector list" } },
+        { "id": "c", "text": { "en": "2/60" } },
+        { "id": "d", "text": { "en": "It's excluded from results" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Items from a single list still get that list's contribution; the missing list adds 0. They aren't excluded." },
+      "example": { "en": "This is why FULL OUTER JOIN plus COALESCE is used." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/02-choose-intelligent-search-approach"]
+    },
+    {
+      "id": "d3-hr-0035",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-hybrid-rrf",
+      "type": "single", "difficulty": "medium",
+      "caseId": "case-hr-docs",
+      "text": { "en": "How should Tailwind implement the vector branch for 1.2 million chunks?" },
+      "options": [
+        { "id": "a", "text": { "en": "SELECT TOP (50) WITH APPROXIMATE … FROM VECTOR_SEARCH(… METRIC = 'cosine') ORDER BY r.distance in a subquery, then ROW_NUMBER over distance" } },
+        { "id": "b", "text": { "en": "VECTOR_DISTANCE over all 1.2 million chunks for every query" } },
+        { "id": "c", "text": { "en": "VECTOR_SEARCH with METRIC = 'euclidean' against the cosine index" } },
+        { "id": "d", "text": { "en": "CONTAINSTABLE on the embedding column" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "At this size, ANN with a matching cosine metric keeps latency low; the subquery pattern enables ROW_NUMBER. Exact search over all rows is slow, a mismatched metric can't use the index, and full-text doesn't index vectors." },
+      "example": { "en": "Same @qv used for the whole request." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-search-transact-sql"]
+    },
+    {
+      "id": "d3-hr-0036",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-hybrid-rrf",
+      "type": "single", "difficulty": "medium",
+      "caseId": "case-hr-docs",
+      "text": { "en": "How should Tailwind make sure exact API names such as AddDbContextPool rank well?" },
+      "options": [
+        { "id": "a", "text": { "en": "Include a keyword branch (CONTAINSTABLE/FREETEXTTABLE on ChunkText) in the hybrid query, so exact matches get a strong keyword rank" } },
+        { "id": "b", "text": { "en": "Rely on the vector branch only" } },
+        { "id": "c", "text": { "en": "Add API names to the stoplist" } },
+        { "id": "d", "text": { "en": "Normalize the embeddings" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Keyword search excels at exact identifiers; RRF then promotes chunks that also match semantically. Vector-only search can blur identifiers, stoplisting removes them, and normalization doesn't help exact matching." },
+      "example": { "en": "CONTAINSTABLE(dbo.DocChunks, ChunkText, '\"AddDbContextPool\"', 50)" },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/06-implement-hybrid-search-ranking"]
+    },
+    {
+      "id": "d3-hr-0037",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-hybrid-rrf",
+      "type": "single", "difficulty": "medium",
+      "caseId": "case-hr-docs",
+      "text": { "en": "How should Tailwind prove the new search is better than the old full-text search?" },
+      "options": [
+        { "id": "a", "text": { "en": "Label a set of real developer queries with relevant chunks and compare precision@10, recall and MRR for full-text only vs hybrid" } },
+        { "id": "b", "text": { "en": "Show that hybrid returns more rows" } },
+        { "id": "c", "text": { "en": "Show that the vector index is larger" } },
+        { "id": "d", "text": { "en": "Measure only CPU usage" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Relevance must be demonstrated with labeled queries and standard metrics. Row counts, index size and CPU don't show better answers." },
+      "example": { "en": "Report MRR 0.42 → 0.67 and recall 0.55 → 0.81 (illustrative)." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/06-implement-hybrid-search-ranking"]
+    },
+    {
+      "id": "d3-hr-0038",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-hybrid-rrf",
+      "type": "single", "difficulty": "hard",
+      "caseId": "case-hr-docs",
+      "text": { "en": "After the data doubled, p95 latency jumped to 900 ms. What's the best first diagnostic step?" },
+      "options": [
+        { "id": "a", "text": { "en": "Use Query Store and actual plans to time each branch; check whether the vector branch now runs a kNN scan (e.g., index missing after reload, metric mismatch) and whether the full-text index is fully populated" } },
+        { "id": "b", "text": { "en": "Lower k from 60 to 10" } },
+        { "id": "c", "text": { "en": "Switch the vector column to nvarchar" } },
+        { "id": "d", "text": { "en": "Remove the FULL OUTER JOIN" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Measure before changing anything: plan regressions, missing or mismatched indexes and population status are typical causes. k doesn't affect latency meaningfully, nvarchar would break vector search, and the join is needed for correctness." },
+      "example": { "en": "SELECT * FROM sys.vector_indexes; SELECT FULLTEXTCATALOGPROPERTY('ftCatalog','PopulateStatus');" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/performance/monitoring-performance-by-using-the-query-store", "https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-search-transact-sql"]
+    },
+    {
+      "id": "d3-hr-0039",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-hybrid-rrf",
+      "type": "dragdrop-match", "difficulty": "medium",
+      "text": { "en": "Match each evaluation measure to what it tells you." },
+      "items": [
+        { "id": "i1", "text": { "en": "Precision" } },
+        { "id": "i2", "text": { "en": "Recall" } },
+        { "id": "i3", "text": { "en": "MRR" } },
+        { "id": "i4", "text": { "en": "ANN recall@k vs ENN" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "Share of returned results that are relevant" } },
+        { "id": "t2", "text": { "en": "Share of all relevant documents that were found" } },
+        { "id": "t3", "text": { "en": "How high the first relevant result appears" } },
+        { "id": "t4", "text": { "en": "How closely the vector index approximates exact search" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "Relevance metrics judge answers against labels; ANN recall judges the index against exact search. Use both, plus latency, when evaluating vector and hybrid search." },
+      "example": { "en": "A dashboard with all four per release." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/06-implement-hybrid-search-ranking"]
+    },
+    {
+      "id": "d3-hr-0040",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-hybrid-rrf",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "The final page shows 10 results. How many candidates should each branch return?" },
+      "options": [
+        { "id": "a", "text": { "en": "More than 10 (e.g., 50), so fusion can surface items that rank moderately in both lists" } },
+        { "id": "b", "text": { "en": "Exactly 10 from each" } },
+        { "id": "c", "text": { "en": "1 from each" } },
+        { "id": "d", "text": { "en": "All rows in the table" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "A larger candidate pool lets items ranked, say, 12th in both lists win after fusion. Exactly 10 or 1 starves fusion; all rows wastes time." },
+      "example": { "en": "@topN = 50, final TOP (10)." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/06-implement-hybrid-search-ranking"]
+    },
+    {
+      "id": "d3-hr-0041",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-hybrid-rrf",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which statement explains why hybrid search exists?" },
+      "options": [
+        { "id": "a", "text": { "en": "Full-text misses paraphrases, and vector search can miss exact terms; combining them covers both" } },
+        { "id": "b", "text": { "en": "Vector search can't rank results" } },
+        { "id": "c", "text": { "en": "Full-text search is deprecated" } },
+        { "id": "d", "text": { "en": "Hybrid search is required for vector indexes" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Each approach has blind spots; hybrid balances them. Vector search ranks by distance, full-text isn't deprecated, and vector indexes don't require hybrid." },
+      "example": { "en": "\"XR-500 portable cooler\" needs both signals." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/06-implement-hybrid-search-ranking"]
+    },
+    {
+      "id": "d3-hr-0042",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-hybrid-rrf",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "An item ranks 1st in vector search and 10th in keyword search. With k = 60, which list contributes more to its score?" },
+      "options": [
+        { "id": "a", "text": { "en": "The vector list (1/61 ≈ 0.0164 vs 1/70 ≈ 0.0143)" } },
+        { "id": "b", "text": { "en": "The keyword list" } },
+        { "id": "c", "text": { "en": "They contribute equally" } },
+        { "id": "d", "text": { "en": "Neither contributes" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Better (smaller) positions contribute more. With k = 60 the difference between positions 1 and 10 is modest, which is the smoothing effect of k." },
+      "example": { "en": "Total ≈ 0.0307." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/06-implement-hybrid-search-ranking"]
+    },
+    {
+      "id": "d3-hr-0043",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-hybrid-rrf",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A hybrid query fails with an error that FREETEXTTABLE can't be used on dbo.Docs. What's missing?" },
+      "options": [
+        { "id": "a", "text": { "en": "A full-text index on the searched column(s) of dbo.Docs" } },
+        { "id": "b", "text": { "en": "A vector index" } },
+        { "id": "c", "text": { "en": "An external model" } },
+        { "id": "d", "text": { "en": "Query Store" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Full-text predicates and rowset functions require a full-text index. Vector indexes, external models and Query Store belong to other parts of the solution." },
+      "example": { "en": "CREATE FULLTEXT INDEX ON dbo.Docs(Body LANGUAGE 1033) KEY INDEX PK_Docs;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-fulltext-index-transact-sql"]
+    },
+    {
+      "id": "d3-hr-0044",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-hybrid-rrf",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Hybrid search costs more than either approach alone. Which measures keep it efficient?" },
+      "options": [
+        { "id": "a", "text": { "en": "Limit candidates per branch, keep both indexes healthy (matching vector metric, populated full-text index), and cache embeddings for frequent queries" } },
+        { "id": "b", "text": { "en": "Remove the vector index and use exact search" } },
+        { "id": "c", "text": { "en": "Return all rows and sort in the app" } },
+        { "id": "d", "text": { "en": "Disable full-text change tracking" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Bounded candidate sets, working indexes and avoiding repeated embedding calls control cost. Exact search on large tables, returning everything or stale full-text indexes make it worse." },
+      "example": { "en": "@topN = 50; index metric = query metric; query embedding cache." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/06-implement-hybrid-search-ranking"]
+    },
+    {
+      "id": "d3-hr-0045",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-hybrid-rrf",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Where does the RRF constant k = 60 come from, according to Microsoft Learn?" },
+      "options": [
+        { "id": "a", "text": { "en": "The original RRF research; it's also the value Azure AI Search uses" } },
+        { "id": "b", "text": { "en": "The number of seconds in a minute" } },
+        { "id": "c", "text": { "en": "SQL Server's default MAXDOP" } },
+        { "id": "d", "text": { "en": "The number of dimensions divided by 25" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "k = 60 was established by the original Reciprocal Rank Fusion research and adopted by Azure AI Search; it's a starting point you can tune." },
+      "example": { "en": "Azure AI Search hybrid queries fuse BM25 and vector results with RRF." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/02-choose-intelligent-search-approach", "https://learn.microsoft.com/en-us/azure/search/hybrid-search-ranking"]
+    },
+    {
+      "id": "d3-hr-0046",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-hybrid-rrf",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "Both branches use RANK() instead of ROW_NUMBER(), and two keyword hits tie for position 1. What's the effect?" },
+      "options": [
+        { "id": "a", "text": { "en": "Both get rank 1 and contribute 1/(k + 1); the next item gets rank 3 — acceptable, since tied relevance is treated equally" } },
+        { "id": "b", "text": { "en": "The query fails" } },
+        { "id": "c", "text": { "en": "Both get rank 0" } },
+        { "id": "d", "text": { "en": "RANK() reverses the order" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "RANK assigns equal positions to ties and skips the next number; Microsoft's sample uses RANK(). ROW_NUMBER would break ties arbitrarily. Both work for RRF." },
+      "example": { "en": "RANK() OVER (ORDER BY ftt.[RANK] DESC) AS keyword_rank" },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/06-implement-hybrid-search-ranking"]
+    },
+    {
+      "id": "d3-hr-0047",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-hybrid-rrf",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "For a small table (20,000 products), how can the vector branch be written?" },
+      "options": [
+        { "id": "a", "text": { "en": "Exactly, with VECTOR_DISTANCE: rank rows by distance and take the top @n — no vector index needed" } },
+        { "id": "b", "text": { "en": "Only with VECTOR_SEARCH and FORCE_ANN_ONLY" } },
+        { "id": "c", "text": { "en": "With full-text search" } },
+        { "id": "d", "text": { "en": "It can't be done without an index" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Microsoft's hybrid sample uses VECTOR_DISTANCE for exact ranking and recommends VECTOR_SEARCH for larger datasets. FORCE_ANN_ONLY requires an index." },
+      "example": { "en": "SELECT TOP (@n) Id, RANK() OVER (ORDER BY VECTOR_DISTANCE('cosine', @qv, Emb)) …" },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/06-implement-hybrid-search-ranking"]
+    },
+    {
+      "id": "d3-hr-0048",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-hybrid-rrf",
+      "type": "multiple", "difficulty": "medium", "selectCount": 3,
+      "text": { "en": "Which three are hybrid search tuning parameters described by Microsoft Learn? (Select 3)" },
+      "options": [
+        { "id": "a", "text": { "en": "Candidate result set size per branch" } },
+        { "id": "b", "text": { "en": "The RRF constant k" } },
+        { "id": "c", "text": { "en": "Source weighting" } },
+        { "id": "d", "text": { "en": "The database collation" } },
+        { "id": "e", "text": { "en": "The full-text catalog name" } }
+      ],
+      "answer": ["a", "b", "c"],
+      "explanation": { "en": "Candidate counts, k and weights (plus where filters apply) shape hybrid results. Collation and catalog names don't tune relevance." },
+      "example": { "en": "Iterate against a labeled test set." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/06-implement-hybrid-search-ranking"]
+    },
+    {
+      "id": "d3-hr-0049",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-hybrid-rrf",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "After switching embedding models and recreating the vector index, what should you do before declaring the search 'done'?" },
+      "options": [
+        { "id": "a", "text": { "en": "Re-run the labeled relevance tests and ANN recall checks, and compare latency to the previous baseline" } },
+        { "id": "b", "text": { "en": "Nothing; results can only improve" } },
+        { "id": "c", "text": { "en": "Change k to 61" } },
+        { "id": "d", "text": { "en": "Drop the full-text index" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Model and index changes alter both relevance and performance; re-evaluation catches regressions. Results don't automatically improve, and k or dropping full-text aren't evaluation steps." },
+      "example": { "en": "Keep the test set in source control with expected relevant IDs." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/06-implement-hybrid-search-ranking"]
+    },
+    {
+      "id": "d3-hr-0050",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-hybrid-rrf",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "What's the final step of a hybrid query after computing RRF scores?" },
+      "options": [
+        { "id": "a", "text": { "en": "Order by RRF descending, take the top N and join back to get the item details" } },
+        { "id": "b", "text": { "en": "Order by RRF ascending" } },
+        { "id": "c", "text": { "en": "Average the RRF scores" } },
+        { "id": "d", "text": { "en": "Recompute embeddings for the results" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Higher RRF is better, so sort descending, limit, and fetch display columns. Ascending would show the worst first; averaging and re-embedding aren't part of fusion." },
+      "example": { "en": "SELECT TOP (10) p.Name, f.rrf FROM fused f JOIN dbo.Products p … ORDER BY f.rrf DESC;" },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/06-implement-hybrid-search-ranking"]
+    }
+  ]
+}

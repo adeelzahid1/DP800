@@ -1,0 +1,851 @@
+{
+  "subtopic": "d2-query-analysis",
+  "questions": [
+    {
+      "id": "d2-qa-0001",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-query-analysis",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which plan type includes runtime information such as actual row counts and execution counts?" },
+      "options": [
+        { "id": "a", "text": { "en": "The actual execution plan" } },
+        { "id": "b", "text": { "en": "The estimated execution plan" } },
+        { "id": "c", "text": { "en": "The logical query tree" } },
+        { "id": "d", "text": { "en": "The showplan text without execution" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Actual plans are captured after execution and include actual rows, executions, warnings such as spills. Estimated plans contain only the optimizer's predictions." },
+      "example": { "en": "SSMS: Include Actual Execution Plan (Ctrl+M), then run the query." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/performance/execution-plans"]
+    },
+    {
+      "id": "d2-qa-0002",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-query-analysis",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "An actual plan shows Estimated Rows = 12 and Actual Rows = 1,800,000 on a seek feeding a nested loops join. What is the most likely root cause?" },
+      "options": [
+        { "id": "a", "text": { "en": "Inaccurate cardinality estimation — stale/missing statistics or parameter sniffing" } },
+        { "id": "b", "text": { "en": "TDE is enabled" } },
+        { "id": "c", "text": { "en": "The server has too much memory" } },
+        { "id": "d", "text": { "en": "Query Store is on" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Huge estimate-vs-actual gaps mean the optimizer chose a plan (nested loops) appropriate for a few rows. Update statistics or address sniffing. TDE, memory and Query Store don't cause misestimates." },
+      "example": { "en": "UPDATE STATISTICS dbo.Orders WITH FULLSCAN; then compare the plan again." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/statistics/statistics"]
+    },
+    {
+      "id": "d2-qa-0003",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-query-analysis",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A plan shows a warning on an index scan: 'Type conversion in expression (CONVERT_IMPLICIT(nvarchar, [AccountNo])) may affect seek plan'. AccountNo is VARCHAR and the parameter is NVARCHAR. Best fix?" },
+      "options": [
+        { "id": "a", "text": { "en": "Pass the parameter as VARCHAR matching the column type" } },
+        { "id": "b", "text": { "en": "Add NOLOCK" } },
+        { "id": "c", "text": { "en": "Increase MAXDOP" } },
+        { "id": "d", "text": { "en": "Rebuild the index" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Data type precedence converts the VARCHAR column to NVARCHAR, preventing a seek. Matching the parameter type restores seekability. .NET strings default to NVARCHAR — set SqlDbType.VarChar explicitly." },
+      "example": { "en": "cmd.Parameters.Add(\"@acct\", SqlDbType.VarChar, 20).Value = acct;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/data-types/data-type-precedence-transact-sql"]
+    },
+    {
+      "id": "d2-qa-0004",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-query-analysis",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which feature persists query plans and runtime statistics in the database, surviving restarts?" },
+      "options": [
+        { "id": "a", "text": { "en": "Query Store" } },
+        { "id": "b", "text": { "en": "The plan cache" } },
+        { "id": "c", "text": { "en": "sys.dm_exec_query_stats" } },
+        { "id": "d", "text": { "en": "SET STATISTICS IO" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Query Store writes history to the database. The plan cache and dm_exec_query_stats are in memory and lose data on eviction or restart; STATISTICS IO reports per execution only." },
+      "example": { "en": "ALTER DATABASE CURRENT SET QUERY_STORE = ON;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/performance/monitoring-performance-by-using-the-query-store"]
+    },
+    {
+      "id": "d2-qa-0005",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-query-analysis",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "After a statistics update, a critical query regressed because it picked a new plan. You need an immediate, reversible fix without code changes. What do you do?" },
+      "options": [
+        { "id": "a", "text": { "en": "Force the previous good plan with Query Store (sp_query_store_force_plan)" } },
+        { "id": "b", "text": { "en": "Drop all statistics" } },
+        { "id": "c", "text": { "en": "Restart the server" } },
+        { "id": "d", "text": { "en": "Rewrite the application" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Plan forcing pins a known-good plan and can be removed later with sp_query_store_unforce_plan. Dropping statistics or restarting are drastic; rewriting the app isn't immediate." },
+      "example": { "en": "EXEC sp_query_store_force_plan @query_id = 42, @plan_id = 7;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-query-store-force-plan-transact-sql"]
+    },
+    {
+      "id": "d2-qa-0006",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-query-analysis",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A vendor application's query needs OPTION (RECOMPILE), but you can't change the vendor's code. What's the supported approach?" },
+      "options": [
+        { "id": "a", "text": { "en": "Apply a Query Store hint with sp_query_store_set_hints" } },
+        { "id": "b", "text": { "en": "Edit the vendor's DLL" } },
+        { "id": "c", "text": { "en": "Clear the plan cache every minute" } },
+        { "id": "d", "text": { "en": "Disable Query Store" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Query Store hints attach query hints to a query_id without code changes and persist across restarts. Editing binaries is unsupported; clearing the cache constantly hurts everything." },
+      "example": { "en": "EXEC sp_query_store_set_hints @query_id = 39, @query_hints = N'OPTION(RECOMPILE)';" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/performance/query-store-hints"]
+    },
+    {
+      "id": "d2-qa-0007",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-query-analysis",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "For each statement about sys.dm_exec_query_stats, answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "It reports cumulative statistics for plans currently in the plan cache." } },
+        { "id": "s2", "text": { "en": "Its data survives a service restart." } },
+        { "id": "s3", "text": { "en": "Joined with sys.dm_exec_sql_text, it can identify top CPU-consuming statements." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "no", "s3": "yes" },
+      "explanation": { "en": "The DMV aggregates stats per cached plan; data disappears when plans are evicted or the instance restarts. Combining with dm_exec_sql_text gives the statement text for top-N analysis." },
+      "example": { "en": "For history across restarts, use Query Store." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-views/sys-dm-exec-query-stats-transact-sql"]
+    },
+    {
+      "id": "d2-qa-0008",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-query-analysis",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which Azure SQL Database portal feature shows top resource-consuming queries by CPU, data IO, log IO or duration?" },
+      "options": [
+        { "id": "a", "text": { "en": "Query Performance Insight" } },
+        { "id": "b", "text": { "en": "Azure Advisor cost recommendations" } },
+        { "id": "c", "text": { "en": "Resource health" } },
+        { "id": "d", "text": { "en": "Activity log" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Query Performance Insight visualizes Query Store data in the portal. Advisor focuses on recommendations, Resource Health on availability, and the Activity log on control-plane operations." },
+      "example": { "en": "It requires Query Store to be active on the database." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-sql/database/query-performance-insight-use"]
+    },
+    {
+      "id": "d2-qa-0009",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-query-analysis",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Query Store stopped capturing new data and actual_state_desc shows READ_ONLY. What's the most likely cause?" },
+      "options": [
+        { "id": "a", "text": { "en": "It reached MAX_STORAGE_SIZE_MB" } },
+        { "id": "b", "text": { "en": "The database is in SIMPLE recovery" } },
+        { "id": "c", "text": { "en": "RCSI is enabled" } },
+        { "id": "d", "text": { "en": "Too many indexes" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "When the size limit is reached, Query Store switches to READ_ONLY. Increase the limit, enable size-based cleanup or reduce retention. Recovery model, RCSI and indexes don't cause this." },
+      "example": { "en": "ALTER DATABASE CURRENT SET QUERY_STORE (MAX_STORAGE_SIZE_MB = 2048, SIZE_BASED_CLEANUP_MODE = AUTO);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/performance/best-practice-with-the-query-store"]
+    },
+    {
+      "id": "d2-qa-0010",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-query-analysis",
+      "type": "dragdrop-match", "difficulty": "medium",
+      "text": { "en": "Match each question to the best tool." },
+      "items": [
+        { "id": "i1", "text": { "en": "Which session is blocking others right now?" } },
+        { "id": "i2", "text": { "en": "Which queries got slower since last week?" } },
+        { "id": "i3", "text": { "en": "How many logical reads did this one query do?" } },
+        { "id": "i4", "text": { "en": "Is the database near its tier's CPU limit?" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "sys.dm_exec_requests" } },
+        { "id": "t2", "text": { "en": "Query Store Regressed Queries" } },
+        { "id": "t3", "text": { "en": "SET STATISTICS IO ON" } },
+        { "id": "t4", "text": { "en": "sys.dm_db_resource_stats" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "Live state → dm_exec_requests; history/regressions → Query Store; per-statement IO → STATISTICS IO; resource consumption vs limits in Azure SQL Database → dm_db_resource_stats." },
+      "example": { "en": "Pick the tool by time horizon: now, history, single run, resource limits." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-sql/database/monitoring-with-dmvs"]
+    },
+    {
+      "id": "d2-qa-0011",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-query-analysis",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A Sort operator shows a warning 'Operator used tempdb to spill data'. What does it indicate?" },
+      "options": [
+        { "id": "a", "text": { "en": "The memory grant was too small (often due to underestimation), so the sort wrote to tempdb" } },
+        { "id": "b", "text": { "en": "The query used too little CPU" } },
+        { "id": "c", "text": { "en": "The index is fragmented" } },
+        { "id": "d", "text": { "en": "The table is encrypted" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Spills happen when the granted memory isn't enough. Fix estimates (statistics), reduce rows sorted, or support the ORDER BY with an index. Memory grant feedback can also adjust grants over executions." },
+      "example": { "en": "An index on (CustomerId, OrderDate) can remove the sort for ORDER BY OrderDate within a customer." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/performance/intelligent-query-processing-memory-grant-feedback"]
+    },
+    {
+      "id": "d2-qa-0012",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-query-analysis",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "In an execution plan, a Key Lookup executes 50,000 times after an index seek. What's the typical fix?" },
+      "options": [
+        { "id": "a", "text": { "en": "Add the looked-up columns as INCLUDE columns to make the index covering" } },
+        { "id": "b", "text": { "en": "Drop the index" } },
+        { "id": "c", "text": { "en": "Use NOLOCK" } },
+        { "id": "d", "text": { "en": "Disable parallelism" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "A covering index returns all needed columns from the nonclustered index, removing the lookups." },
+      "example": { "en": "CREATE INDEX IX ON dbo.Orders(CustomerId) INCLUDE (OrderDate, Total) WITH (DROP_EXISTING = ON);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/indexes/create-indexes-with-included-columns"]
+    },
+    {
+      "id": "d2-qa-0013",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-query-analysis",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Complete the Query Store procedures." },
+      "code": "-- Pin a known good plan\nEXEC [BLANK1] @query_id = 42, @plan_id = 7;\n\n-- Later, remove the forcing\nEXEC [BLANK2] @query_id = 42, @plan_id = 7;",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "sp_query_store_force_plan" } },
+            { "id": "c2", "text": { "en": "sp_recompile" } },
+            { "id": "c3", "text": { "en": "sp_create_plan_guide" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "sp_query_store_unforce_plan" } },
+            { "id": "c2", "text": { "en": "sp_query_store_remove_query" } },
+            { "id": "c3", "text": { "en": "DBCC FREEPROCCACHE" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "sp_query_store_force_plan / sp_query_store_unforce_plan manage forcing. sp_recompile marks objects for recompilation; plan guides are the older mechanism; remove_query deletes history; FREEPROCCACHE flushes the cache." },
+      "example": { "en": "Check forced plans: SELECT * FROM sys.query_store_plan WHERE is_forced_plan = 1;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-query-store-force-plan-transact-sql"]
+    },
+    {
+      "id": "d2-qa-0014",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-query-analysis",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which DMV shows aggregate waits for a single Azure SQL Database (rather than the whole instance)?" },
+      "options": [
+        { "id": "a", "text": { "en": "sys.dm_db_wait_stats" } },
+        { "id": "b", "text": { "en": "sys.dm_os_wait_stats" } },
+        { "id": "c", "text": { "en": "sys.dm_exec_sessions" } },
+        { "id": "d", "text": { "en": "sys.dm_db_partition_stats" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "sys.dm_db_wait_stats is database-scoped in Azure SQL Database; dm_os_wait_stats is instance-level (SQL Server/Managed Instance). Sessions and partition stats are unrelated." },
+      "example": { "en": "SELECT TOP (10) wait_type, wait_time_ms FROM sys.dm_db_wait_stats ORDER BY wait_time_ms DESC;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-views/sys-dm-db-wait-stats-azure-sql-database"]
+    },
+    {
+      "id": "d2-qa-0015",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-query-analysis",
+      "type": "multiple", "difficulty": "medium", "selectCount": 3,
+      "text": { "en": "Which three are valid uses of Query Store? (Select 3)" },
+      "options": [
+        { "id": "a", "text": { "en": "Identify regressed queries after a deployment" } },
+        { "id": "b", "text": { "en": "Force a previously good plan" } },
+        { "id": "c", "text": { "en": "Review per-query wait statistics" } },
+        { "id": "d", "text": { "en": "Encrypt query text" } },
+        { "id": "e", "text": { "en": "Replace the need for indexes" } }
+      ],
+      "answer": ["a", "b", "c"],
+      "explanation": { "en": "Query Store tracks history, supports plan forcing and records waits per query. It doesn't encrypt or substitute for proper indexing." },
+      "example": { "en": "sys.query_store_wait_stats groups waits into categories like Lock, CPU, Buffer IO." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/performance/monitoring-performance-by-using-the-query-store"]
+    },
+    {
+      "id": "d2-qa-0016",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-query-analysis",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Why are logical reads often a better metric than elapsed time when comparing two versions of a query?" },
+      "options": [
+        { "id": "a", "text": { "en": "Logical reads measure work done and are stable across runs, while elapsed time varies with load, caching and blocking" } },
+        { "id": "b", "text": { "en": "Elapsed time is never reported" } },
+        { "id": "c", "text": { "en": "Logical reads include network time" } },
+        { "id": "d", "text": { "en": "Logical reads are always zero for fast queries" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Pages read from the buffer pool reflect the plan's efficiency; elapsed time is noisy. Both are useful, but logical reads compare plans fairly." },
+      "example": { "en": "Index change reduced logical reads from 120,000 to 6 — a clear win regardless of cache state." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/set-statistics-io-transact-sql"]
+    },
+    {
+      "id": "d2-qa-0017",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-query-analysis",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "For each statement about Query Store configuration, answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "QUERY_CAPTURE_MODE = AUTO skips infrequent, cheap queries." } },
+        { "id": "s2", "text": { "en": "Query Store is ON by default in Azure SQL Database." } },
+        { "id": "s3", "text": { "en": "Query Store data is lost when the instance restarts." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "yes", "s3": "no" },
+      "explanation": { "en": "AUTO captures relevant queries based on execution count and resource use; Query Store is on by default in Azure SQL Database (and new SQL Server 2022+ databases); data is persisted in the database." },
+      "example": { "en": "CUSTOM capture mode lets you set thresholds precisely." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/performance/best-practice-with-the-query-store"]
+    },
+    {
+      "id": "d2-qa-0018",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-query-analysis",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "dm_exec_query_stats shows one query text with thousands of different plan_handles, each executed once. What's the likely cause and fix?" },
+      "options": [
+        { "id": "a", "text": { "en": "Non-parameterized ad-hoc SQL (literals in the text); parameterize the app's queries or consider forced parameterization" } },
+        { "id": "b", "text": { "en": "Too many indexes" } },
+        { "id": "c", "text": { "en": "TDE overhead" } },
+        { "id": "d", "text": { "en": "RCSI version store" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Literal values make each statement unique, causing compilation storms and plan cache bloat. Parameterized commands (sp_executesql / SqlParameter) reuse plans; PARAMETERIZATION FORCED or OPTIMIZE_FOR_AD_HOC_WORKLOADS can mitigate." },
+      "example": { "en": "Group by query_hash to find the same query shape with different literals." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/query-processing-architecture-guide"]
+    },
+    {
+      "id": "d2-qa-0019",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-query-analysis",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which column in sys.dm_exec_query_stats lets you group different literal variations of the same query shape?" },
+      "options": [
+        { "id": "a", "text": { "en": "query_hash" } },
+        { "id": "b", "text": { "en": "plan_handle" } },
+        { "id": "c", "text": { "en": "session_id" } },
+        { "id": "d", "text": { "en": "database_id" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "query_hash identifies queries with the same logic regardless of literal values; query_plan_hash groups by plan shape. plan_handle is per plan." },
+      "example": { "en": "SELECT query_hash, COUNT(*) AS variants, SUM(execution_count) FROM sys.dm_exec_query_stats GROUP BY query_hash;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-views/sys-dm-exec-query-stats-transact-sql"]
+    },
+    {
+      "id": "d2-qa-0020",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-query-analysis",
+      "type": "dragdrop-order", "difficulty": "medium",
+      "text": { "en": "Order a sensible workflow for diagnosing 'the app became slow yesterday'." },
+      "items": [
+        { "id": "i1", "text": { "en": "Check Query Store / Query Performance Insight for top and regressed queries in that window" } },
+        { "id": "i2", "text": { "en": "Compare the plans before and after for the worst query" } },
+        { "id": "i3", "text": { "en": "Apply a mitigation (force plan, hint, index or statistics fix)" } },
+        { "id": "i4", "text": { "en": "Verify the improvement with Query Store runtime stats" } }
+      ],
+      "answer": ["i1", "i2", "i3", "i4"],
+      "explanation": { "en": "Find the offenders in history, understand the plan change, mitigate, then measure. Jumping to fixes without evidence risks changing the wrong thing." },
+      "example": { "en": "Regressed Queries report highlights plan changes with performance deltas." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/performance/monitoring-performance-by-using-the-query-store"]
+    },
+    {
+      "id": "d2-qa-0021",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-query-analysis",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which catalog view stores Query Store's per-interval execution metrics (duration, CPU, logical reads) for each plan?" },
+      "options": [
+        { "id": "a", "text": { "en": "sys.query_store_runtime_stats" } },
+        { "id": "b", "text": { "en": "sys.query_store_query_text" } },
+        { "id": "c", "text": { "en": "sys.dm_exec_cached_plans" } },
+        { "id": "d", "text": { "en": "sys.stats" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "runtime_stats holds aggregated metrics per plan per interval; query_text stores SQL text; dm_exec_cached_plans is the in-memory cache; sys.stats lists statistics objects." },
+      "example": { "en": "Join query → plan → runtime_stats → runtime_stats_interval for time-based analysis." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-query-store-runtime-stats-transact-sql"]
+    },
+    {
+      "id": "d2-qa-0022",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-query-analysis",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which statement enables per-statement IO and time statistics in the Messages tab?" },
+      "options": [
+        { "id": "a", "text": { "en": "SET STATISTICS IO, TIME ON;" } },
+        { "id": "b", "text": { "en": "SET SHOWPLAN_XML ON;" } },
+        { "id": "c", "text": { "en": "SET NOCOUNT ON;" } },
+        { "id": "d", "text": { "en": "DBCC SHOW_STATISTICS;" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "STATISTICS IO and TIME report reads and CPU/elapsed time. SHOWPLAN_XML returns an estimated plan without executing; NOCOUNT suppresses row counts; SHOW_STATISTICS displays a statistics histogram." },
+      "example": { "en": "Table 'Orders'. Scan count 1, logical reads 3, physical reads 0 …" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/set-statistics-io-transact-sql"]
+    },
+    {
+      "id": "d2-qa-0023",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-query-analysis",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which tool shows the histogram the optimizer uses to estimate rows for a column?" },
+      "options": [
+        { "id": "a", "text": { "en": "DBCC SHOW_STATISTICS (or sys.dm_db_stats_histogram)" } },
+        { "id": "b", "text": { "en": "sys.dm_exec_requests" } },
+        { "id": "c", "text": { "en": "sp_who2" } },
+        { "id": "d", "text": { "en": "Query Performance Insight" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "DBCC SHOW_STATISTICS and sys.dm_db_stats_histogram display the steps (up to 200) and densities behind estimates. The others show sessions or query summaries." },
+      "example": { "en": "SELECT * FROM sys.dm_db_stats_histogram(OBJECT_ID('dbo.Orders'), 2);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/database-console-commands/dbcc-show-statistics-transact-sql"]
+    },
+    {
+      "id": "d2-qa-0024",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-query-analysis",
+      "type": "yesno", "difficulty": "hard",
+      "text": { "en": "A query's actual plan shows an Index Scan with Actual Rows = 10 but 'Number of Rows Read' = 9,000,000. Answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "The predicate is applied as a residual filter after reading many rows." } },
+        { "id": "s2", "text": { "en": "An index whose key matches the predicate could turn this into an efficient seek." } },
+        { "id": "s3", "text": { "en": "This plan is efficient because only 10 rows are returned." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "yes", "s3": "no" },
+      "explanation": { "en": "Rows Read vs Actual Rows reveals wasted work: 9M rows scanned to return 10. A suitable index (or a SARGable rewrite) allows a seek. Output size alone doesn't make a plan efficient." },
+      "example": { "en": "Look at 'Number of Rows Read' in operator properties for this pattern." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/performance/execution-plans"]
+    },
+    {
+      "id": "d2-qa-0025",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-query-analysis",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "In Azure SQL Database, which DMV shows CPU, data IO and log write usage as a percentage of the service tier limits at 15-second intervals?" },
+      "options": [
+        { "id": "a", "text": { "en": "sys.dm_db_resource_stats" } },
+        { "id": "b", "text": { "en": "sys.resource_stats (in master, 5-minute granularity)" } },
+        { "id": "c", "text": { "en": "sys.dm_os_performance_counters" } },
+        { "id": "d", "text": { "en": "sys.dm_exec_connections" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "sys.dm_db_resource_stats keeps about an hour of 15-second samples in the user database. sys.resource_stats in master keeps longer history at 5-minute granularity. Performance counters and connections are different data." },
+      "example": { "en": "SELECT TOP (20) end_time, avg_cpu_percent, avg_data_io_percent, avg_log_write_percent FROM sys.dm_db_resource_stats ORDER BY end_time DESC;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-views/sys-dm-db-resource-stats-azure-sql-database"]
+    },
+    {
+      "id": "d2-qa-0026",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-query-analysis",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What does automatic plan correction (FORCE_LAST_GOOD_PLAN) do?" },
+      "options": [
+        { "id": "a", "text": { "en": "Detects plan-choice regressions via Query Store and automatically forces the last known good plan, verifying the result" } },
+        { "id": "b", "text": { "en": "Rebuilds all indexes nightly" } },
+        { "id": "c", "text": { "en": "Deletes old statistics" } },
+        { "id": "d", "text": { "en": "Turns off parallelism" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Automatic tuning watches for regressions and forces the previous better plan, unforcing if it doesn't help. It's on by default in Azure SQL Database and available in SQL Server 2017+." },
+      "example": { "en": "View recommendations: SELECT * FROM sys.dm_db_tuning_recommendations;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/automatic-tuning/automatic-tuning"]
+    },
+    {
+      "id": "d2-qa-0027",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-query-analysis",
+      "type": "dragdrop-match", "difficulty": "medium",
+      "text": { "en": "Match each plan symptom to the most likely fix." },
+      "items": [
+        { "id": "i1", "text": { "en": "Key Lookup executed many times" } },
+        { "id": "i2", "text": { "en": "CONVERT_IMPLICIT on an indexed column" } },
+        { "id": "i3", "text": { "en": "Huge estimate vs actual row gap" } },
+        { "id": "i4", "text": { "en": "Sort spills to tempdb" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "Add INCLUDE columns (covering index)" } },
+        { "id": "t2", "text": { "en": "Match parameter data types to the column" } },
+        { "id": "t3", "text": { "en": "Update statistics / address parameter sniffing" } },
+        { "id": "t4", "text": { "en": "Improve estimates or support ORDER BY with an index" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "Four common plan patterns and their usual remedies." },
+      "example": { "en": "Diagnose with the actual plan before applying any fix." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/performance/execution-plans"]
+    },
+    {
+      "id": "d2-qa-0028",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-query-analysis",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which permission allows a user to read database-scoped DMVs in Azure SQL Database without being an admin?" },
+      "options": [
+        { "id": "a", "text": { "en": "VIEW DATABASE STATE (or VIEW DATABASE PERFORMANCE STATE)" } },
+        { "id": "b", "text": { "en": "ALTER ANY USER" } },
+        { "id": "c", "text": { "en": "UNMASK" } },
+        { "id": "d", "text": { "en": "CREATE TABLE" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "DMV access requires VIEW DATABASE STATE (newer granular permission: VIEW DATABASE PERFORMANCE STATE). The others are unrelated." },
+      "example": { "en": "GRANT VIEW DATABASE PERFORMANCE STATE TO PerfTeam;" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-sql/database/monitoring-with-dmvs"]
+    },
+    {
+      "id": "d2-qa-0029",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-query-analysis",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "You want to see the plan of a query that is running right now and hasn't finished. Which option helps?" },
+      "options": [
+        { "id": "a", "text": { "en": "sys.dm_exec_query_statistics_xml / Live Query Statistics (lightweight profiling)" } },
+        { "id": "b", "text": { "en": "Wait until it finishes and use sys.dm_exec_query_stats" } },
+        { "id": "c", "text": { "en": "DBCC CHECKDB" } },
+        { "id": "d", "text": { "en": "sp_helpindex" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The lightweight query profiling infrastructure exposes in-flight plans with live row counts via dm_exec_query_statistics_xml and SSMS Live Query Statistics." },
+      "example": { "en": "SELECT * FROM sys.dm_exec_query_statistics_xml(@session_id);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/performance/live-query-statistics"]
+    },
+    {
+      "id": "d2-qa-0030",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-query-analysis",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "Query Store shows query 42 has two plans: plan 5 (avg 40 ms) and plan 9 (avg 4,000 ms), switching depending on which parameter compiled first. Which long-term fix is best on SQL Server 2022 with compat level 160?" },
+      "options": [
+        { "id": "a", "text": { "en": "Rely on Parameter Sensitive Plan optimization or apply a targeted hint/force plan 5 if one plan suits all values" } },
+        { "id": "b", "text": { "en": "Disable Query Store" } },
+        { "id": "c", "text": { "en": "Drop the index used by plan 5" } },
+        { "id": "d", "text": { "en": "Use READ UNCOMMITTED" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "This is parameter sniffing. PSP optimization (compat 160) can keep plan variants; otherwise force a plan that works well broadly or use a hint like RECOMPILE/OPTIMIZE FOR via Query Store hints. The other options don't address sniffing." },
+      "example": { "en": "Check sys.query_store_query_variant to see PSP dispatcher variants." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/performance/parameter-sensitive-plan-optimization"]
+    },
+    {
+      "id": "d2-qa-0031",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-query-analysis",
+      "type": "multiple", "difficulty": "medium", "selectCount": 2,
+      "text": { "en": "Which two views or functions together return the SQL text and plan of cached queries? (Select 2)" },
+      "options": [
+        { "id": "a", "text": { "en": "sys.dm_exec_sql_text(sql_handle)" } },
+        { "id": "b", "text": { "en": "sys.dm_exec_query_plan(plan_handle)" } },
+        { "id": "c", "text": { "en": "sys.masked_columns" } },
+        { "id": "d", "text": { "en": "sys.security_policies" } }
+      ],
+      "answer": ["a", "b"],
+      "explanation": { "en": "Both functions are used with CROSS APPLY from dm_exec_query_stats or dm_exec_requests. The other views are security metadata." },
+      "example": { "en": "… CROSS APPLY sys.dm_exec_sql_text(qs.sql_handle) st CROSS APPLY sys.dm_exec_query_plan(qs.plan_handle) qp" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-views/sys-dm-exec-query-plan-transact-sql"]
+    },
+    {
+      "id": "d2-qa-0032",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-query-analysis",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What's the difference between Hash Match and Nested Loops joins in terms of when the optimizer prefers them?" },
+      "options": [
+        { "id": "a", "text": { "en": "Nested Loops suits small outer inputs with an indexed inner side; Hash Match suits large, unsorted inputs" } },
+        { "id": "b", "text": { "en": "Hash Match is always better" } },
+        { "id": "c", "text": { "en": "Nested Loops requires sorted inputs" } },
+        { "id": "d", "text": { "en": "They're identical internally" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Nested Loops performs a lookup per outer row (great for few rows); Hash Match builds a hash table (good for big inputs, needs memory). Merge Join is the one requiring sorted inputs." },
+      "example": { "en": "A nested loops join over 2M underestimated outer rows is a classic slow plan." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/performance/joins"]
+    },
+    {
+      "id": "d2-qa-0033",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-query-analysis",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "What does Query Performance Insight require to show data?" },
+      "options": [
+        { "id": "a", "text": { "en": "Query Store active on the database" } },
+        { "id": "b", "text": { "en": "Always Encrypted" } },
+        { "id": "c", "text": { "en": "A Business Critical tier" } },
+        { "id": "d", "text": { "en": "Change Data Capture" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Query Performance Insight reads Query Store data. It works in all tiers; encryption and CDC aren't involved." },
+      "example": { "en": "If QPI is empty, check Query Store state first." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-sql/database/query-performance-insight-use"]
+    },
+    {
+      "id": "d2-qa-0034",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-query-analysis",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Complete the query listing currently blocked requests and their waits." },
+      "code": "SELECT r.session_id, r.[BLANK1], r.wait_type, r.wait_time\nFROM sys.[BLANK2] AS r\nWHERE r.blocking_session_id <> 0;",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "blocking_session_id" } },
+            { "id": "c2", "text": { "en": "plan_id" } },
+            { "id": "c3", "text": { "en": "query_hash_text" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "dm_exec_requests" } },
+            { "id": "c2", "text": { "en": "query_store_plan" } },
+            { "id": "c3", "text": { "en": "dm_db_index_usage_stats" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "sys.dm_exec_requests lists active requests with blocking_session_id and wait information. Query Store and index usage views don't show live blocking." },
+      "example": { "en": "Follow blocking_session_id chains to find the head blocker." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-views/sys-dm-exec-requests-transact-sql"]
+    },
+    {
+      "id": "d2-qa-0035",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-query-analysis",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which statement about missing index DMVs (sys.dm_db_missing_index_*) is correct?" },
+      "options": [
+        { "id": "a", "text": { "en": "They suggest indexes based on optimizer observations, but suggestions should be reviewed and consolidated, not created blindly" } },
+        { "id": "b", "text": { "en": "Every suggestion should be created immediately" } },
+        { "id": "c", "text": { "en": "They persist forever" } },
+        { "id": "d", "text": { "en": "They account for write overhead" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Missing index suggestions don't consider write costs or overlap with existing indexes and reset on restart. Consolidate them with existing indexes." },
+      "example": { "en": "Three suggestions on (CustomerId) with different INCLUDEs → one index with merged INCLUDEs." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/indexes/tune-nonclustered-missing-index-suggestions"]
+    },
+    {
+      "id": "d2-qa-0036",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-query-analysis",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "For each statement about execution plans, answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "Operator cost percentages in plans are based on estimates, even in actual plans." } },
+        { "id": "s2", "text": { "en": "An Index Seek is always cheaper than a Scan." } },
+        { "id": "s3", "text": { "en": "Warnings (spills, implicit conversions) appear as icons on operators." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "no", "s3": "yes" },
+      "explanation": { "en": "Cost percentages remain estimated values, which can mislead when estimates are wrong. A seek returning millions of rows (with lookups) can be worse than a scan. Warnings are flagged on operators." },
+      "example": { "en": "Trust actual rows and reads over cost percentages." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/performance/execution-plans"]
+    },
+    {
+      "id": "d2-qa-0037",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-query-analysis",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which Query Store setting controls how long query history is retained?" },
+      "options": [
+        { "id": "a", "text": { "en": "CLEANUP_POLICY = (STALE_QUERY_THRESHOLD_DAYS = n)" } },
+        { "id": "b", "text": { "en": "MAXDOP" } },
+        { "id": "c", "text": { "en": "FILLFACTOR" } },
+        { "id": "d", "text": { "en": "READ_COMMITTED_SNAPSHOT" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The stale query threshold defines retention; size-based cleanup removes the oldest data when nearing the size limit. The other settings are unrelated." },
+      "example": { "en": "ALTER DATABASE CURRENT SET QUERY_STORE (CLEANUP_POLICY = (STALE_QUERY_THRESHOLD_DAYS = 30));" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-database-transact-sql-set-options"]
+    },
+    {
+      "id": "d2-qa-0038",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-query-analysis",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A query is slow only from the application but fast in SSMS with the same parameter values. What's a frequent explanation?" },
+      "options": [
+        { "id": "a", "text": { "en": "Different SET options (e.g. ARITHABORT) produce separate cached plans; the app's plan was compiled for different parameters (sniffing)" } },
+        { "id": "b", "text": { "en": "SSMS uses a faster network protocol" } },
+        { "id": "c", "text": { "en": "The app uses TDE" } },
+        { "id": "d", "text": { "en": "SSMS bypasses indexes" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "SSMS sets ARITHABORT ON by default while many drivers don't, so they use different plan cache entries. The app's entry may have been compiled with atypical parameters. Compare plans from the cache/Query Store rather than recompiling in SSMS." },
+      "example": { "en": "Check plan attributes: sys.dm_exec_plan_attributes(plan_handle) → set_options." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/query-processing-architecture-guide"]
+    },
+    {
+      "id": "d2-qa-0039",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-query-analysis",
+      "type": "dragdrop-order", "difficulty": "medium",
+      "text": { "en": "Order the Query Store objects as you'd join them to get metrics for a query text." },
+      "items": [
+        { "id": "i1", "text": { "en": "sys.query_store_query_text" } },
+        { "id": "i2", "text": { "en": "sys.query_store_query" } },
+        { "id": "i3", "text": { "en": "sys.query_store_plan" } },
+        { "id": "i4", "text": { "en": "sys.query_store_runtime_stats" } }
+      ],
+      "answer": ["i1", "i2", "i3", "i4"],
+      "explanation": { "en": "Text → query (query_text_id) → plan (query_id) → runtime stats (plan_id). This hierarchy mirrors one text, many queries/contexts, many plans, many interval stats." },
+      "example": { "en": "FROM query_store_query_text qt JOIN query_store_query q ON q.query_text_id = qt.query_text_id JOIN query_store_plan p ON p.query_id = q.query_id JOIN query_store_runtime_stats rs ON rs.plan_id = p.plan_id" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/performance/how-query-store-collects-data"]
+    },
+    {
+      "id": "d2-qa-0040",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-query-analysis",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which statement about Query Store hints vs plan forcing is correct?" },
+      "options": [
+        { "id": "a", "text": { "en": "Hints influence compilation (e.g. MAXDOP, RECOMPILE) and still let the optimizer choose; forcing pins a specific existing plan" } },
+        { "id": "b", "text": { "en": "They're identical" } },
+        { "id": "c", "text": { "en": "Hints require code changes" } },
+        { "id": "d", "text": { "en": "Forcing works only on SQL Server 2008" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Hints shape how a plan is compiled; forcing reuses an exact plan. Both avoid code changes; both are modern features." },
+      "example": { "en": "Use hints when no single good plan exists for all parameter values." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/performance/query-store-hints"]
+    },
+    {
+      "id": "d2-qa-0041",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-query-analysis",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which DMV lists connected sessions with login name, host and program name?" },
+      "options": [
+        { "id": "a", "text": { "en": "sys.dm_exec_sessions" } },
+        { "id": "b", "text": { "en": "sys.dm_db_partition_stats" } },
+        { "id": "c", "text": { "en": "sys.query_store_plan" } },
+        { "id": "d", "text": { "en": "sys.dm_os_buffer_descriptors" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "dm_exec_sessions has one row per session with login_name, host_name, program_name. The others describe storage, plans and buffer pages." },
+      "example": { "en": "SELECT session_id, login_name, program_name FROM sys.dm_exec_sessions WHERE is_user_process = 1;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-views/sys-dm-exec-sessions-transact-sql"]
+    },
+    {
+      "id": "d2-qa-0042",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-query-analysis",
+      "type": "multiple", "difficulty": "hard", "selectCount": 2,
+      "text": { "en": "A query's elapsed time is far larger than its CPU time. Which two causes are most plausible? (Select 2)" },
+      "options": [
+        { "id": "a", "text": { "en": "Waiting on locks (blocking)" } },
+        { "id": "b", "text": { "en": "Waiting on IO (PAGEIOLATCH) or external calls" } },
+        { "id": "c", "text": { "en": "Too much CPU use" } },
+        { "id": "d", "text": { "en": "A perfectly efficient plan" } }
+      ],
+      "answer": ["a", "b"],
+      "explanation": { "en": "Elapsed >> CPU means the query spent time waiting — on locks, IO, network or external endpoints. CPU-bound queries have elapsed ≈ CPU." },
+      "example": { "en": "Check waits in Query Store (sys.query_store_wait_stats) for the query." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/performance/monitoring-performance-by-using-the-query-store"]
+    },
+    {
+      "id": "d2-qa-0043",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-query-analysis",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which wait type appears while sp_invoke_external_rest_endpoint waits for the remote service?" },
+      "options": [
+        { "id": "a", "text": { "en": "HTTP_EXTERNAL_CONNECTION" } },
+        { "id": "b", "text": { "en": "LCK_M_X" } },
+        { "id": "c", "text": { "en": "PAGEIOLATCH_SH" } },
+        { "id": "d", "text": { "en": "CXPACKET" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The documented wait type is HTTP_EXTERNAL_CONNECTION. LCK_M_X is a lock wait, PAGEIOLATCH is disk IO, CXPACKET is parallelism." },
+      "example": { "en": "High HTTP_EXTERNAL_CONNECTION waits in RAG queries point at model endpoint latency." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-invoke-external-rest-endpoint-transact-sql"]
+    },
+    {
+      "id": "d2-qa-0044",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-query-analysis",
+      "type": "dragdrop-match", "difficulty": "medium",
+      "text": { "en": "Match each wait type to its usual meaning." },
+      "items": [
+        { "id": "i1", "text": { "en": "LCK_M_*" } },
+        { "id": "i2", "text": { "en": "PAGEIOLATCH_*" } },
+        { "id": "i3", "text": { "en": "SOS_SCHEDULER_YIELD" } },
+        { "id": "i4", "text": { "en": "WRITELOG" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "Waiting for a lock (blocking)" } },
+        { "id": "t2", "text": { "en": "Reading data pages from disk into memory" } },
+        { "id": "t3", "text": { "en": "CPU pressure / queries yielding the scheduler" } },
+        { "id": "t4", "text": { "en": "Waiting for transaction log flushes" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "Wait types point at the bottleneck category: locking, IO, CPU or log throughput." },
+      "example": { "en": "Many small commits in a loop → WRITELOG; batch them." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-views/sys-dm-os-wait-stats-transact-sql"]
+    },
+    {
+      "id": "d2-qa-0045",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-query-analysis",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A developer clears the plan cache with DBCC FREEPROCCACHE on production to 'fix' a slow query. What's the main downside?" },
+      "options": [
+        { "id": "a", "text": { "en": "Every query must recompile, causing a CPU spike, and the fix may be temporary if the same bad plan is compiled again" } },
+        { "id": "b", "text": { "en": "It deletes data" } },
+        { "id": "c", "text": { "en": "It disables Query Store permanently" } },
+        { "id": "d", "text": { "en": "It drops indexes" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Flushing the cache affects all queries and doesn't address the cause. Prefer targeted actions: sp_recompile, removing one plan handle, Query Store forcing or hints." },
+      "example": { "en": "DBCC FREEPROCCACHE (plan_handle) removes a single plan." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/database-console-commands/dbcc-freeproccache-transact-sql"]
+    },
+    {
+      "id": "d2-qa-0046",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-query-analysis",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which IQP feature adjusts memory grants across executions when a query repeatedly spills or over-grants?" },
+      "options": [
+        { "id": "a", "text": { "en": "Memory grant feedback" } },
+        { "id": "b", "text": { "en": "Optimized locking" } },
+        { "id": "c", "text": { "en": "Approximate count distinct" } },
+        { "id": "d", "text": { "en": "Scalar UDF inlining" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Memory grant feedback (batch and row mode, with percentile and persistence in newer versions) corrects grant sizes based on previous executions." },
+      "example": { "en": "Persisted in Query Store in SQL Server 2022+ so it survives plan eviction." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/performance/intelligent-query-processing-memory-grant-feedback"]
+    },
+    {
+      "id": "d2-qa-0047",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-query-analysis",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "Answer Yes or No for each statement about Query Store's Regressed Queries report." },
+      "statements": [
+        { "id": "s1", "text": { "en": "It compares recent performance with a historical period." } },
+        { "id": "s2", "text": { "en": "You can force a plan directly from the report in SSMS." } },
+        { "id": "s3", "text": { "en": "It only works in Azure SQL Database." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "yes", "s3": "no" },
+      "explanation": { "en": "The report compares intervals to surface regressions and offers a Force Plan button. It works on any platform with Query Store (SQL Server, MI, Azure SQL DB)." },
+      "example": { "en": "SSMS → Database → Query Store → Regressed Queries." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/performance/monitoring-performance-by-using-the-query-store"]
+    },
+    {
+      "id": "d2-qa-0048",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-query-analysis",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which approach correctly finds the slowest statements by average duration over the last 24 hours using Query Store?" },
+      "options": [
+        { "id": "a", "text": { "en": "Join query, plan and runtime_stats, filter runtime_stats_interval by start_time in the last day, and order by avg_duration" } },
+        { "id": "b", "text": { "en": "Query sys.dm_exec_sessions" } },
+        { "id": "c", "text": { "en": "Use sp_who2" } },
+        { "id": "d", "text": { "en": "Read the error log" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Query Store's interval-based runtime stats support time-window analysis. Sessions, sp_who2 and the error log don't hold per-query duration history." },
+      "example": { "en": "WHERE rsi.start_time >= DATEADD(day, -1, SYSUTCDATETIME()) ORDER BY rs.avg_duration DESC" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-query-store-runtime-stats-interval-transact-sql"]
+    },
+    {
+      "id": "d2-qa-0049",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-query-analysis",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A forced plan in Query Store becomes invalid after an index it uses is dropped. What happens?" },
+      "options": [
+        { "id": "a", "text": { "en": "Forcing fails; the optimizer compiles a new plan and the failure is recorded (force_failure_count, last_force_failure_reason)" } },
+        { "id": "b", "text": { "en": "The query fails with an error every time" } },
+        { "id": "c", "text": { "en": "The index is recreated automatically" } },
+        { "id": "d", "text": { "en": "Query Store is disabled" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "If a forced plan can't be used, the query still runs with a newly compiled plan, and Query Store records the forcing failure. Review forced plans after schema changes." },
+      "example": { "en": "SELECT plan_id, force_failure_count, last_force_failure_reason_desc FROM sys.query_store_plan WHERE is_forced_plan = 1;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-query-store-plan-transact-sql"]
+    },
+    {
+      "id": "d2-qa-0050",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-query-analysis",
+      "type": "dragdrop-match", "difficulty": "hard",
+      "text": { "en": "Match each scenario to the most appropriate first action." },
+      "items": [
+        { "id": "i1", "text": { "en": "Vendor query needs MAXDOP 1, code can't change" } },
+        { "id": "i2", "text": { "en": "Plan regressed after deployment; previous plan was good" } },
+        { "id": "i3", "text": { "en": "Need top CPU queries in an Azure SQL DB from the portal" } },
+        { "id": "i4", "text": { "en": "Need to know what a query waits on historically" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "Query Store hint" } },
+        { "id": "t2", "text": { "en": "Force the previous plan" } },
+        { "id": "t3", "text": { "en": "Query Performance Insight" } },
+        { "id": "t4", "text": { "en": "sys.query_store_wait_stats" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "Hints for unchangeable code, forcing for regressions, QPI for portal-based top-N analysis, Query Store wait stats for historical waits per query." },
+      "example": { "en": "All four rely on Query Store being enabled." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/performance/monitoring-performance-by-using-the-query-store"]
+    }
+  ]
+}

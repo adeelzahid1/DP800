@@ -1,0 +1,63 @@
+{
+  "subtopic": "d2-permissions-auditing",
+  "title": { "en": "Permissions, passwordless access & auditing" },
+  "prerequisiteRecap": [
+    {
+      "heading": { "en": "Principals, securables, permissions" },
+      "body": {
+        "en": "SQL security is a grid: **principals** (logins at server level; users and roles at database level; Microsoft Entra identities) receive **permissions** (SELECT, EXECUTE, ALTER, CONTROL…) on **securables** (server → database → schema → object → column). Statements: `GRANT` gives, `DENY` explicitly forbids (and overrides grants), `REVOKE` removes a previous GRANT or DENY. Permissions granted at a higher scope (schema) apply to everything below it."
+      }
+    }
+  ],
+  "sections": [
+    {
+      "heading": { "en": "Object-level permissions and the DENY rule" },
+      "body": {
+        "en": "Grant at the narrowest useful scope: `GRANT SELECT ON SCHEMA::Sales TO Analysts` beats per-table grants for maintainability; column-level grants (`GRANT SELECT ON dbo.Employees(Name, Dept) TO HR`) restrict columns. **DENY wins** over GRANT from any path (role membership included) — with one historic exception: a column-level GRANT can override a table-level DENY (legacy behavior governed by the common criteria compliance option). `REVOKE` simply removes the entry, after which other grants (e.g. via roles) may still apply. Prefer roles: grant to roles, add users to roles — never grant directly to dozens of users."
+      },
+      "code": "CREATE ROLE ReportReaders;\nGRANT SELECT ON SCHEMA::Reporting TO ReportReaders;\nDENY  SELECT ON Reporting.PayrollSummary TO ReportReaders;   -- deny beats the schema grant\nALTER ROLE ReportReaders ADD MEMBER [analyst@contoso.com];\n\nGRANT EXECUTE ON SCHEMA::Api TO AppRole;   -- procedures as the access surface"
+    },
+    {
+      "heading": { "en": "Ownership chaining and module signing" },
+      "body": {
+        "en": "When a procedure/view and the objects it references share an owner, SQL skips permission checks on the referenced objects (**ownership chaining**) — granting EXECUTE on the procedure is enough. Chains break across owners and with dynamic SQL (dynamic SQL is checked against the caller). Fixes: `EXECUTE AS` on the module, or **module signing** with a certificate (grant permissions to a certificate user; sign the procedure) — the precise, auditable way to elevate permissions for one module."
+      }
+    },
+    {
+      "heading": { "en": "Passwordless access with Microsoft Entra ID" },
+      "body": {
+        "en": "Passwordless = no SQL passwords in connection strings:\n- **Microsoft Entra authentication** for Azure SQL / Managed Instance / Fabric SQL database / SQL Server 2022+ (Arc-enabled): `CREATE USER [app-name] FROM EXTERNAL PROVIDER` creates a contained user for an Entra user, group, service principal or **managed identity**.\n- Apps use **managed identity** (system- or user-assigned) — the platform issues tokens; connection strings use `Authentication=Active Directory Managed Identity` (or Default) with no secret.\n- **Entra-only authentication** can disable SQL authentication entirely on the logical server.\n- Groups: create users for Entra groups so membership is managed in Entra, not per database.\nBenefits: no secret rotation, central MFA/conditional access for humans, revocation in one place."
+      },
+      "code": "-- In the user database (Azure SQL)\nCREATE USER [orders-api] FROM EXTERNAL PROVIDER;   -- managed identity of the app\nALTER ROLE db_datareader ADD MEMBER [orders-api];\nGRANT EXECUTE ON SCHEMA::Api TO [orders-api];\n\n-- .NET connection string (no password):\n-- Server=tcp:myserver.database.windows.net;Database=Orders;\n-- Authentication=Active Directory Managed Identity;"
+    },
+    {
+      "heading": { "en": "Least privilege patterns" },
+      "body": {
+        "en": "- Apps: a dedicated identity per app, EXECUTE on an API schema (procedures), not db_owner.\n- Avoid fixed roles like db_owner for applications; prefer custom roles with exact grants. New granular fixed roles exist in Azure SQL (e.g. ##MS_DatabaseConnector##, ##MS_ServerStateReader## at server level) for specific admin tasks.\n- Contained database users (users without server logins) simplify geo-replication and portability.\n- Review effective permissions with `fn_my_permissions` and `sys.database_permissions`."
+      }
+    },
+    {
+      "heading": { "en": "Auditing" },
+      "body": {
+        "en": "**SQL Server Audit** (box/MI) uses a server-level `SERVER AUDIT` (the target: file, Windows Application/Security log; or URL for MI) plus `SERVER AUDIT SPECIFICATION` (server-wide action groups like FAILED_LOGIN_GROUP) and/or `DATABASE AUDIT SPECIFICATION` (database actions like SELECT/UPDATE on specific objects, SCHEMA_OBJECT_CHANGE_GROUP). Read file audits with `sys.fn_get_audit_file`.\n**Azure SQL Database auditing** is configured at server or database level (portal/ARM/PowerShell) with destinations **Azure Storage, Log Analytics, Event Hubs**; default action groups capture successful/failed authentications and batch completions. Log Analytics enables KQL queries and alerting; Event Hubs streams to SIEMs.\nAuditing records WHO did WHAT and WHEN — it detects; it doesn't prevent. Pair with ledger for tamper-evidence of data, and with SESSION_CONTEXT to attribute actions behind shared app identities."
+      },
+      "code": "-- SQL Server / Managed Instance\nCREATE SERVER AUDIT PayrollAudit TO FILE (FILEPATH = 'D:\\Audit\\');\nALTER SERVER AUDIT PayrollAudit WITH (STATE = ON);\n\nCREATE DATABASE AUDIT SPECIFICATION PayrollAccess\nFOR SERVER AUDIT PayrollAudit\n    ADD (SELECT, UPDATE ON dbo.Payroll BY public),\n    ADD (SCHEMA_OBJECT_CHANGE_GROUP)\nWITH (STATE = ON);\n\nSELECT event_time, server_principal_name, statement\nFROM sys.fn_get_audit_file('D:\\Audit\\*.sqlaudit', DEFAULT, DEFAULT);"
+    }
+  ],
+  "examTips": [
+    { "en": "DENY overrides GRANT (except the legacy column-GRANT-over-table-DENY case). REVOKE removes entries — it isn't a deny." },
+    { "en": "Grant to roles at schema scope; column-level GRANT/DENY for vertical restriction." },
+    { "en": "Ownership chaining: same owner ⇒ referenced objects aren't permission-checked; broken by different owners and dynamic SQL." },
+    { "en": "Passwordless: CREATE USER … FROM EXTERNAL PROVIDER + managed identity; connection string 'Authentication=Active Directory Managed Identity'." },
+    { "en": "Entra-only authentication disables SQL auth on the logical server." },
+    { "en": "SQL Server Audit = SERVER AUDIT (target) + SERVER/DATABASE AUDIT SPECIFICATION (what). Azure SQL auditing targets: Storage, Log Analytics, Event Hubs." },
+    { "en": "Auditing detects; RLS/permissions prevent; ledger proves integrity." }
+  ],
+  "sources": [
+    "https://learn.microsoft.com/en-us/sql/relational-databases/security/permissions-database-engine",
+    "https://learn.microsoft.com/en-us/azure/azure-sql/database/authentication-aad-overview",
+    "https://learn.microsoft.com/en-us/azure/azure-sql/database/authentication-azure-ad-user-assigned-managed-identity",
+    "https://learn.microsoft.com/en-us/sql/relational-databases/security/auditing/sql-server-audit-database-engine",
+    "https://learn.microsoft.com/en-us/azure/azure-sql/database/auditing-overview"
+  ]
+}

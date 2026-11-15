@@ -1,0 +1,62 @@
+{
+  "subtopic": "d1-views-functions",
+  "title": { "en": "Views & user-defined functions" },
+  "prerequisiteRecap": [
+    {
+      "heading": { "en": "Programmability objects in one line each" },
+      "body": {
+        "en": "A **view** is a saved SELECT you query like a table. A **scalar function** returns one value per call. A **table-valued function (TVF)** returns a rowset you can SELECT from. Stored procedures and triggers (next subtopic) run imperative code. Views and functions are composable building blocks; procedures are entry points."
+      }
+    }
+  ],
+  "sections": [
+    {
+      "heading": { "en": "Views" },
+      "body": {
+        "en": "`CREATE VIEW v AS SELECT …` names a query. Uses: simplify complex joins, present a stable interface while tables evolve, and restrict exposure (grant SELECT on the view, not the tables — a security pattern). Rules: no ORDER BY inside a view (except with TOP — and even then order isn't guaranteed outside), single SELECT statement, no parameters (parameterize with inline TVFs instead).\n**Updatable views**: simple single-table views allow INSERT/UPDATE/DELETE through them. `WITH CHECK OPTION` rejects modifications that would push rows outside the view's WHERE filter."
+      },
+      "code": "CREATE VIEW Sales.vOpenOrders\nWITH SCHEMABINDING\nAS\nSELECT o.OrderId, o.CustomerId, o.OrderDate, o.Total\nFROM Sales.Orders AS o\nWHERE o.Status = 1;\nGO\n-- Through-the-view updates stay inside the filter:\nALTER VIEW Sales.vOpenOrders ... WITH CHECK OPTION;"
+    },
+    {
+      "heading": { "en": "SCHEMABINDING and indexed views" },
+      "body": {
+        "en": "`WITH SCHEMABINDING` locks the referenced tables' schema: no one can drop/alter the used columns while the view exists. It is the prerequisite for an **indexed (materialized) view**: create a unique clustered index on the view, and its result is physically stored and auto-maintained. Great for expensive aggregations read often; costs write overhead on the base tables. Requirements are strict: schemabinding, two-part names, COUNT_BIG(*) for aggregating views, deterministic expressions, and more. Note: views created with SCHEMABINDING that reference an external model (e.g. via AI_GENERATE_EMBEDDINGS) can't be dropped until the dependency is removed."
+      },
+      "code": "CREATE VIEW Sales.vDailyRevenue\nWITH SCHEMABINDING\nAS\nSELECT OrderDate,\n       SUM(Total)    AS Revenue,\n       COUNT_BIG(*)  AS OrderCount   -- required for indexed aggregating views\nFROM Sales.Orders\nGROUP BY OrderDate;\nGO\nCREATE UNIQUE CLUSTERED INDEX CIX_vDailyRevenue ON Sales.vDailyRevenue (OrderDate);"
+    },
+    {
+      "heading": { "en": "Scalar functions" },
+      "body": {
+        "en": "`CREATE FUNCTION dbo.F(@x INT) RETURNS INT AS BEGIN … RETURN @v; END`. Called inline in queries. Historic problem: row-by-row execution and hidden costs; SQL Server 2019+ **scalar UDF inlining** rewrites many of them into the query plan automatically (check `is_inlineable` in sys.sql_modules). Rules: no side effects (no INSERT into real tables), deterministic ones can be indexed via computed columns."
+      },
+      "code": "CREATE FUNCTION dbo.GetAge (@birth DATE)\nRETURNS INT\nAS\nBEGIN\n    RETURN DATEDIFF(YEAR, @birth, GETDATE())\n         - CASE WHEN DATEADD(YEAR, DATEDIFF(YEAR, @birth, GETDATE()), @birth) > GETDATE()\n                THEN 1 ELSE 0 END;\nEND;"
+    },
+    {
+      "heading": { "en": "Table-valued functions: inline vs multi-statement" },
+      "body": {
+        "en": "- **Inline TVF (iTVF)**: `RETURNS TABLE AS RETURN (SELECT …)` — a single SELECT, expanded into the calling query like a parameterized view. The optimizer sees through it: excellent performance. This is the 'parameterized view' answer.\n- **Multi-statement TVF (mTVF)**: `RETURNS @t TABLE (…)` + BEGIN/END filling @t — flexible but a black box with poor cardinality estimates historically (interleaved execution helps since 2017). Prefer inline whenever a single SELECT can express the logic.\nCall TVFs with `CROSS APPLY` to invoke per outer row."
+      },
+      "code": "-- Inline TVF: the recommended shape\nCREATE FUNCTION Sales.GetCustomerOrders (@customerId INT)\nRETURNS TABLE\nAS RETURN\n(\n    SELECT OrderId, OrderDate, Total\n    FROM Sales.Orders\n    WHERE CustomerId = @customerId\n);\nGO\nSELECT c.Name, o.*\nFROM Sales.Customers AS c\nCROSS APPLY Sales.GetCustomerOrders(c.CustomerId) AS o;"
+    },
+    {
+      "heading": { "en": "Choosing between them" },
+      "body": {
+        "en": "- Reusable query, no parameters → **view**.\n- Reusable query **with** parameters → **inline TVF**.\n- Expensive aggregate read constantly, writes tolerable → **indexed view**.\n- One computed value per row → **scalar function** (watch performance) or a computed column.\n- Multi-step rowset building that one SELECT can't express → **mTVF** (last resort).\n- Security slicing of a table → view (+ grant on view only) or RLS (Domain 2)."
+      }
+    }
+  ],
+  "examTips": [
+    { "en": "Inline TVF = parameterized view = optimizer-friendly. mTVF = black box. This contrast is a recurring question." },
+    { "en": "Indexed view requires SCHEMABINDING + unique clustered index; aggregating ones need COUNT_BIG(*)." },
+    { "en": "WITH CHECK OPTION blocks updates that would move rows out of the view's filter." },
+    { "en": "Views have no parameters and no guaranteed order; ORDER BY belongs to the outer query." },
+    { "en": "Scalar UDF inlining (2019+) fixes many slow scalar UDFs automatically — but not all (check is_inlineable)." },
+    { "en": "SCHEMABINDING prevents dropping/altering referenced columns — and binds views referencing EXTERNAL MODELs too." }
+  ],
+  "sources": [
+    "https://learn.microsoft.com/en-us/sql/relational-databases/views/views",
+    "https://learn.microsoft.com/en-us/sql/relational-databases/views/create-indexed-views",
+    "https://learn.microsoft.com/en-us/sql/relational-databases/user-defined-functions/create-user-defined-functions-database-engine",
+    "https://learn.microsoft.com/en-us/sql/relational-databases/user-defined-functions/scalar-udf-inlining"
+  ]
+}

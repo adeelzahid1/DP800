@@ -1,0 +1,61 @@
+{
+  "subtopic": "d2-performance-issues",
+  "title": { "en": "Resolving performance issues (blocking, deadlocks, indexing)" },
+  "prerequisiteRecap": [
+    {
+      "heading": { "en": "Blocking vs deadlock" },
+      "body": {
+        "en": "**Blocking**: session A holds a lock that session B needs, so B waits — until A commits/rolls back or B times out. It resolves on its own (eventually). **Deadlock**: A waits for B while B waits for A — a cycle that can never resolve. SQL Server's deadlock monitor detects the cycle, picks a **victim** (usually the cheapest to roll back), rolls it back and raises **error 1205** to that session. Blocking is a duration problem; deadlocks are a design/ordering problem."
+      }
+    }
+  ],
+  "sections": [
+    {
+      "heading": { "en": "Diagnosing blocking" },
+      "body": {
+        "en": "- `sys.dm_exec_requests` → rows with `blocking_session_id <> 0`; follow the chain to the **head blocker** (a session that blocks others but isn't blocked itself).\n- `sys.dm_tran_locks` → which resources are locked and in which mode.\n- Common head blockers: long transactions, open transactions left by apps (status 'sleeping' with open_transaction_count > 0), large updates escalating to table locks, missing indexes causing scans that lock many rows.\n- In Azure SQL, the **blocked process report** (Extended Events) and Database watcher help capture blocking history.\nFixes: shorten transactions (no user interaction inside a transaction), index to reduce rows touched, RCSI for reader/writer blocking, batch large modifications, optimized locking."
+      },
+      "code": "-- Head blockers\nSELECT s.session_id, s.status, s.open_transaction_count, s.program_name,\n       t.text AS last_sql\nFROM sys.dm_exec_sessions AS s\nCROSS APPLY sys.dm_exec_sql_text(\n    (SELECT TOP (1) most_recent_sql_handle FROM sys.dm_exec_connections c WHERE c.session_id = s.session_id)) AS t\nWHERE s.session_id IN (SELECT blocking_session_id FROM sys.dm_exec_requests WHERE blocking_session_id <> 0)\n  AND s.session_id NOT IN (SELECT session_id FROM sys.dm_exec_requests WHERE blocking_session_id <> 0);"
+    },
+    {
+      "heading": { "en": "Diagnosing and preventing deadlocks" },
+      "body": {
+        "en": "Capture: the built-in **system_health** Extended Events session records `xml_deadlock_report` events (SQL Server/MI); in Azure SQL Database, deadlock graphs are available via an Extended Events session you create or Azure Monitor/diagnostic logs (Deadlocks category). The graph shows the processes, resources and the victim.\nPrevention patterns:\n- **Access objects in a consistent order** across transactions (e.g. always Orders then OrderLines).\n- Keep transactions **short**; avoid user interaction mid-transaction.\n- **Index** so statements touch fewer rows/pages (scans increase overlap).\n- Use **RCSI/SNAPSHOT** to remove reader-writer deadlocks.\n- Use **UPDLOCK** on read-then-update patterns to avoid conversion deadlocks.\n- `SET DEADLOCK_PRIORITY LOW` for background jobs so they're chosen as victims.\n- Always implement **retry logic** for error 1205 in the application (deadlocks can't be eliminated entirely)."
+      },
+      "code": "-- Retry pattern for deadlock victims\nDECLARE @retry INT = 3;\nWHILE @retry > 0\nBEGIN\n    BEGIN TRY\n        BEGIN TRAN;\n        UPDATE dbo.Accounts SET Balance -= 100 WHERE Id = 1;\n        UPDATE dbo.Accounts SET Balance += 100 WHERE Id = 2;\n        COMMIT;\n        BREAK;\n    END TRY\n    BEGIN CATCH\n        IF XACT_STATE() <> 0 ROLLBACK;\n        IF ERROR_NUMBER() = 1205 AND @retry > 1\n            BEGIN SET @retry -= 1; WAITFOR DELAY '00:00:00.200'; END\n        ELSE THROW;\n    END CATCH;\nEND;"
+    },
+    {
+      "heading": { "en": "Indexing strategy" },
+      "body": {
+        "en": "A good indexing strategy balances reads and writes:\n- Clustered index: narrow, unique, ever-increasing (or matching the dominant range access).\n- Nonclustered: support frequent WHERE/JOIN/ORDER BY patterns; equality columns first, then range; INCLUDE output columns to cover hot queries.\n- Filtered indexes for hot slices; columnstore for analytics; nonclustered columnstore for operational analytics.\n- Consolidate overlapping indexes; drop unused ones (`sys.dm_db_index_usage_stats` with zero seeks/scans/lookups but many updates).\n- Use missing-index DMVs and Database Engine Tuning Advisor / automatic tuning as INPUT, not as orders.\n- Maintain statistics (auto update, plus manual FULLSCAN for skewed critical tables). Index maintenance (REORGANIZE/REBUILD) matters less on SSD than statistics, but page density still affects scans.\n- Foreign key columns need indexes (joins + parent deletes)."
+      }
+    },
+    {
+      "heading": { "en": "Query rewrites that fix 'index not used'" },
+      "body": {
+        "en": "- Make predicates **SARGable**: no functions on indexed columns (`WHERE YEAR(d) = 2026` → range), no leading wildcards (`LIKE '%x'`), matching data types (avoid CONVERT_IMPLICIT).\n- Avoid `OR` across different columns in one predicate when it forces scans — consider UNION ALL of two seeks.\n- Replace correlated scalar UDF calls on large sets (or rely on UDF inlining).\n- Use `EXISTS` instead of `COUNT(*) > 0`; avoid `SELECT *` so covering indexes can cover.\n- For catch-all optional parameters (`@p IS NULL OR col = @p`), use OPTION (RECOMPILE) or dynamic SQL with sp_executesql."
+      }
+    },
+    {
+      "heading": { "en": "Resource bottlenecks in Azure SQL" },
+      "body": {
+        "en": "If queries are efficient but the database hits its limits (`sys.dm_db_resource_stats` near 100% CPU / data IO / log write), options are: tune the top consumers first (Query Store), then scale up (more vCores), move to a different tier (Business Critical for IO latency, Hyperscale for log throughput and size), use read scale-out for reporting, or use elastic pools. Log-write saturation often indicates many tiny transactions — batch commits."
+      }
+    }
+  ],
+  "examTips": [
+    { "en": "Deadlock victim gets error 1205; apps must retry. Deadlock graphs: system_health XE (SQL Server) or XE/diagnostic logs (Azure SQL DB)." },
+    { "en": "Consistent object access order + short transactions + good indexes prevent most deadlocks." },
+    { "en": "Head blocker = blocks others, not blocked itself. Sleeping session with open_transaction_count > 0 = app left a transaction open." },
+    { "en": "RCSI removes reader/writer blocking and deadlocks, not writer/writer conflicts." },
+    { "en": "SARGable rewrites: ranges instead of functions on columns, no leading %, matching data types." },
+    { "en": "Unused index (0 reads, many writes) → drop candidate; missing-index DMVs are hints to consolidate, not to apply blindly." },
+    { "en": "Efficient queries but resource % at 100 → scale or change tier; inefficient queries → tune first." }
+  ],
+  "sources": [
+    "https://learn.microsoft.com/en-us/troubleshoot/sql/database-engine/performance/understand-resolve-blocking",
+    "https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-deadlocks-guide",
+    "https://learn.microsoft.com/en-us/azure/azure-sql/database/analyze-prevent-deadlocks",
+    "https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-index-design-guide"
+  ]
+}

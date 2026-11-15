@@ -1,0 +1,61 @@
+{
+  "subtopic": "d1-regex-fuzzy",
+  "title": { "en": "Regular expressions & fuzzy matching" },
+  "prerequisiteRecap": [
+    {
+      "heading": { "en": "Regex in 90 seconds" },
+      "body": {
+        "en": "A regular expression is a pattern language: `^` start, `$` end, `.` any character, `*` 0+, `+` 1+, `?` optional, `{n,m}` repetition, `[A-Z]` character class, `\\d` digit, `\\w` word character, `( )` groups, `|` alternation. `^A.*Y$` = starts with A, ends with Y. SQL Server 2025 finally brings real regex functions to T-SQL — far beyond LIKE's `%` and `_`."
+      }
+    }
+  ],
+  "sections": [
+    {
+      "heading": { "en": "The REGEXP function family (SQL Server 2025)" },
+      "body": {
+        "en": "Scalar functions:\n- `REGEXP_LIKE(string, pattern [, flags])` → boolean: does the pattern match? Usable in WHERE and CHECK constraints.\n- `REGEXP_REPLACE(string, pattern, replacement [, start, occurrence, flags])` → substitutes matches (supports group references like \\1).\n- `REGEXP_SUBSTR(string, pattern [, start, occurrence, flags, group])` → extracts the matching substring.\n- `REGEXP_INSTR(string, pattern [, …])` → position of the match.\n- `REGEXP_COUNT(string, pattern [, …])` → number of matches.\nTable-valued functions:\n- `REGEXP_MATCHES(string, pattern)` → one row per match with substrings and positions.\n- `REGEXP_SPLIT_TO_TABLE(string, pattern)` → splits a string into rows by a regex delimiter.\nFlags: `i` (case-insensitive), `m` (multiline ^ $), `s` (dot matches newline), `c` (case-sensitive, the default). Contradictory flags: the last one wins."
+      },
+      "code": "-- Validate emails\nSELECT * FROM dbo.Users\nWHERE REGEXP_LIKE(Email, '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$');\n\n-- Mask digits\nSELECT REGEXP_REPLACE(Phone, '\\d', '*') AS Masked FROM dbo.Users;\n\n-- Extract the domain (group 2 would need grouping; here occurrence/flags defaults)\nSELECT REGEXP_SUBSTR(Email, '@(.+)$', 1, 1, 'c', 1) AS Domain FROM dbo.Users;\n\n-- Split tags into rows\nSELECT value FROM REGEXP_SPLIT_TO_TABLE('sql,ai;vector data', '[,;\\s]+');"
+    },
+    {
+      "heading": { "en": "Availability and compatibility rules" },
+      "body": {
+        "en": "Regex functions exist in SQL Server 2025, Azure SQL Database, Azure SQL Managed Instance (SQL Server 2025 or Always-up-to-date policy) and SQL database in Fabric — NOT in SQL Server 2022 or earlier. Special rule: **REGEXP_LIKE requires database compatibility level 170**; the other regex scalar functions work at all compatibility levels. REGEXP_* functions support LOB inputs (varchar(max)/nvarchar(max)) up to 2 MB; patterns max 8,000 bytes. Regex functions do **not** honor collations — matching is ordinal, so language-specific case rules (Turkish i/İ) behave differently than LIKE."
+      }
+    },
+    {
+      "heading": { "en": "Performance: SARGability of REGEXP_LIKE" },
+      "body": {
+        "en": "REGEXP_LIKE can use an index seek ONLY when the pattern is anchored at the start with `^` (optionally with quantifiers/ranges after a literal prefix): `^ab+`, `^abc[0-9]`. Unanchored patterns scan. Cardinality estimation for regex predicates is hard — SQL Server offers `ASSUME_FIXED_MIN_SELECTIVITY_FOR_REGEXP` / `..MAX..` query hints, and CE feedback can apply them automatically (disable with TF 16268)."
+      }
+    },
+    {
+      "heading": { "en": "Fuzzy matching functions (SQL Server 2025)" },
+      "body": {
+        "en": "Fuzzy string functions measure how SIMILAR two strings are — for dedup, matching misspelled names, 'did you mean':\n- `EDIT_DISTANCE(s1, s2)` → Levenshtein distance: the number of single-character inserts/deletes/substitutions to turn s1 into s2. 0 = identical; lower = more similar.\n- `EDIT_DISTANCE_SIMILARITY(s1, s2)` → normalized 0–100 score (100 = identical).\n- `JARO_WINKLER_DISTANCE(s1, s2)` → 0 (identical) to 1 (nothing alike); gives extra weight to common prefixes — good for names.\n- `JARO_WINKLER_SIMILARITY(s1, s2)` → 1 - distance: 1 = identical.\nChoosing: edit distance counts raw edits (great for typos/codes); Jaro-Winkler emphasizes prefix agreement (great for personal names). The older SOUNDEX/DIFFERENCE functions match by English pronunciation — cruder but index-friendly via persisted columns."
+      },
+      "code": "-- Find customers whose name is nearly 'Jhon Smith'\nSELECT Name,\n       EDIT_DISTANCE(Name, 'Jhon Smith')            AS Edits,\n       EDIT_DISTANCE_SIMILARITY(Name, 'Jhon Smith') AS Score,\n       JARO_WINKLER_SIMILARITY(Name, 'Jhon Smith')  AS JW\nFROM dbo.Customers\nWHERE EDIT_DISTANCE(Name, 'Jhon Smith') <= 3\nORDER BY Edits;"
+    },
+    {
+      "heading": { "en": "LIKE vs regex vs fuzzy vs full-text: choosing" },
+      "body": {
+        "en": "- Simple wildcard ('starts with ABC') → **LIKE** (fast, SARGable with leading literal).\n- Structural pattern validation (emails, phone formats, codes) → **REGEXP_LIKE** (also in CHECK constraints).\n- Extract/replace/split by pattern → **REGEXP_SUBSTR / REPLACE / SPLIT_TO_TABLE**.\n- Approximate equality of two strings (typos, dedup) → **EDIT_DISTANCE / JARO_WINKLER**.\n- Linguistic word search over documents (stemming, ranking) → **full-text search** (Domain 3).\n- Meaning-based search → **vector search** (Domain 3).\nThe exam's 'which function' items hinge on these boundaries."
+      }
+    }
+  ],
+  "examTips": [
+    { "en": "REGEXP_LIKE needs compat level 170; the other REGEXP_* functions work at any level. None exist before SQL Server 2025." },
+    { "en": "Flags: i, m, s, c (default c). Conflicting flags → last one wins. 'ic' = case-sensitive!" },
+    { "en": "SARGable regex = pattern anchored with ^ (plus literal prefix). Unanchored → scan." },
+    { "en": "EDIT_DISTANCE: 0 = identical, bigger = more different. JARO_WINKLER_DISTANCE: 0 = identical, 1 = different. SIMILARITY variants invert the scale (higher = more similar)." },
+    { "en": "Jaro-Winkler favors shared prefixes → names; edit distance counts edits → typos/codes." },
+    { "en": "REGEXP_SPLIT_TO_TABLE and REGEXP_MATCHES are table-valued — use in FROM/CROSS APPLY." },
+    { "en": "Regex ignores collation; LIKE honors it — explains behavior differences on language-specific data." }
+  ],
+  "sources": [
+    "https://learn.microsoft.com/en-us/sql/t-sql/functions/regexp-like-transact-sql",
+    "https://learn.microsoft.com/en-us/sql/relational-databases/regular-expressions/overview",
+    "https://learn.microsoft.com/en-us/sql/t-sql/functions/edit-distance-transact-sql",
+    "https://learn.microsoft.com/en-us/sql/t-sql/functions/jaro-winkler-distance-transact-sql"
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "subtopic": "d3-search-strategy",
+  "title": { "en": "Search strategy & full-text search" },
+  "prerequisiteRecap": [
+    {
+      "heading": { "en": "Keywords vs meaning" },
+      "body": {
+        "en": "**Lexical (keyword) search** matches the words a user typed, with language rules such as plurals and verb forms. **Semantic (vector) search** matches meaning: it embeds the query and finds stored embeddings that are close, even when no words overlap (\"lightweight hiking backpack\" ↔ \"ultralight trail bag\"). `LIKE '%term%'` is neither: it matches characters, ignores language rules, can't rank by relevance and can't seek an index with a leading wildcard."
+      }
+    }
+  ],
+  "sections": [
+    {
+      "heading": { "en": "Choosing full-text, vector or hybrid search" },
+      "body": {
+        "en": "- **Full-text search** — users know the words: product names, part/model numbers, error messages, exact technical terms, phrases. Precise, fast (inverted index), needs a **full-text index**. Misses paraphrases and synonyms unless you configure a thesaurus.\n- **Semantic vector search** — users describe a need (\"something to keep drinks cold on a hike\"), paraphrase, or search across languages. Higher recall/discovery, needs **embeddings** (an embedding model and vector column), and may return related items that lack an important exact term.\n- **Hybrid search** — you can't predict how users search, or both signals matter (\"XR-500 portable cooler\"). Runs both and merges ranked lists (typically with **Reciprocal Rank Fusion**); best relevance, but costs both searches.\nTrade-offs: **precision vs recall** (full-text returns fewer, closer matches; vector returns more conceptually related results), **data preparation** (index vs embeddings) and **performance** (hybrid is slower than either alone)."
+      }
+    },
+    {
+      "heading": { "en": "Creating a full-text index" },
+      "body": {
+        "en": "1. A **full-text catalog** (logical container): `CREATE FULLTEXT CATALOG ftCatalog AS DEFAULT;`\n2. A **unique, single-column, non-nullable index** on the table to serve as the `KEY INDEX` (usually the primary key).\n3. `CREATE FULLTEXT INDEX ON table (columns LANGUAGE lcid) KEY INDEX pk ON catalog WITH CHANGE_TRACKING AUTO, STOPLIST = SYSTEM;` — **one full-text index per table**, covering one or more character columns. `LANGUAGE` picks the word breaker and stemmer (1033 English, 1031 German…). `CHANGE_TRACKING AUTO` (default) updates the index asynchronously as rows change; `MANUAL` needs `ALTER FULLTEXT INDEX … START UPDATE POPULATION`; `OFF` means full repopulation.\nThe index tokenizes text, drops **stopwords** (\"the\", \"is\"…, customizable with stoplists) and builds an inverted index from words to rows. Full-text search is available in SQL Server, Azure SQL Database and Azure SQL Managed Instance."
+      },
+      "code": "CREATE FULLTEXT CATALOG ftCatalog AS DEFAULT;\n\nCREATE FULLTEXT INDEX ON dbo.Products (Name LANGUAGE 1033, Description LANGUAGE 1033)\n    KEY INDEX PK_Products\n    ON ftCatalog\n    WITH CHANGE_TRACKING AUTO, STOPLIST = SYSTEM;"
+    },
+    {
+      "heading": { "en": "Querying: predicates and rowset functions" },
+      "body": {
+        "en": "- `CONTAINS(col, 'condition')` — precise control: words, phrases, prefixes, inflections, proximity, Boolean logic.\n- `FREETEXT(col, 'text')` — looser: breaks the text into words and matches inflectional forms and thesaurus expansions automatically.\n- `CONTAINSTABLE` / `FREETEXTTABLE` — return a table with **`[KEY]`** (the key index value) and **`RANK`** (0–1000 relevance, comparable only within that query); join `[KEY]` to the table and `ORDER BY RANK DESC`. An optional `top_n_by_rank` argument limits rows.\nPatterns inside CONTAINS:\n- term: `'aluminum'`; phrase: `'\"mountain bike\"'`\n- prefix: `'\"light*\"'` (the double quotes are required for the wildcard)\n- inflectional: `'FORMSOF(INFLECTIONAL, ride)'`; thesaurus: `'FORMSOF(THESAURUS, bike)'`\n- proximity: `'NEAR((light, aluminum))'`\n- Boolean: `'\"bike\" AND NOT \"electric\"'`; weighted: `ISABOUT(term WEIGHT(0.8), …)` in CONTAINSTABLE.\nFull-text predicates combine with ordinary filters (`AND ListPrice < 500`)."
+      },
+      "code": "SELECT p.ProductID, p.Name, ft.[RANK]\nFROM dbo.Products AS p\nJOIN CONTAINSTABLE(dbo.Products, (Name, Description),\n                   'NEAR((waterproof, jacket)) OR FORMSOF(INFLECTIONAL, hike)', 50) AS ft\n  ON p.ProductID = ft.[KEY]\nWHERE p.ListPrice < 200\nORDER BY ft.[RANK] DESC;"
+    },
+    {
+      "heading": { "en": "Evaluating full-text results" },
+      "body": {
+        "en": "- **Precision problems** (irrelevant hits): use phrases, proximity or more specific terms.\n- **Noise** from domain words that appear everywhere: custom stoplists.\n- **Synonyms/abbreviations** (\"MTB\" vs \"mountain bike\"): thesaurus configuration — or vector search.\n- **Query-intent mismatch** (\"something for rainy commutes\" should find waterproof gear): full-text matches words, not meaning → move to vector or hybrid search."
+      }
+    }
+  ],
+  "examTips": [
+    { "en": "Exact words, codes, phrases → full-text; described needs, paraphrases, other languages → vector; unpredictable/mixed → hybrid (RRF)." },
+    { "en": "Full-text index: one per table, KEY INDEX = unique single-column non-nullable index, LANGUAGE per column, CHANGE_TRACKING AUTO (async)." },
+    { "en": "CONTAINS = precise conditions; FREETEXT = looser, inflections automatically; *TABLE variants return [KEY] and RANK (0–1000)." },
+    { "en": "Prefix wildcard needs double quotes: '\"light*\"'. Inflectional: FORMSOF(INFLECTIONAL, ride). Proximity: NEAR((a, b))." },
+    { "en": "LIKE '%x%' has no linguistic matching or relevance ranking and can't seek with a leading wildcard." },
+    { "en": "Hybrid search costs both searches but improves relevance when query styles vary." }
+  ],
+  "sources": [
+    "https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/02-choose-intelligent-search-approach",
+    "https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/03-implement-full-text-search",
+    "https://learn.microsoft.com/en-us/sql/relational-databases/search/full-text-search",
+    "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-fulltext-index-transact-sql",
+    "https://learn.microsoft.com/en-us/sql/t-sql/queries/contains-transact-sql",
+    "https://learn.microsoft.com/en-us/sql/relational-databases/system-functions/containstable-transact-sql"
+  ]
+}

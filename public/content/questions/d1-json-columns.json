@@ -1,0 +1,868 @@
+{
+  "subtopic": "d1-json-columns",
+  "questions": [
+    {
+      "id": "d1-json-col-0001",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-json-columns",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which platforms support the native json data type (not just JSON stored in nvarchar)?" },
+      "options": [
+        { "id": "a", "text": { "en": "SQL Server 2025, Azure SQL Database, Azure SQL Managed Instance and SQL database in Fabric" } },
+        { "id": "b", "text": { "en": "Only SQL database in Fabric" } },
+        { "id": "c", "text": { "en": "SQL Server 2016 and later" } },
+        { "id": "d", "text": { "en": "Only Azure Synapse" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The native json type ships in SQL Server 2025 and the Azure SQL family including Fabric SQL database. SQL Server 2016 (c) introduced JSON *functions* over nvarchar storage, not the type. Options (b) and (d) are too narrow/wrong." },
+      "example": { "en": "CREATE TABLE T (Doc JSON NOT NULL); -- fails on SQL Server 2022, works on 2025" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/data-types/json-data-type"]
+    },
+    {
+      "id": "d1-json-col-0002",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-json-columns",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "What is the main storage advantage of the native json type over nvarchar(max) for JSON documents?" },
+      "options": [
+        { "id": "a", "text": { "en": "Documents are kept in an optimized binary format, parsed once at write time" } },
+        { "id": "b", "text": { "en": "Documents are automatically compressed with GZIP" } },
+        { "id": "c", "text": { "en": "Documents are stored outside the database in blob storage" } },
+        { "id": "d", "text": { "en": "There is no difference; json is an alias for nvarchar(max)" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The json type parses text once and stores an internal binary representation, so later reads navigate the structure without re-parsing, and storage is typically smaller. It is not GZIP compression (b), stays inside the database (c), and is a genuine distinct type, not an alias (d)." },
+      "example": { "en": "Extracting $.customer.name from a json column skips the text parsing that an nvarchar column would need on every query." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/data-types/json-data-type"]
+    },
+    {
+      "id": "d1-json-col-0003",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-json-columns",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "You must support SQL Server 2022 as well as Azure SQL. How should a JSON document column be declared so it works on both, with validity enforced?" },
+      "options": [
+        { "id": "a", "text": { "en": "NVARCHAR(MAX) with CHECK (ISJSON(Doc) = 1)" } },
+        { "id": "b", "text": { "en": "JSON NOT NULL" } },
+        { "id": "c", "text": { "en": "VARBINARY(MAX)" } },
+        { "id": "d", "text": { "en": "XML" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "SQL Server 2022 lacks the native json type, so portable designs use nvarchar(max) plus an ISJSON check. JSON NOT NULL (b) fails to parse on 2022. VARBINARY (c) would store opaque bytes with no JSON functions. XML (d) is a different document model entirely." },
+      "example": { "en": "Doc NVARCHAR(MAX) NOT NULL CONSTRAINT CK_Doc_IsJson CHECK (ISJSON(Doc) = 1)" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/json/json-data-sql-server"]
+    },
+    {
+      "id": "d1-json-col-0004",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-json-columns",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What does CREATE JSON INDEX provide in SQL Server 2025?" },
+      "options": [
+        { "id": "a", "text": { "en": "An index over keys/values inside a json column so path-based predicates can seek (preview feature)" } },
+        { "id": "b", "text": { "en": "A full-text index over the document text" } },
+        { "id": "c", "text": { "en": "Automatic creation of computed columns for every path" } },
+        { "id": "d", "text": { "en": "A columnstore projection of the JSON" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The JSON index (preview; requires PREVIEW_FEATURES = ON) indexes the internal structure of json documents, accelerating JSON path predicates, optionally restricted to listed paths with FOR ('$.path'). It is not full-text search (b), creates no computed columns (c), and is unrelated to columnstore (d)." },
+      "example": { "en": "CREATE JSON INDEX JX ON dbo.Orders(Doc) FOR ('$.customer', '$.status');" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-json-index-transact-sql"]
+    },
+    {
+      "id": "d1-json-col-0005",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-json-columns",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "On SQL Server 2022 (no JSON index available), queries filter WHERE JSON_VALUE(Doc, '$.status') = 'open' on a 100M-row table. What is the established optimization?" },
+      "options": [
+        { "id": "a", "text": { "en": "Add a computed column Status AS JSON_VALUE(Doc, '$.status') and create a B-tree index on it" } },
+        { "id": "b", "text": { "en": "Rewrite the query to use OPENJSON" } },
+        { "id": "c", "text": { "en": "Store the document twice" } },
+        { "id": "d", "text": { "en": "Add a clustered columnstore index" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "An indexed computed column materializes the hot path; the optimizer matches the JSON_VALUE expression in queries to the computed column and seeks. OPENJSON (b) still parses each row. Duplicating documents (c) solves nothing. Columnstore (d) speeds scans but still parses JSON per row for the predicate." },
+      "example": { "en": "ALTER TABLE T ADD Status AS JSON_VALUE(Doc,'$.status'); CREATE INDEX IX_Status ON T(Status);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/json/index-json-data"]
+    },
+    {
+      "id": "d1-json-col-0006",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-json-columns",
+      "type": "multiple", "difficulty": "medium", "selectCount": 2,
+      "text": { "en": "Which two kinds of data belong in a JSON column rather than relational columns? (Select 2)" },
+      "options": [
+        { "id": "a", "text": { "en": "Per-category product attributes that differ wildly between products" } },
+        { "id": "b", "text": { "en": "Event payloads whose schema evolves frequently" } },
+        { "id": "c", "text": { "en": "The foreign key to the Customers table" } },
+        { "id": "d", "text": { "en": "The order total that every report aggregates" } }
+      ],
+      "answer": ["a", "b"],
+      "explanation": { "en": "Sparse, variable, schema-flexible data is JSON's sweet spot (a, b). Keys that join (c) and measures that aggregate constantly (d) belong in typed, constrained, indexed relational columns — referential integrity and SUM() over JSON paths are both awkward and slow." },
+      "example": { "en": "Hybrid modeling: fixed columns for identity/measures + one JSON column for the flexible remainder." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/json/json-data-sql-server"]
+    },
+    {
+      "id": "d1-json-col-0007",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-json-columns",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "For each statement about the native json data type, answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "Inserting the string 'not json' into a json column raises an error." } },
+        { "id": "s2", "text": { "en": "A json column can be implicitly converted to and from nvarchar." } },
+        { "id": "s3", "text": { "en": "A json column can be a PRIMARY KEY." } },
+        { "id": "s4", "text": { "en": "ISJSON() is required as a CHECK constraint on json columns." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "yes", "s3": "no", "s4": "no" },
+      "explanation": { "en": "The type validates on write — malformed documents are rejected (s1) — and converts implicitly with string types (s2). Like other LOB-style types it cannot be a key column (s3). Because validity is inherent, an ISJSON CHECK is unnecessary on a json column (s4) — that constraint belongs to the nvarchar pattern." },
+      "example": { "en": "INSERT INTO T(Doc) VALUES ('{bad'); -- error with json type; silently accepted into plain nvarchar without a CHECK" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/data-types/json-data-type"]
+    },
+    {
+      "id": "d1-json-col-0008",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-json-columns",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which function tests whether a string contains valid JSON?" },
+      "options": [
+        { "id": "a", "text": { "en": "ISJSON" } },
+        { "id": "b", "text": { "en": "JSON_VALID" } },
+        { "id": "c", "text": { "en": "TRY_PARSE_JSON" } },
+        { "id": "d", "text": { "en": "CHECK_JSON" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "ISJSON(expr) returns 1/0 (and ISJSON(expr, VALUE|ARRAY|OBJECT|SCALAR) checks the top-level kind). JSON_VALID is MySQL, TRY_PARSE_JSON is Snowflake-style, CHECK_JSON doesn't exist." },
+      "example": { "en": "SELECT * FROM Raw WHERE ISJSON(Payload, OBJECT) = 1;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/isjson-transact-sql"]
+    },
+    {
+      "id": "d1-json-col-0009",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-json-columns",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Complete the pattern that makes a JSON path searchable with a B-tree index on any SQL Server version." },
+      "code": "ALTER TABLE dbo.Orders\n    ADD Status AS [BLANK1](Doc, '$.status');\nGO\nCREATE NONCLUSTERED INDEX IX_Orders_Status\n    ON dbo.Orders ( [BLANK2] );",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "JSON_VALUE" } },
+            { "id": "c2", "text": { "en": "JSON_QUERY" } },
+            { "id": "c3", "text": { "en": "OPENJSON" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "Status" } },
+            { "id": "c2", "text": { "en": "Doc" } },
+            { "id": "c3", "text": { "en": "JSON_VALUE(Doc, '$.status')" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "JSON_VALUE extracts the scalar for the computed column; the index then targets the computed column by name. JSON_QUERY returns objects/arrays (not a scalar to index) and OPENJSON is a table-valued function that can't define a computed column. Indexing the whole Doc column or an inline expression is not valid B-tree syntax." },
+      "example": { "en": "Queries using WHERE JSON_VALUE(Doc,'$.status') = 'open' automatically match the computed column's index." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/json/index-json-data"]
+    },
+    {
+      "id": "d1-json-col-0010",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-json-columns",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What prerequisite must be met to create a JSON index on SQL Server 2025?" },
+      "options": [
+        { "id": "a", "text": { "en": "The PREVIEW_FEATURES database scoped configuration must be ON" } },
+        { "id": "b", "text": { "en": "The database must be in compatibility level 150" } },
+        { "id": "c", "text": { "en": "The column must be nvarchar(max)" } },
+        { "id": "d", "text": { "en": "The table must be memory-optimized" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "JSON indexes are a SQL Server 2025 preview feature gated behind ALTER DATABASE SCOPED CONFIGURATION SET PREVIEW_FEATURES = ON. Compatibility level 150 (b) is SQL 2019-era and wrong in direction. The index targets json-type columns (c), and memory-optimized tables (d) are unrelated." },
+      "example": { "en": "ALTER DATABASE SCOPED CONFIGURATION SET PREVIEW_FEATURES = ON; CREATE JSON INDEX JX ON dbo.Orders(Doc);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-json-index-transact-sql"]
+    },
+    {
+      "id": "d1-json-col-0011",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-json-columns",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A product table stores electronics specs like {\"ram\":\"16GB\",\"cpu\":\"i7\"} and clothing specs like {\"size\":\"M\",\"fabric\":\"cotton\"}. Which design is recommended?" },
+      "options": [
+        { "id": "a", "text": { "en": "Fixed columns (id, name, price, category) plus one JSON column for category-specific attributes" } },
+        { "id": "b", "text": { "en": "One wide table with nullable columns for every possible attribute" } },
+        { "id": "c", "text": { "en": "A separate table per category" } },
+        { "id": "d", "text": { "en": "Everything, including price, in a single JSON document" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The hybrid pattern keeps queried/constrained fields relational while absorbing per-category variance into JSON. A mega-wide nullable table (b) decays with every new attribute. Table-per-category (c) multiplies maintenance and complicates cross-category queries. All-JSON (d) sacrifices typing, constraints and fast filtering on core fields like price." },
+      "example": { "en": "WHERE Category = 'electronics' AND JSON_VALUE(Specs,'$.ram') = '16GB'" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/json/json-data-sql-server"]
+    },
+    {
+      "id": "d1-json-col-0012",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-json-columns",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which function updates a single property inside a JSON document and returns the modified document?" },
+      "options": [
+        { "id": "a", "text": { "en": "JSON_MODIFY" } },
+        { "id": "b", "text": { "en": "JSON_SET" } },
+        { "id": "c", "text": { "en": "JSON_UPDATE" } },
+        { "id": "d", "text": { "en": "MODIFY_JSON" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "JSON_MODIFY(doc, path, value) is the T-SQL function (JSON_SET is MySQL; the others don't exist). Remember it returns a new document — you assign it back in an UPDATE." },
+      "example": { "en": "UPDATE T SET Doc = JSON_MODIFY(Doc, '$.status', 'done') WHERE Id = 1;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/json-modify-transact-sql"]
+    },
+    {
+      "id": "d1-json-col-0013",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-json-columns",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "JSON_MODIFY(Doc, '$.tags', '[\"a\",\"b\"]') stores the array as a plain string instead of an array. How do you store it as a real JSON array?" },
+      "options": [
+        { "id": "a", "text": { "en": "Wrap the value in JSON_QUERY: JSON_MODIFY(Doc, '$.tags', JSON_QUERY('[\"a\",\"b\"]'))" } },
+        { "id": "b", "text": { "en": "Use strict mode in the path" } },
+        { "id": "c", "text": { "en": "Cast the value to nvarchar(max)" } },
+        { "id": "d", "text": { "en": "It is impossible to store arrays with JSON_MODIFY" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "String values are escaped and quoted by default; JSON_QUERY (with no path) marks the value as JSON so it is inserted verbatim as an array/object. Strict mode (b) affects path resolution, not value typing. Casting to nvarchar (c) is exactly what causes the quoting. Arrays are fully supported with the JSON_QUERY trick (d)." },
+      "example": { "en": "Same trick embeds objects: JSON_MODIFY(Doc, '$.address', JSON_QUERY(@addressJson))." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/json-modify-transact-sql"]
+    },
+    {
+      "id": "d1-json-col-0014",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-json-columns",
+      "type": "dragdrop-match", "difficulty": "medium",
+      "text": { "en": "Match each requirement to the right JSON storage/indexing choice." },
+      "items": [
+        { "id": "i1", "text": { "en": "New app on Azure SQL; documents validated by the engine" } },
+        { "id": "i2", "text": { "en": "Must also run on SQL Server 2019" } },
+        { "id": "i3", "text": { "en": "Accelerate many different path predicates on SQL Server 2025" } },
+        { "id": "i4", "text": { "en": "Accelerate one hot path on SQL Server 2017" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "Native json column" } },
+        { "id": "t2", "text": { "en": "nvarchar(max) + ISJSON CHECK" } },
+        { "id": "t3", "text": { "en": "JSON index (preview)" } },
+        { "id": "t4", "text": { "en": "Indexed computed column over JSON_VALUE" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "Modern Azure SQL → native json type. Backwards compatibility → nvarchar + ISJSON. Many ad-hoc path predicates on 2025 → JSON index. One known path on an old version → the computed-column pattern." },
+      "example": { "en": "Platform + query pattern together determine the answer — the exam gives both signals." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/json/index-json-data"]
+    },
+    {
+      "id": "d1-json-col-0015",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-json-columns",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "ISJSON(@s, ARRAY) returns 1 for which input?" },
+      "options": [
+        { "id": "a", "text": { "en": "'[1,2,3]'" } },
+        { "id": "b", "text": { "en": "'{\"a\":[1,2,3]}'" } },
+        { "id": "c", "text": { "en": "'\"array\"'" } },
+        { "id": "d", "text": { "en": "'1,2,3'" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The ARRAY kind requires the top-level value itself to be an array. An object containing an array (b) is kind OBJECT. A quoted string (c) is SCALAR. '1,2,3' without brackets (d) is not valid JSON at all." },
+      "example": { "en": "ISJSON(x, OBJECT), ISJSON(x, ARRAY), ISJSON(x, SCALAR), ISJSON(x, VALUE) — VALUE accepts any valid JSON." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/isjson-transact-sql"]
+    },
+    {
+      "id": "d1-json-col-0016",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-json-columns",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Why does WHERE JSON_VALUE(Doc, '$.qty') > 10 risk wrong results without an explicit CAST?" },
+      "options": [
+        { "id": "a", "text": { "en": "JSON_VALUE returns nvarchar, so the comparison may happen as strings unless converted to a numeric type" } },
+        { "id": "b", "text": { "en": "JSON numbers are stored as floats and lose precision" } },
+        { "id": "c", "text": { "en": "JSON_VALUE cannot read numbers" } },
+        { "id": "d", "text": { "en": "The > operator is not allowed on JSON paths" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "JSON_VALUE's return type is nvarchar(4000); comparing to a number forces implicit conversion, which can error on mixed data or bypass indexes. Best practice: CAST(JSON_VALUE(...) AS INT) — or define a typed computed column. (b) misstates storage, (c) and (d) are simply false." },
+      "example": { "en": "WHERE CAST(JSON_VALUE(Doc,'$.qty') AS INT) > 10 — or use OPENJSON WITH (qty INT '$.qty')." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/json-value-transact-sql"]
+    },
+    {
+      "id": "d1-json-col-0017",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-json-columns",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "For each statement about JSON indexes (SQL Server 2025 preview), answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "A JSON index can be limited to specific paths with a FOR clause." } },
+        { "id": "s2", "text": { "en": "A JSON index requires the column to use the native json type." } },
+        { "id": "s3", "text": { "en": "JSON indexes replace the need for full-text indexes on all text." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "yes", "s3": "no" },
+      "explanation": { "en": "CREATE JSON INDEX … FOR ('$.a', '$.b') restricts indexing to hot paths, and the statement targets json-typed columns. JSON indexes accelerate path/value predicates inside documents — they are not a linguistic full-text search over arbitrary text, so full-text indexes keep their separate role." },
+      "example": { "en": "CREATE JSON INDEX JX ON dbo.Orders(Doc) FOR ('$.customer.city');" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-json-index-transact-sql"]
+    },
+    {
+      "id": "d1-json-col-0018",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-json-columns",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which statement deletes the property $.obsolete from a JSON document?" },
+      "options": [
+        { "id": "a", "text": { "en": "SET Doc = JSON_MODIFY(Doc, '$.obsolete', NULL)" } },
+        { "id": "b", "text": { "en": "SET Doc = JSON_MODIFY(Doc, 'strict $.obsolete', NULL)" } },
+        { "id": "c", "text": { "en": "SET Doc = JSON_REMOVE(Doc, '$.obsolete')" } },
+        { "id": "d", "text": { "en": "DELETE Doc.obsolete" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "In lax mode (the default), setting a property to NULL removes it. In strict mode (b), NULL is stored as an explicit JSON null instead of deleting. JSON_REMOVE (c) is MySQL. (d) is not T-SQL." },
+      "example": { "en": "Lax deletes, strict preserves: a subtle pair the exam likes to contrast." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/json-modify-transact-sql"]
+    },
+    {
+      "id": "d1-json-col-0019",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-json-columns",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A JSON column stores an items array per order. Reports need total quantity per SKU across all orders. Which approach is correct and set-based?" },
+      "options": [
+        { "id": "a", "text": { "en": "CROSS APPLY OPENJSON(Doc, '$.items') WITH (...) then GROUP BY sku" } },
+        { "id": "b", "text": { "en": "JSON_VALUE(Doc, '$.items[*].qty') with SUM" } },
+        { "id": "c", "text": { "en": "A WHILE loop over orders parsing each document" } },
+        { "id": "d", "text": { "en": "JSON_QUERY with GROUP BY" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "OPENJSON shreds each array into rows that standard GROUP BY aggregates — the set-based pattern. JSON_VALUE takes no wildcard paths (b). Row-by-row loops (c) are the anti-pattern. JSON_QUERY (d) returns the array as one JSON fragment, nothing groupable." },
+      "example": { "en": "SELECT i.sku, SUM(i.qty) FROM Orders o CROSS APPLY OPENJSON(o.Doc,'$.items') WITH (sku VARCHAR(20), qty INT) i GROUP BY i.sku;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/openjson-transact-sql"]
+    },
+    {
+      "id": "d1-json-col-0020",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-json-columns",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Complete the statement enabling the preview feature and creating a path-scoped JSON index." },
+      "code": "ALTER DATABASE SCOPED CONFIGURATION SET [BLANK1] = ON;\nGO\nCREATE JSON INDEX JX_Events\n    ON dbo.Events (Payload)\n    [BLANK2] ('$.deviceId');",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "PREVIEW_FEATURES" } },
+            { "id": "c2", "text": { "en": "JSON_FEATURES" } },
+            { "id": "c3", "text": { "en": "BETA_MODE" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "FOR" } },
+            { "id": "c2", "text": { "en": "WHERE" } },
+            { "id": "c3", "text": { "en": "INCLUDE" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "PREVIEW_FEATURES is the real database scoped configuration gate in SQL Server 2025; FOR introduces the path list on a JSON index. WHERE creates filtered B-tree indexes and INCLUDE adds leaf columns — neither applies to JSON index paths. JSON_FEATURES and BETA_MODE do not exist." },
+      "example": { "en": "The same PREVIEW_FEATURES switch also gates vector indexes and other 2025 preview features." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-json-index-transact-sql"]
+    },
+    {
+      "id": "d1-json-col-0021",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-json-columns",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which conversion involving the json data type is NOT allowed?" },
+      "options": [
+        { "id": "a", "text": { "en": "json to sql_variant" } },
+        { "id": "b", "text": { "en": "json to nvarchar(max)" } },
+        { "id": "c", "text": { "en": "varchar to json" } },
+        { "id": "d", "text": { "en": "json to json" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Like xml and the MAX types, json cannot be stored in or converted to sql_variant. Conversions with the string family are implicit in both directions (b, c), and same-type assignment is trivially fine (d)." },
+      "example": { "en": "DECLARE @v SQL_VARIANT = CAST('{}' AS JSON); -- fails" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/data-types/json-data-type"]
+    },
+    {
+      "id": "d1-json-col-0022",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-json-columns",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "An events table ingests 50,000 JSON documents/minute and dashboards aggregate over the last 30 days of a few extracted fields. Which combined design is strongest?" },
+      "options": [
+        { "id": "a", "text": { "en": "json column for the payload + persisted computed columns for the dashboard fields + columnstore on those columns" } },
+        { "id": "b", "text": { "en": "Parse every document at query time with OPENJSON in the dashboards" } },
+        { "id": "c", "text": { "en": "Store each JSON property in its own table" } },
+        { "id": "d", "text": { "en": "Store the payload as varbinary for speed" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Keep the full document for flexibility, materialize the few analytic fields as typed computed columns, and let columnstore drive the aggregations — each tool where it is strongest. Query-time parsing of billions of documents (b) burns CPU per dashboard view. Property-per-table (c) is an EAV anti-pattern. varbinary (d) loses all JSON querying." },
+      "example": { "en": "ADD DeviceId AS CAST(JSON_VALUE(Payload,'$.deviceId') AS INT) PERSISTED, then include DeviceId in the columnstore." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/json/store-json-documents-in-sql-tables"]
+    },
+    {
+      "id": "d1-json-col-0023",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-json-columns",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "What does JSON_PATH_EXISTS(Doc, '$.customer.vip') return when the property is present?" },
+      "options": [
+        { "id": "a", "text": { "en": "1" } },
+        { "id": "b", "text": { "en": "'true'" } },
+        { "id": "c", "text": { "en": "The property's value" } },
+        { "id": "d", "text": { "en": "NULL" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "JSON_PATH_EXISTS returns 1 when the path exists, 0 when it does not — regardless of the value stored there (even null). It never returns the value itself (that's JSON_VALUE/JSON_QUERY)." },
+      "example": { "en": "WHERE JSON_PATH_EXISTS(Doc, '$.discount') = 1 -- rows that have a discount property at all" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/json-path-exists-transact-sql"]
+    },
+    {
+      "id": "d1-json-col-0024",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-json-columns",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which index CAN be created directly on an nvarchar(max) column holding JSON?" },
+      "options": [
+        { "id": "a", "text": { "en": "A full-text index" } },
+        { "id": "b", "text": { "en": "A B-tree nonclustered index with the column as key" } },
+        { "id": "c", "text": { "en": "A unique clustered index" } },
+        { "id": "d", "text": { "en": "A JSON index (on any version)" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Full-text indexes support (n)varchar(max) and can speed word-level searches inside documents. MAX columns cannot be B-tree key columns (b) nor clustered keys (c). JSON indexes exist only in SQL Server 2025 preview and target json-typed columns (d)." },
+      "example": { "en": "CREATE FULLTEXT INDEX ON dbo.Events(Payload) KEY INDEX PK_Events;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/json/index-json-data"]
+    },
+    {
+      "id": "d1-json-col-0025",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-json-columns",
+      "type": "dragdrop-order", "difficulty": "medium",
+      "text": { "en": "Order the steps to migrate an existing nvarchar(max) JSON column to the native json type with minimal risk." },
+      "items": [
+        { "id": "i1", "text": { "en": "Verify every row passes ISJSON() = 1" } },
+        { "id": "i2", "text": { "en": "Add a new json-typed column" } },
+        { "id": "i3", "text": { "en": "Backfill it from the old column in batches" } },
+        { "id": "i4", "text": { "en": "Swap application reads/writes to the new column" } },
+        { "id": "i5", "text": { "en": "Drop the old nvarchar column" } }
+      ],
+      "answer": ["i1", "i2", "i3", "i4", "i5"],
+      "explanation": { "en": "Validate first (invalid rows would fail conversion), create the target column, backfill in batches (avoiding one giant transaction), cut the application over, then remove the old column. Doing the drop before cutover — or skipping validation — are the failure modes the ordering protects against." },
+      "example": { "en": "UPDATE TOP (50000) T SET DocNew = CAST(DocOld AS JSON) WHERE DocNew IS NULL; -- repeat until done" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/data-types/json-data-type"]
+    },
+    {
+      "id": "d1-json-col-0026",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-json-columns",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "FOR JSON PATH is used to:" },
+      "options": [
+        { "id": "a", "text": { "en": "Return a query's result set formatted as a JSON array of objects" } },
+        { "id": "b", "text": { "en": "Filter rows by a JSON path" } },
+        { "id": "c", "text": { "en": "Create a JSON index on a path" } },
+        { "id": "d", "text": { "en": "Validate a document against a schema" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "FOR JSON PATH (appended to a SELECT) serializes rows to JSON, with dot-named columns becoming nested objects. Filtering uses JSON_VALUE/OPENJSON in WHERE (b); indexing is CREATE JSON INDEX (c); SQL Server has no built-in JSON Schema validation (d)." },
+      "example": { "en": "SELECT Id, Name AS [customer.name] FROM C FOR JSON PATH; → [{\"Id\":1,\"customer\":{\"name\":\"…\"}}]" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/json/format-query-results-as-json-with-for-json-sql-server"]
+    },
+    {
+      "id": "d1-json-col-0027",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-json-columns",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "With the native json type, why can the engine evaluate JSON_VALUE(Doc, '$.a.b') faster than over nvarchar storage?" },
+      "options": [
+        { "id": "a", "text": { "en": "The binary format stores a navigable structure, so the engine jumps to the path without re-parsing the whole text" } },
+        { "id": "b", "text": { "en": "The engine caches every document in memory permanently" } },
+        { "id": "c", "text": { "en": "json columns are always covered by automatic indexes" } },
+        { "id": "d", "text": { "en": "It can't — performance is identical" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Parsing happens once at write; afterwards path navigation works on the binary tree directly. There is no special permanent cache (b) and no automatic indexing (c — JSON indexes are explicit and preview). The performance difference is a core selling point, so (d) is false." },
+      "example": { "en": "Write-once-parse, read-many-navigate — the same reason binary XML and BSON formats exist." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/data-types/json-data-type"]
+    },
+    {
+      "id": "d1-json-col-0028",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-json-columns",
+      "type": "multiple", "difficulty": "medium", "selectCount": 2,
+      "text": { "en": "Which two statements about storing JSON in SQL Server are true? (Select 2)" },
+      "options": [
+        { "id": "a", "text": { "en": "A json column cannot have a DEFAULT constraint referencing a valid document" } },
+        { "id": "b", "text": { "en": "The json type and nvarchar JSON can coexist in the same database" } },
+        { "id": "c", "text": { "en": "JSON documents in SQL Server are limited to 8 KB" } },
+        { "id": "d", "text": { "en": "OPENJSON works against both nvarchar JSON and the json type" } }
+      ],
+      "answer": ["b", "d"],
+      "explanation": { "en": "Nothing stops mixed storage during migrations (b), and the JSON function family operates over both representations (d). DEFAULT constraints with valid documents are allowed on json columns, so (a) is false. Documents can reach LOB sizes (up to 2 GB for nvarchar(max)), not 8 KB (c)." },
+      "example": { "en": "Doc JSON NOT NULL DEFAULT '{}' is perfectly valid." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/data-types/json-data-type"]
+    },
+    {
+      "id": "d1-json-col-0029",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-json-columns",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which query finds orders whose document contains the value 'express' anywhere in the shipping object, using a 2025-era containment function?" },
+      "options": [
+        { "id": "a", "text": { "en": "WHERE JSON_CONTAINS(Doc, 'express', '$.shipping') = 1" } },
+        { "id": "b", "text": { "en": "WHERE Doc LIKE 'express'" } },
+        { "id": "c", "text": { "en": "WHERE JSON_VALUE(Doc) = 'express'" } },
+        { "id": "d", "text": { "en": "WHERE CONTAINS(Doc, 'express')" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "JSON_CONTAINS tests whether a value occurs within a document (optionally under a path) — part of the 2025 JSON function family named in the study guide. LIKE without wildcards (b) matches only the exact full string. JSON_VALUE requires a path and extracts rather than searches (c). CONTAINS needs a full-text index and does word search, not JSON-aware containment (d)." },
+      "example": { "en": "JSON_CONTAINS pairs naturally with JSON indexes for fast containment checks." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/json-contains-transact-sql"]
+    },
+    {
+      "id": "d1-json-col-0030",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-json-columns",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "In a JSON path, what does the $ symbol represent?" },
+      "options": [
+        { "id": "a", "text": { "en": "The root of the document" } },
+        { "id": "b", "text": { "en": "The current array element" } },
+        { "id": "c", "text": { "en": "A wildcard for any property" } },
+        { "id": "d", "text": { "en": "A string literal marker" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "$ is the document root; properties and array indexes chain from it ($.a.b[0]). T-SQL JSON paths have no current-element symbol like XPath's '.', and no property wildcard; $ certainly isn't a string marker." },
+      "example": { "en": "JSON_VALUE(Doc, '$.items[2].sku') — root → items → third element → sku." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/json/json-path-expressions-sql-server"]
+    },
+    {
+      "id": "d1-json-col-0031",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-json-columns",
+      "type": "yesno", "difficulty": "easy",
+      "text": { "en": "Answer Yes or No: does each scenario favor keeping the data in a JSON column?" },
+      "statements": [
+        { "id": "s1", "text": { "en": "Third-party webhook payloads you must store verbatim for troubleshooting." } },
+        { "id": "s2", "text": { "en": "The column used in 90% of WHERE clauses." } },
+        { "id": "s3", "text": { "en": "User preference blobs with keys that change per app release." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "no", "s3": "yes" },
+      "explanation": { "en": "Verbatim payload retention and schema-fluid preference blobs are JSON's core use cases. A field that nearly every query filters on belongs in a typed, indexed relational column (or at minimum a persisted computed column extracted from the JSON)." },
+      "example": { "en": "The 'promote hot fields' principle resolves most JSON-vs-column design questions." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/json/json-data-sql-server"]
+    },
+    {
+      "id": "d1-json-col-0032",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-json-columns",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What is the default path mode in T-SQL JSON functions, and its behavior for a missing property?" },
+      "options": [
+        { "id": "a", "text": { "en": "Lax — returns NULL instead of raising an error" } },
+        { "id": "b", "text": { "en": "Strict — raises an error" } },
+        { "id": "c", "text": { "en": "Lax — raises an error" } },
+        { "id": "d", "text": { "en": "Strict — returns an empty string" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Lax is the default: missing properties yield NULL, which is forgiving but can hide data issues. Prefixing the path with 'strict' switches to error-raising behavior. Options (b)-(d) scramble the mode/behavior pairs." },
+      "example": { "en": "JSON_VALUE(Doc, 'strict $.required.field') -- fails fast when data is malformed" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/json/json-path-expressions-sql-server"]
+    },
+    {
+      "id": "d1-json-col-0033",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-json-columns",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A row's document is 300 KB and only $.summary (200 bytes) is read by the hot query. The table has 10M rows on SQL Server 2022. What single change most reduces the query's I/O?" },
+      "options": [
+        { "id": "a", "text": { "en": "A persisted computed column for $.summary included in a covering index — queries never touch the LOB data" } },
+        { "id": "b", "text": { "en": "Converting Doc to the json type" } },
+        { "id": "c", "text": { "en": "Adding ISJSON CHECK constraints" } },
+        { "id": "d", "text": { "en": "Increasing the LOB page size" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The covering index stores just the 200-byte summaries — the 300 KB LOBs are never read. The json type (b) doesn't exist on 2022 and would still store large documents. ISJSON (c) is validation, not performance. LOB page size (d) is not configurable." },
+      "example": { "en": "ADD Summary AS JSON_VALUE(Doc,'$.summary') PERSISTED; CREATE INDEX IX ON T(CustomerId) INCLUDE(Summary);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/json/index-json-data"]
+    },
+    {
+      "id": "d1-json-col-0034",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-json-columns",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which statement about JSON and columnstore is correct?" },
+      "options": [
+        { "id": "a", "text": { "en": "Extracted (computed) scalar columns compress and scan well in columnstore; the raw LOB documents do not benefit the same way" } },
+        { "id": "b", "text": { "en": "Columnstore cannot coexist with JSON columns in one table" } },
+        { "id": "c", "text": { "en": "Columnstore automatically shreds JSON into per-path segments" } },
+        { "id": "d", "text": { "en": "JSON queries are always faster on columnstore" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Columnstore's wins come from typed scalar columns; large LOB payloads don't segment-compress or batch-scan the way numerics do. Tables can hold both (b). No automatic path shredding exists (c) — you materialize paths yourself. Point JSON extraction is often slower on columnstore (d)." },
+      "example": { "en": "Analytics design: computed scalars in the columnstore; the json payload fetched only for drill-down." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/indexes/columnstore-indexes-design-guidance"]
+    },
+    {
+      "id": "d1-json-col-0035",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-json-columns",
+      "type": "dropdown", "difficulty": "easy",
+      "text": { "en": "Complete the validation constraint for a text column that must contain a JSON object (not an array or scalar)." },
+      "code": "ALTER TABLE dbo.Profiles ADD CONSTRAINT CK_Profiles_Json\n    CHECK ( [BLANK1](Settings, [BLANK2]) = 1 );",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "ISJSON" } },
+            { "id": "c2", "text": { "en": "JSON_VALUE" } },
+            { "id": "c3", "text": { "en": "JSON_QUERY" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "OBJECT" } },
+            { "id": "c2", "text": { "en": "ARRAY" } },
+            { "id": "c3", "text": { "en": "VALUE" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "ISJSON with the OBJECT kind returns 1 only for top-level JSON objects. ARRAY would accept only arrays; VALUE accepts any valid JSON including arrays and scalars — too permissive for the requirement. JSON_VALUE/JSON_QUERY extract rather than validate." },
+      "example": { "en": "Kind-checking catches a surprising class of bugs, like an API accidentally posting '[]'." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/isjson-transact-sql"]
+    },
+    {
+      "id": "d1-json-col-0036",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-json-columns",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "An API stores camelCase keys ('orderId') while a teammate queries '$.OrderId' and gets NULLs. What is the explanation?" },
+      "options": [
+        { "id": "a", "text": { "en": "JSON property names are case-sensitive, and lax mode returns NULL for the non-existent path" } },
+        { "id": "b", "text": { "en": "The database collation is case-insensitive, so this should work — the data must be corrupt" } },
+        { "id": "c", "text": { "en": "JSON_VALUE only reads lowercase keys" } },
+        { "id": "d", "text": { "en": "The $ prefix is missing" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "JSON path matching is case-sensitive regardless of database collation — '$.OrderId' simply doesn't exist in a document with 'orderId', and lax mode silently yields NULL. Collation (b) governs string comparison, not JSON key lookup. (c) is invented, and the path shown does include $ (d)." },
+      "example": { "en": "Use 'strict $.OrderId' during development to get an error instead of silent NULLs." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/json/json-path-expressions-sql-server"]
+    },
+    {
+      "id": "d1-json-col-0037",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-json-columns",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which workload is a reason to AVOID a single huge JSON document per customer (e.g. all orders embedded in one doc)?" },
+      "options": [
+        { "id": "a", "text": { "en": "Concurrent writers updating different orders would conflict on the one row, and every update rewrites a growing blob" } },
+        { "id": "b", "text": { "en": "JSON cannot store arrays of objects" } },
+        { "id": "c", "text": { "en": "SQL Server limits documents to 100 properties" } },
+        { "id": "d", "text": { "en": "Nested objects cannot be queried" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Document-per-aggregate designs with unbounded growth create hot-row contention and ever-larger rewrites — orders belong in rows (or docs per order). JSON handles arrays of objects fine (b), has no 100-property limit (c), and nested paths are queryable (d)." },
+      "example": { "en": "Rule: bounded, cohesive documents yes; unbounded append-forever documents no." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/json/store-json-documents-in-sql-tables"]
+    },
+    {
+      "id": "d1-json-col-0038",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-json-columns",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "JSON_QUERY(Doc, '$.address') is the right function when $.address is:" },
+      "options": [
+        { "id": "a", "text": { "en": "An object or array that you want back as JSON" } },
+        { "id": "b", "text": { "en": "A number you want to compare" } },
+        { "id": "c", "text": { "en": "A string scalar" } },
+        { "id": "d", "text": { "en": "A property you want to delete" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "JSON_QUERY extracts fragments (objects/arrays). Scalars — numbers and strings — are JSON_VALUE's job (b, c return NULL from JSON_QUERY in lax mode). Deletion is JSON_MODIFY with NULL (d)." },
+      "example": { "en": "SELECT JSON_QUERY(Doc, '$.address') AS AddressJson, JSON_VALUE(Doc, '$.address.city') AS City FROM T;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/json-query-transact-sql"]
+    },
+    {
+      "id": "d1-json-col-0039",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-json-columns",
+      "type": "dragdrop-match", "difficulty": "easy",
+      "text": { "en": "Match the JSON function to its job." },
+      "items": [
+        { "id": "i1", "text": { "en": "Extract a scalar value" } },
+        { "id": "i2", "text": { "en": "Extract an object/array fragment" } },
+        { "id": "i3", "text": { "en": "Shred an array into rows" } },
+        { "id": "i4", "text": { "en": "Change a value inside a document" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "JSON_VALUE" } },
+        { "id": "t2", "text": { "en": "JSON_QUERY" } },
+        { "id": "t3", "text": { "en": "OPENJSON" } },
+        { "id": "t4", "text": { "en": "JSON_MODIFY" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "The four core JSON operations map one-to-one: scalar extraction (JSON_VALUE), fragment extraction (JSON_QUERY), tabularization (OPENJSON), in-document modification (JSON_MODIFY). Most JSON exam items reduce to picking the right one." },
+      "example": { "en": "Constructors (JSON_OBJECT/JSON_ARRAY) and aggregates (JSON_ARRAYAGG/JSON_OBJECTAGG) complete the family." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/json/json-data-sql-server"]
+    },
+    {
+      "id": "d1-json-col-0040",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-json-columns",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What happens when you query a json-typed column with SELECT in SSMS or a driver without native json support?" },
+      "options": [
+        { "id": "a", "text": { "en": "The value is returned as readable JSON text (string representation)" } },
+        { "id": "b", "text": { "en": "Binary bytes are returned and must be decoded manually" } },
+        { "id": "c", "text": { "en": "An error is raised" } },
+        { "id": "d", "text": { "en": "The column is omitted from results" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Although stored in binary, json values are exposed as text for compatibility — older clients just see the JSON string. There is no manual decoding (b), error (c), or omission (d). (Similarly, vector columns surface as varchar JSON arrays for older drivers.)" },
+      "example": { "en": "Backward compatibility is deliberate: adopting the json type doesn't break existing data access code." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/data-types/json-data-type"]
+    },
+    {
+      "id": "d1-json-col-0041",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-json-columns",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "Your JSON index on dbo.Events(Payload) FOR ('$.deviceId') exists, but WHERE JSON_VALUE(Payload, '$.region') = 'EU' is still slow. Why?" },
+      "options": [
+        { "id": "a", "text": { "en": "The index covers only the listed path; $.region predicates can't use it" } },
+        { "id": "b", "text": { "en": "JSON indexes only work with OPENJSON" } },
+        { "id": "c", "text": { "en": "The index must be rebuilt after every insert" } },
+        { "id": "d", "text": { "en": "JSON_VALUE never uses indexes" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "A path-scoped JSON index only indexes the paths in FOR — queries on other paths fall back to scanning. Either add '$.region' to the index or create it without FOR (whole document). (b), (c) and (d) misdescribe how JSON indexes integrate with the optimizer." },
+      "example": { "en": "CREATE JSON INDEX JX2 ON dbo.Events(Payload) FOR ('$.deviceId', '$.region');" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-json-index-transact-sql"]
+    },
+    {
+      "id": "d1-json-col-0042",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-json-columns",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "To return each order as one row with a column holding a JSON array of its item SKUs, which aggregate do you use (SQL Server 2025 syntax)?" },
+      "options": [
+        { "id": "a", "text": { "en": "JSON_ARRAYAGG(i.Sku)" } },
+        { "id": "b", "text": { "en": "STRING_AGG(i.Sku, ',')" } },
+        { "id": "c", "text": { "en": "ARRAY_AGG(i.Sku)" } },
+        { "id": "d", "text": { "en": "JSON_QUERY(i.Sku)" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "JSON_ARRAYAGG folds grouped values into a proper JSON array ([\"A1\",\"B7\"]). STRING_AGG produces a bare comma string, not JSON (b). ARRAY_AGG is PostgreSQL (c). JSON_QUERY is not an aggregate (d)." },
+      "example": { "en": "SELECT o.OrderId, JSON_ARRAYAGG(i.Sku) AS Skus FROM Orders o JOIN Items i ON ... GROUP BY o.OrderId;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/json-arrayagg-transact-sql"]
+    },
+    {
+      "id": "d1-json-col-0043",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-json-columns",
+      "type": "yesno", "difficulty": "hard",
+      "text": { "en": "A table uses Doc JSON on Azure SQL Database. Answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "CAST(Doc AS NVARCHAR(MAX)) is a valid way to get the document text." } },
+        { "id": "s2", "text": { "en": "You can build a CHECK constraint on a value inside Doc via a computed column." } },
+        { "id": "s3", "text": { "en": "Doc can be referenced by a FOREIGN KEY constraint." } },
+        { "id": "s4", "text": { "en": "A CREATE TYPE alias based on json is supported." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "yes", "s3": "no", "s4": "no" },
+      "explanation": { "en": "json converts to string types explicitly or implicitly (s1). Business constraints are applied via computed columns + CHECK (s2). Like other LOB types, json columns cannot participate in FK relationships (s3) and CREATE TYPE aliases over json are not allowed — the same restriction xml has (s4)." },
+      "example": { "en": "Total AS CAST(JSON_VALUE(Doc,'$.total') AS DECIMAL(12,2)), CONSTRAINT CK CHECK (Total >= 0)" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/data-types/json-data-type"]
+    },
+    {
+      "id": "d1-json-col-0044",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-json-columns",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which approach stores relational rows AS JSON documents for an API response, nesting each customer's orders inside the customer object?" },
+      "options": [
+        { "id": "a", "text": { "en": "A correlated subquery with FOR JSON PATH inside the outer FOR JSON PATH select" } },
+        { "id": "b", "text": { "en": "Two separate result sets merged by the client" } },
+        { "id": "c", "text": { "en": "CROSS JOIN with JSON_VALUE" } },
+        { "id": "d", "text": { "en": "sp_send_json" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Nested FOR JSON subqueries produce hierarchical documents server-side in one statement. Client-side merging (b) works but isn't the single-statement approach asked for. CROSS JOIN + JSON_VALUE (c) extracts rather than constructs. sp_send_json (d) doesn't exist." },
+      "example": { "en": "SELECT c.Id, c.Name, (SELECT o.Id, o.Total FROM Orders o WHERE o.CustId = c.Id FOR JSON PATH) AS orders FROM Customers c FOR JSON PATH;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/json/format-nested-json-output-with-path-mode-sql-server"]
+    },
+    {
+      "id": "d1-json-col-0045",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-json-columns",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "INCLUDE adding the ROOT option to FOR JSON does what?" },
+      "options": [
+        { "id": "a", "text": { "en": "Wraps the output array in an object under a named key, e.g. {\"orders\": [...]}" } },
+        { "id": "b", "text": { "en": "Adds the table's primary key to every object" } },
+        { "id": "c", "text": { "en": "Sorts the array by the root path" } },
+        { "id": "d", "text": { "en": "Escapes special characters" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "FOR JSON PATH, ROOT('orders') nests the result array under a root property — handy when the consumer expects an envelope object. It doesn't inject keys (b), sort (c), or control escaping (d — escaping is automatic)." },
+      "example": { "en": "SELECT Id, Total FROM Orders FOR JSON PATH, ROOT('orders');" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/json/add-a-root-node-to-json-output-with-the-root-option-sql-server"]
+    },
+    {
+      "id": "d1-json-col-0046",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-json-columns",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A persisted computed column extracting $.total was added, but inserts now fail for some legacy rows being re-written, with a conversion error. What is the most likely cause?" },
+      "options": [
+        { "id": "a", "text": { "en": "Some documents store $.total as a non-numeric string, and the computed column's CAST fails at write time because PERSISTED evaluates on write" } },
+        { "id": "b", "text": { "en": "Persisted computed columns are read-only" } },
+        { "id": "c", "text": { "en": "JSON_VALUE cannot be used in computed columns" } },
+        { "id": "d", "text": { "en": "The column needs an index first" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "PERSISTED computes and stores the value on every write; a CAST over dirty data ('N/A', '1,000') throws then. Use TRY_CAST to tolerate bad values. (b) is confusedly worded but computed columns were never writable; JSON_VALUE is explicitly supported in computed columns (c); indexes are irrelevant to the failure (d)." },
+      "example": { "en": "Total AS TRY_CAST(JSON_VALUE(Doc,'$.total') AS DECIMAL(12,2)) PERSISTED -- NULL for bad data instead of an error" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/json/index-json-data"]
+    },
+    {
+      "id": "d1-json-col-0047",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-json-columns",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which statement creates a table where the engine itself guarantees Doc always holds valid JSON (SQL Server 2025)?" },
+      "options": [
+        { "id": "a", "text": { "en": "CREATE TABLE T (Id INT PRIMARY KEY, Doc JSON NOT NULL);" } },
+        { "id": "b", "text": { "en": "CREATE TABLE T (Id INT PRIMARY KEY, Doc NVARCHAR(MAX));" } },
+        { "id": "c", "text": { "en": "CREATE TABLE T (Id INT PRIMARY KEY, Doc VARBINARY(MAX));" } },
+        { "id": "d", "text": { "en": "CREATE TABLE T (Id INT PRIMARY KEY, Doc TEXT);" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The json data type enforces validity inherently. Bare nvarchar(max) (b) accepts any text unless you add an ISJSON CHECK. varbinary (c) accepts any bytes, and TEXT (d) is deprecated and unvalidated." },
+      "example": { "en": "Type-level guarantees beat constraint-level ones: less to forget, clearer intent." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/data-types/json-data-type"]
+    },
+    {
+      "id": "d1-json-col-0048",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-json-columns",
+      "type": "dropdown", "difficulty": "hard",
+      "text": { "en": "Complete the query that lists one row per tag for every article (tags is a JSON string array)." },
+      "code": "SELECT a.ArticleId, t.value AS Tag\nFROM dbo.Articles AS a\nCROSS APPLY [BLANK1](a.Doc, '$.tags') AS t\nWHERE [BLANK2](a.Doc) = 1;",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "OPENJSON" } },
+            { "id": "c2", "text": { "en": "JSON_VALUE" } },
+            { "id": "c3", "text": { "en": "JSON_ARRAY" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "ISJSON" } },
+            { "id": "c2", "text": { "en": "JSON_PATH_EXISTS" } },
+            { "id": "c3", "text": { "en": "JSON_CONTAINS" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "OPENJSON over the array path yields one row per element with a 'value' column. The guard ISJSON(Doc)=1 skips malformed rows (for nvarchar storage). JSON_VALUE can't produce rows; JSON_ARRAY constructs JSON; JSON_PATH_EXISTS/JSON_CONTAINS take different arguments than used here." },
+      "example": { "en": "Without WITH, OPENJSON returns key, value, type — perfect for simple scalar arrays." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/openjson-transact-sql"]
+    },
+    {
+      "id": "d1-json-col-0049",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-json-columns",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "For API logging you must keep request documents for 90 days and search them rarely by one correlation id. 500 GB/month arrives. Cheapest effective design?" },
+      "options": [
+        { "id": "a", "text": { "en": "Store payload with PAGE/columnstore compression + persisted computed column and index on the correlation id" } },
+        { "id": "b", "text": { "en": "JSON index over the whole document" } },
+        { "id": "c", "text": { "en": "Shred every property into relational columns" } },
+        { "id": "d", "text": { "en": "nvarchar storage with a full-text index over everything" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "One hot lookup key → one cheap targeted index; compression handles the bulk-storage cost. Whole-document JSON indexing (b) pays indexing costs for searches that rarely happen. Full shredding (c) explodes a write-heavy log schema. Full-text everything (d) is the most expensive index for the least-used capability." },
+      "example": { "en": "Match index investment to query frequency — a recurring exam trade-off." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/json/store-json-documents-in-sql-tables"]
+    },
+    {
+      "id": "d1-json-col-0050",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-json-columns",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which option correctly describes how the json type interacts with type precedence in a UNION with nvarchar?" },
+      "options": [
+        { "id": "a", "text": { "en": "The result type is json because json has higher precedence than string types" } },
+        { "id": "b", "text": { "en": "The UNION fails — the types are incompatible" } },
+        { "id": "c", "text": { "en": "The result alternates per row" } },
+        { "id": "d", "text": { "en": "The result type is nvarchar; json follows the same lower-than-strings precedence pattern as some other special types" } }
+      ],
+      "answer": ["d"],
+      "explanation": { "en": "Where a special document type combines with strings in UNION/CASE/COALESCE, conversion follows type precedence; for json-family behavior the string type wins the combined expression (the same documented pattern as vector with strings). The union does not fail (b), and a result set has exactly one type per column (c)." },
+      "example": { "en": "SELECT Doc FROM A UNION ALL SELECT TextDoc FROM B — plan on receiving nvarchar out of the union." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/data-types/json-data-type", "https://learn.microsoft.com/en-us/sql/t-sql/data-types/data-type-precedence-transact-sql"]
+    }
+  ]
+}

@@ -1,0 +1,854 @@
+{
+  "subtopic": "d1-cte-window",
+  "questions": [
+    {
+      "id": "d1-ctewin-0001",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-cte-window",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Values 100, 100, 90 are ranked by score descending. What does RANK() return for the three rows?" },
+      "options": [
+        { "id": "a", "text": { "en": "1, 1, 3" } },
+        { "id": "b", "text": { "en": "1, 1, 2" } },
+        { "id": "c", "text": { "en": "1, 2, 3" } },
+        { "id": "d", "text": { "en": "1, 3, 3" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "RANK gives ties the same rank and then skips: two firsts consume positions 1 and 2, so the next row is 3. DENSE_RANK would give 1,1,2 (b) and ROW_NUMBER 1,2,3 (c). (d) is no function's behavior." },
+      "example": { "en": "SELECT Score, RANK() OVER (ORDER BY Score DESC), DENSE_RANK() OVER (ORDER BY Score DESC) FROM T;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/rank-transact-sql"]
+    },
+    {
+      "id": "d1-ctewin-0002",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-cte-window",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "What distinguishes a window aggregate (SUM(x) OVER (...)) from a GROUP BY aggregate?" },
+      "options": [
+        { "id": "a", "text": { "en": "The window version keeps every detail row and attaches the aggregate to each" } },
+        { "id": "b", "text": { "en": "The window version is always faster" } },
+        { "id": "c", "text": { "en": "GROUP BY keeps detail rows too" } },
+        { "id": "d", "text": { "en": "They are identical in output" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "OVER computes across a window but doesn't collapse rows — detail plus aggregate side by side. GROUP BY reduces to one row per group (c false). Performance depends on the query (b), and outputs differ structurally (d)." },
+      "example": { "en": "SELECT OrderId, Total, SUM(Total) OVER (PARTITION BY CustomerId) AS CustomerTotal FROM Orders;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/select-over-clause-transact-sql"]
+    },
+    {
+      "id": "d1-ctewin-0003",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-cte-window",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Why does this fail?\n\nSELECT *, ROW_NUMBER() OVER (ORDER BY Total DESC) AS rn FROM Orders WHERE rn <= 10;" },
+      "options": [
+        { "id": "a", "text": { "en": "Window functions are evaluated after WHERE, so the alias rn doesn't exist there — filter in an outer query/CTE" } },
+        { "id": "b", "text": { "en": "ROW_NUMBER requires PARTITION BY" } },
+        { "id": "c", "text": { "en": "rn is a reserved word" } },
+        { "id": "d", "text": { "en": "ORDER BY is not allowed in OVER" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Logical processing: WHERE runs before SELECT, where window functions are computed. PARTITION BY is optional (b), rn isn't reserved (c), and ORDER BY inside OVER is standard (d). Wrap in a CTE and filter outside." },
+      "example": { "en": "WITH R AS (SELECT *, ROW_NUMBER() OVER (ORDER BY Total DESC) rn FROM Orders) SELECT * FROM R WHERE rn <= 10;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/select-over-clause-transact-sql"]
+    },
+    {
+      "id": "d1-ctewin-0004",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-cte-window",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which two parts must a recursive CTE contain?" },
+      "options": [
+        { "id": "a", "text": { "en": "An anchor member and a recursive member combined with UNION ALL" } },
+        { "id": "b", "text": { "en": "A BEGIN and END block" } },
+        { "id": "c", "text": { "en": "A cursor and a loop" } },
+        { "id": "d", "text": { "en": "Two anchors combined with INTERSECT" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The anchor seeds the result; the recursive member references the CTE and runs until it returns no rows; UNION ALL joins the generations. BEGIN/END (b) and cursors (c) are procedural constructs, and INTERSECT (d) is not valid between the members." },
+      "example": { "en": "WITH H AS (anchor UNION ALL recursive-ref) SELECT * FROM H;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/with-common-table-expression-transact-sql"]
+    },
+    {
+      "id": "d1-ctewin-0005",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-cte-window",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A recursive CTE over a 150-level hierarchy fails with 'The maximum recursion 100 has been exhausted'. The fix?" },
+      "options": [
+        { "id": "a", "text": { "en": "Add OPTION (MAXRECURSION 200) — or 0 for unlimited — to the statement" } },
+        { "id": "b", "text": { "en": "Convert the CTE to a view" } },
+        { "id": "c", "text": { "en": "Use UNION instead of UNION ALL" } },
+        { "id": "d", "text": { "en": "Increase the server's max worker threads" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "MAXRECURSION is a per-statement query hint (default 100; 0 removes the cap — use carefully against cycles). Views don't change recursion limits (b), UNION only adds dedup cost (c), and worker threads are unrelated (d)." },
+      "example": { "en": "SELECT * FROM OrgChart OPTION (MAXRECURSION 0); -- after verifying the hierarchy is acyclic" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/with-common-table-expression-transact-sql"]
+    },
+    {
+      "id": "d1-ctewin-0006",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-cte-window",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Complete the running-total query." },
+      "code": "SELECT OrderDate, Total,\n       SUM(Total) OVER (\n           ORDER BY OrderDate\n           [BLANK1] BETWEEN [BLANK2] AND CURRENT ROW\n       ) AS RunningTotal\nFROM Sales.Orders;",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "ROWS" } },
+            { "id": "c2", "text": { "en": "SPAN" } },
+            { "id": "c3", "text": { "en": "WINDOW" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "UNBOUNDED PRECEDING" } },
+            { "id": "c2", "text": { "en": "FIRST ROW" } },
+            { "id": "c3", "text": { "en": "START" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "Frames are ROWS or RANGE; running totals want ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW (explicit ROWS avoids the default RANGE frame's tie handling and spool cost). SPAN/WINDOW and FIRST ROW/START are not frame keywords." },
+      "example": { "en": "Moving 7-day style window: ROWS BETWEEN 6 PRECEDING AND CURRENT ROW." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/select-over-clause-transact-sql"]
+    },
+    {
+      "id": "d1-ctewin-0007",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-cte-window",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "LAST_VALUE(Total) OVER (PARTITION BY CustomerId ORDER BY OrderDate) returns the current row's value instead of the partition's last. Why?" },
+      "options": [
+        { "id": "a", "text": { "en": "The default frame ends at CURRENT ROW; extend it with ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING" } },
+        { "id": "b", "text": { "en": "LAST_VALUE is broken in SQL Server" } },
+        { "id": "c", "text": { "en": "PARTITION BY resets the value" } },
+        { "id": "d", "text": { "en": "ORDER BY must be descending" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "With ORDER BY and no frame, the window ends at the current row — so the 'last value so far' IS the current row. Declaring the full-partition frame fixes it. The function is fine (b); partitioning (c) and sort direction (d) aren't the cause (DESC ordering is a workaround that changes semantics elsewhere)." },
+      "example": { "en": "LAST_VALUE(Total) OVER (PARTITION BY CustomerId ORDER BY OrderDate ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/last-value-transact-sql"]
+    },
+    {
+      "id": "d1-ctewin-0008",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-cte-window",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which function reads a column from the PREVIOUS row in a defined order?" },
+      "options": [
+        { "id": "a", "text": { "en": "LAG" } },
+        { "id": "b", "text": { "en": "LEAD" } },
+        { "id": "c", "text": { "en": "FIRST_VALUE" } },
+        { "id": "d", "text": { "en": "NTILE" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "LAG looks backward, LEAD forward. FIRST_VALUE reads the frame's first row (not necessarily adjacent), and NTILE buckets rows." },
+      "example": { "en": "Total - LAG(Total, 1, 0) OVER (ORDER BY Mon) AS MoMChange" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/lag-transact-sql"]
+    },
+    {
+      "id": "d1-ctewin-0009",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-cte-window",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Remove duplicate customer rows (same Email), keeping the earliest CreatedAt. Which pattern is standard?" },
+      "options": [
+        { "id": "a", "text": { "en": "CTE with ROW_NUMBER() OVER (PARTITION BY Email ORDER BY CreatedAt); DELETE FROM cte WHERE rn > 1" } },
+        { "id": "b", "text": { "en": "DELETE with GROUP BY Email" } },
+        { "id": "c", "text": { "en": "SELECT DISTINCT into a new table always" } },
+        { "id": "d", "text": { "en": "A WHILE loop deleting one duplicate per pass" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Deleting through a CTE whose ROW_NUMBER marks survivors (rn=1) vs duplicates (rn>1) is THE canonical dedup pattern — one set-based statement. GROUP BY can't be a DELETE target like that (b). DISTINCT rebuilds (c) works but is heavy-handed and loses non-grouped columns' control. Loops (d) are RBAR." },
+      "example": { "en": "WITH D AS (SELECT *, ROW_NUMBER() OVER (PARTITION BY Email ORDER BY CreatedAt) rn FROM C) DELETE FROM D WHERE rn > 1;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/row-number-transact-sql"]
+    },
+    {
+      "id": "d1-ctewin-0010",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-cte-window",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "For each statement about CTEs, answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "A CTE's results are materialized into tempdb automatically." } },
+        { "id": "s2", "text": { "en": "One WITH clause can define multiple CTEs separated by commas." } },
+        { "id": "s3", "text": { "en": "A later CTE can reference an earlier CTE in the same WITH." } },
+        { "id": "s4", "text": { "en": "A CTE can be referenced by the next, separate statement in the batch." } }
+      ],
+      "answerMap": { "s1": "no", "s2": "yes", "s3": "yes", "s4": "no" },
+      "explanation": { "en": "CTEs inline like views — no automatic materialization (reference twice = possibly compute twice). Chaining multiple, forward-referencing CTEs in one WITH is standard. Scope is strictly the single following statement; the next statement cannot see it (use a temp table for cross-statement reuse)." },
+      "example": { "en": "Need reuse across statements or guaranteed single evaluation? SELECT ... INTO #tmp first." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/with-common-table-expression-transact-sql"]
+    },
+    {
+      "id": "d1-ctewin-0011",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-cte-window",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "NTILE(4) OVER (ORDER BY Revenue DESC) applied to 10 rows produces which bucket sizes?" },
+      "options": [
+        { "id": "a", "text": { "en": "3, 3, 2, 2 — larger buckets come first when rows don't divide evenly" } },
+        { "id": "b", "text": { "en": "2, 2, 3, 3" } },
+        { "id": "c", "text": { "en": "4, 4, 1, 1" } },
+        { "id": "d", "text": { "en": "It fails unless rows divide evenly" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "NTILE distributes remainders to the leading buckets: 10/4 = 2 remainder 2 → first two buckets get 3. It never fails on uneven counts (d), and the extra rows always go to the front, not the back (b)." },
+      "example": { "en": "Quartile analysis of customers by revenue: NTILE(4) tags each row 1–4." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/ntile-transact-sql"]
+    },
+    {
+      "id": "d1-ctewin-0012",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-cte-window",
+      "type": "dragdrop-order", "difficulty": "medium",
+      "text": { "en": "Arrange the logical query processing phases in order (relevant to why window functions can't be in WHERE)." },
+      "items": [
+        { "id": "i1", "text": { "en": "FROM (and JOINs)" } },
+        { "id": "i2", "text": { "en": "WHERE" } },
+        { "id": "i3", "text": { "en": "GROUP BY / HAVING" } },
+        { "id": "i4", "text": { "en": "SELECT (window functions evaluate here)" } },
+        { "id": "i5", "text": { "en": "ORDER BY" } }
+      ],
+      "answer": ["i1", "i2", "i3", "i4", "i5"],
+      "explanation": { "en": "FROM → WHERE → GROUP BY/HAVING → SELECT → ORDER BY. Window functions belong to the SELECT phase, after filtering and grouping — hence they can be used in SELECT and ORDER BY but not WHERE/GROUP BY/HAVING." },
+      "example": { "en": "This one ordering explains half of T-SQL's 'why can't I…' questions." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/select-transact-sql"]
+    },
+    {
+      "id": "d1-ctewin-0013",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-cte-window",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Percent of total per row: which expression is correct?" },
+      "options": [
+        { "id": "a", "text": { "en": "100.0 * Total / SUM(Total) OVER ()" } },
+        { "id": "b", "text": { "en": "100.0 * Total / SUM(Total)" } },
+        { "id": "c", "text": { "en": "PERCENT(Total)" } },
+        { "id": "d", "text": { "en": "Total / COUNT(*) * 100" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "SUM(Total) OVER () — empty OVER — aggregates the whole result set while keeping rows, enabling the per-row ratio. Bare SUM (b) demands GROUP BY and collapses rows. PERCENT (c) isn't a function. (d) divides by row count, a different number entirely." },
+      "example": { "en": "SELECT Region, Total, 100.0*Total/SUM(Total) OVER () AS Pct FROM RegionTotals;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/select-over-clause-transact-sql"]
+    },
+    {
+      "id": "d1-ctewin-0014",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-cte-window",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A recursive CTE on a table with a cyclic reference (A manages B, B manages A) and MAXRECURSION 0. What happens?" },
+      "options": [
+        { "id": "a", "text": { "en": "The query loops until resources are exhausted — infinite recursion is not detected automatically" } },
+        { "id": "b", "text": { "en": "SQL Server detects the cycle and stops cleanly" } },
+        { "id": "c", "text": { "en": "The duplicate rows are removed by UNION ALL" } },
+        { "id": "d", "text": { "en": "Error 530 fires at level 100 regardless" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "MAXRECURSION 0 removes the safety net and T-SQL has no built-in cycle detection (unlike some engines' CYCLE clause) — the query spins. UNION ALL keeps duplicates by definition (c). Error 530 is exactly what 0 disables (d). Guard cycles yourself (track a path string or level cap)." },
+      "example": { "en": "Defensive: WHERE oc.Lvl < 100 in the recursive member, or detect with a visited-path column." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/with-common-table-expression-transact-sql"]
+    },
+    {
+      "id": "d1-ctewin-0015",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-cte-window",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Why is NOT EXISTS preferred over NOT IN for anti-joins?" },
+      "options": [
+        { "id": "a", "text": { "en": "NOT IN returns zero rows if the subquery produces any NULL; NOT EXISTS handles NULLs correctly" } },
+        { "id": "b", "text": { "en": "NOT EXISTS is newer syntax" } },
+        { "id": "c", "text": { "en": "NOT IN cannot use indexes" } },
+        { "id": "d", "text": { "en": "They always return identical results" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "x NOT IN (…, NULL) evaluates to UNKNOWN for every x (x <> NULL is never true), silently emptying results — the classic NULL bomb. NOT EXISTS tests row existence and is NULL-immune. Age (b) and indexing (c) aren't the point; results differ exactly when NULLs appear (d)." },
+      "example": { "en": "SELECT c.* FROM Customers c WHERE NOT EXISTS (SELECT 1 FROM Orders o WHERE o.CustomerId = c.CustomerId);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/language-elements/exists-transact-sql"]
+    },
+    {
+      "id": "d1-ctewin-0016",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-cte-window",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Latest order per customer: which approach uses CROSS/OUTER APPLY correctly?" },
+      "options": [
+        { "id": "a", "text": { "en": "OUTER APPLY (SELECT TOP (1) ... WHERE x.CustomerId = c.CustomerId ORDER BY OrderDate DESC)" } },
+        { "id": "b", "text": { "en": "LEFT JOIN with TOP (1) in the ON clause" } },
+        { "id": "c", "text": { "en": "GROUP BY CustomerId returning all columns" } },
+        { "id": "d", "text": { "en": "DISTINCT on CustomerId" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "APPLY executes the correlated TOP-1 subquery per customer — the idiomatic 'latest row per group' (ROW_NUMBER is the equal alternative). TOP can't go in ON (b). GROUP BY can't return non-aggregated detail columns (c). DISTINCT dedups rows, it doesn't pick the latest (d)." },
+      "example": { "en": "With an index on (CustomerId, OrderDate DESC) INCLUDE(...), APPLY turns into cheap per-customer seeks." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/from-transact-sql"]
+    },
+    {
+      "id": "d1-ctewin-0017",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-cte-window",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "For each statement about window functions, answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "PARTITION BY is optional in an OVER clause." } },
+        { "id": "s2", "text": { "en": "ROW_NUMBER() requires ORDER BY inside OVER." } },
+        { "id": "s3", "text": { "en": "Window functions may appear in the ORDER BY clause of a query." } },
+        { "id": "s4", "text": { "en": "Two different OVER clauses can appear in one SELECT list." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "yes", "s3": "yes", "s4": "yes" },
+      "explanation": { "en": "All true: omitted PARTITION BY means one partition (whole set); ranking functions demand ORDER BY in OVER; window functions are legal in SELECT and query-ORDER BY; and each expression may define its own window independently." },
+      "example": { "en": "SELECT SUM(x) OVER (PARTITION BY a), AVG(x) OVER (PARTITION BY b ORDER BY c) FROM T; -- fine" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/select-over-clause-transact-sql"]
+    },
+    {
+      "id": "d1-ctewin-0018",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-cte-window",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Complete the top-3-per-category query." },
+      "code": "WITH Ranked AS (\n    SELECT Category, ProductId, Revenue,\n           [BLANK1]() OVER (\n               [BLANK2] Category\n               ORDER BY Revenue DESC\n           ) AS rn\n    FROM Sales.ProductRevenue\n)\nSELECT * FROM Ranked WHERE rn <= 3;",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "ROW_NUMBER" } },
+            { "id": "c2", "text": { "en": "COUNT" } },
+            { "id": "c3", "text": { "en": "SUM" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "PARTITION BY" } },
+            { "id": "c2", "text": { "en": "GROUP BY" } },
+            { "id": "c3", "text": { "en": "DISTRIBUTE BY" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "ROW_NUMBER (or RANK/DENSE_RANK depending on tie policy) numbers rows per category via PARTITION BY. GROUP BY belongs to aggregation syntax, DISTRIBUTE BY to other SQL dialects. COUNT/SUM with OVER wouldn't produce a 1..N ranking for the filter." },
+      "example": { "en": "Choose RANK instead if ties at position 3 should all be included." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/row-number-transact-sql"]
+    },
+    {
+      "id": "d1-ctewin-0019",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-cte-window",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "DATETRUNC(month, OrderDate) in a GROUP BY serves what purpose (SQL Server 2022+)?" },
+      "options": [
+        { "id": "a", "text": { "en": "Truncates each date to the first instant of its month, grouping orders by month cleanly" } },
+        { "id": "b", "text": { "en": "Removes the time zone" } },
+        { "id": "c", "text": { "en": "Converts to a string like '2026-03'" } },
+        { "id": "d", "text": { "en": "Rounds to the nearest month boundary" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "DATETRUNC(part, date) floors a date to the given part — the modern replacement for FORMAT/CONVERT string-grouping hacks, keeping the result a true date type (sortable, SARGable in joins). It doesn't involve time zones (b), returns date types not strings (c), and truncates (floors), never rounds (d)." },
+      "example": { "en": "GROUP BY DATETRUNC(month, OrderDate) — tidy monthly buckets." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/datetrunc-transact-sql"]
+    },
+    {
+      "id": "d1-ctewin-0020",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-cte-window",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A 90-day moving average uses RANGE BETWEEN INTERVAL ... in another database. In T-SQL, how do you compute a date-based (not row-based) sliding window when rows may skip days?" },
+      "options": [
+        { "id": "a", "text": { "en": "Join/APPLY against a derived set filtered by the date arithmetic (or densify dates first); T-SQL frames don't support date-interval RANGE" } },
+        { "id": "b", "text": { "en": "RANGE BETWEEN 90 PRECEDING AND CURRENT ROW" } },
+        { "id": "c", "text": { "en": "ROWS BETWEEN 90 PRECEDING AND CURRENT ROW is equivalent" } },
+        { "id": "d", "text": { "en": "NTILE(90)" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "T-SQL's RANGE supports only UNBOUNDED/CURRENT ROW — no numeric or interval offsets (b is invalid syntax). ROWS counts rows, not days — wrong when days are missing (c). NTILE buckets rows (d). The standard workarounds: correlated APPLY on the date window, or a calendar table to densify then ROWS." },
+      "example": { "en": "CROSS APPLY (SELECT AVG(x.Total) FROM T x WHERE x.D > t.D - 90 AND x.D <= t.D) w" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/select-over-clause-transact-sql"]
+    },
+    {
+      "id": "d1-ctewin-0021",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-cte-window",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which statement about multiple CTEs is syntactically correct?" },
+      "options": [
+        { "id": "a", "text": { "en": "WITH A AS (...), B AS (SELECT ... FROM A) SELECT * FROM B;" } },
+        { "id": "b", "text": { "en": "WITH A AS (...); WITH B AS (...) SELECT ...;" } },
+        { "id": "c", "text": { "en": "WITH A, B AS (...) SELECT ...;" } },
+        { "id": "d", "text": { "en": "DECLARE CTE A AS (...);" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "One WITH, comma-separated definitions, later ones may reference earlier ones, single trailing statement. You can't chain two WITH statements (b), share one body across names (c), or DECLARE a CTE (d)." },
+      "example": { "en": "Chained CTEs replace nested derived tables with readable top-down steps." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/with-common-table-expression-transact-sql"]
+    },
+    {
+      "id": "d1-ctewin-0022",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-cte-window",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Month-over-month revenue change per region: which window expression computes the delta?" },
+      "options": [
+        { "id": "a", "text": { "en": "Revenue - LAG(Revenue) OVER (PARTITION BY Region ORDER BY Month)" } },
+        { "id": "b", "text": { "en": "Revenue - LEAD(Revenue) OVER (PARTITION BY Region ORDER BY Month)" } },
+        { "id": "c", "text": { "en": "LAG(Revenue) OVER (ORDER BY Region)" } },
+        { "id": "d", "text": { "en": "Revenue - FIRST_VALUE(Revenue) OVER (PARTITION BY Region)" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Current minus previous month within the region = LAG partitioned by region ordered by month. LEAD (b) compares against the NEXT month (future). Ordering by Region (c) is meaningless for time series. FIRST_VALUE (d) compares to the first month ever, not the previous one." },
+      "example": { "en": "Add the default: LAG(Revenue, 1, 0) to show the first month's full value as growth." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/lag-transact-sql"]
+    },
+    {
+      "id": "d1-ctewin-0023",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-cte-window",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "An UPDATE needs to set a sequence number per customer on existing rows. Which statement works?" },
+      "options": [
+        { "id": "a", "text": { "en": "WITH S AS (SELECT Seq, ROW_NUMBER() OVER (PARTITION BY CustomerId ORDER BY CreatedAt) rn FROM T) UPDATE S SET Seq = rn;" } },
+        { "id": "b", "text": { "en": "UPDATE T SET Seq = ROW_NUMBER() OVER (...);" } },
+        { "id": "c", "text": { "en": "UPDATE T SET Seq = @@ROWCOUNT;" } },
+        { "id": "d", "text": { "en": "It requires a cursor" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Window functions can't sit directly in an UPDATE's SET (b), but updating THROUGH a CTE that computes them is the supported idiom. @@ROWCOUNT is a single scalar (c). No cursor needed (d)." },
+      "example": { "en": "Updatable CTEs also power the dedup-delete pattern — same trick, different verb." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/with-common-table-expression-transact-sql"]
+    },
+    {
+      "id": "d1-ctewin-0024",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-cte-window",
+      "type": "dragdrop-match", "difficulty": "medium",
+      "text": { "en": "Match each requirement to the window function." },
+      "items": [
+        { "id": "i1", "text": { "en": "Unique sequence with no ties, for pagination" } },
+        { "id": "i2", "text": { "en": "Olympic-style ranking (1,1,3)" } },
+        { "id": "i3", "text": { "en": "Compact ranking without gaps (1,1,2)" } },
+        { "id": "i4", "text": { "en": "Split customers into 10 equal spending deciles" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "ROW_NUMBER()" } },
+        { "id": "t2", "text": { "en": "RANK()" } },
+        { "id": "t3", "text": { "en": "DENSE_RANK()" } },
+        { "id": "t4", "text": { "en": "NTILE(10)" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "The four ranking functions and their signatures: ROW_NUMBER = arbitrary tie-break unique numbering; RANK = ties share, gaps follow; DENSE_RANK = ties share, no gaps; NTILE = equal-sized buckets." },
+      "example": { "en": "Pagination uses ROW_NUMBER (or OFFSET/FETCH); medal tables use RANK." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/ranking-functions-transact-sql"]
+    },
+    {
+      "id": "d1-ctewin-0025",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-cte-window",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which query paginates results, returning rows 51–60 ordered by name (modern syntax)?" },
+      "options": [
+        { "id": "a", "text": { "en": "SELECT ... ORDER BY Name OFFSET 50 ROWS FETCH NEXT 10 ROWS ONLY" } },
+        { "id": "b", "text": { "en": "SELECT TOP 10 SKIP 50 ... ORDER BY Name" } },
+        { "id": "c", "text": { "en": "SELECT ... LIMIT 10 OFFSET 50" } },
+        { "id": "d", "text": { "en": "SELECT ... WHERE ROWNUM BETWEEN 51 AND 60" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "OFFSET...FETCH (attached to ORDER BY) is T-SQL's paging syntax. SKIP isn't T-SQL (b), LIMIT/OFFSET is MySQL/PostgreSQL (c), ROWNUM is Oracle (d)." },
+      "example": { "en": "Page n of size s: OFFSET (@n-1)*@s ROWS FETCH NEXT @s ROWS ONLY." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/select-order-by-clause-transact-sql"]
+    },
+    {
+      "id": "d1-ctewin-0026",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-cte-window",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "In a recursive CTE, which constructs are NOT allowed in the recursive member?" },
+      "options": [
+        { "id": "a", "text": { "en": "Aggregates, TOP, DISTINCT, LEFT/RIGHT OUTER JOIN to the CTE, and subqueries referencing the CTE" } },
+        { "id": "b", "text": { "en": "INNER JOINs of any kind" } },
+        { "id": "c", "text": { "en": "WHERE clauses" } },
+        { "id": "d", "text": { "en": "Column aliases" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The recursive member has documented restrictions: no GROUP BY/aggregates, no TOP, no DISTINCT, the self-reference must not be in an outer join or subquery, and only one self-reference. Plain INNER JOIN to the CTE is exactly how recursion works (b), WHERE is fine (c), aliases are fine (d)." },
+      "example": { "en": "Level capping is done with WHERE Lvl < n — not TOP — inside the recursive member." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/with-common-table-expression-transact-sql"]
+    },
+    {
+      "id": "d1-ctewin-0027",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-cte-window",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Find customers whose every order exceeds 100 (not just some). Which pattern expresses 'for all'?" },
+      "options": [
+        { "id": "a", "text": { "en": "WHERE NOT EXISTS (SELECT 1 FROM Orders o WHERE o.CustomerId = c.Id AND o.Total <= 100)" } },
+        { "id": "b", "text": { "en": "WHERE EXISTS (SELECT 1 FROM Orders o WHERE o.Total > 100)" } },
+        { "id": "c", "text": { "en": "WHERE c.Id IN (SELECT CustomerId FROM Orders WHERE Total > 100)" } },
+        { "id": "d", "text": { "en": "WHERE ALL(Orders.Total) > 100" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Universal quantification in SQL is expressed as double negation: no order exists that violates the condition. (b) ignores the customer correlation entirely; (c) finds customers with AT LEAST ONE big order — the classic some/all confusion; (d) is not valid syntax (ALL exists only as a comparison modifier)." },
+      "example": { "en": "Also add EXISTS (…any order…) if customers with zero orders shouldn't qualify." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/language-elements/exists-transact-sql"]
+    },
+    {
+      "id": "d1-ctewin-0028",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-cte-window",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What does SUM(Total) OVER (PARTITION BY CustomerId) return on a 10-row result where a customer has 4 orders?" },
+      "options": [
+        { "id": "a", "text": { "en": "The same customer-total value repeated on each of that customer's 4 rows" } },
+        { "id": "b", "text": { "en": "One row per customer" } },
+        { "id": "c", "text": { "en": "A running total over the 4 rows" } },
+        { "id": "d", "text": { "en": "An error without ORDER BY" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Without ORDER BY, the frame is the whole partition: every row of the customer shows the same total; rows are never collapsed (b). Running totals require ORDER BY (+ ROWS frame) (c). ORDER BY is optional for aggregate windows (d)." },
+      "example": { "en": "Perfect for 'show each order plus the customer's total' side-by-side reports." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/select-over-clause-transact-sql"]
+    },
+    {
+      "id": "d1-ctewin-0029",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-cte-window",
+      "type": "yesno", "difficulty": "hard",
+      "text": { "en": "Orders: A=50, B=50, C=30 ranked by amount DESC. Answer Yes/No for each claim." },
+      "statements": [
+        { "id": "s1", "text": { "en": "ROW_NUMBER assigns 1 and 2 to A and B in a deterministic order." } },
+        { "id": "s2", "text": { "en": "RANK assigns 3 to C." } },
+        { "id": "s3", "text": { "en": "DENSE_RANK assigns 2 to C." } }
+      ],
+      "answerMap": { "s1": "no", "s2": "yes", "s3": "yes" },
+      "explanation": { "en": "ROW_NUMBER breaks the A/B tie ARBITRARILY unless the ORDER BY adds a tiebreaker — not deterministic (add Id to the sort for stability). RANK: 1,1,3 → C gets 3. DENSE_RANK: 1,1,2 → C gets 2." },
+      "example": { "en": "Deterministic numbering: ROW_NUMBER() OVER (ORDER BY Amount DESC, OrderId)." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/ranking-functions-transact-sql"]
+    },
+    {
+      "id": "d1-ctewin-0030",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-cte-window",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "GENERATE_SERIES(1, 1000) in SQL Server 2022+ is useful in CTE/window contexts because it:" },
+      "options": [
+        { "id": "a", "text": { "en": "Produces a relational number sequence without recursive CTE or numbers-table hacks" } },
+        { "id": "b", "text": { "en": "Generates random values" } },
+        { "id": "c", "text": { "en": "Creates identity columns" } },
+        { "id": "d", "text": { "en": "Replaces GROUP BY" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "GENERATE_SERIES returns a set of numbers (with optional step) — ideal for calendar/densification joins that window functions often need. It's deterministic, not random (b), unrelated to identity (c) and to grouping (d)." },
+      "example": { "en": "Dates of 2026: SELECT DATEADD(day, value-1, '2026-01-01') FROM GENERATE_SERIES(1, 365);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/generate-series-transact-sql"]
+    },
+    {
+      "id": "d1-ctewin-0031",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-cte-window",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "FIRST_VALUE(Price) OVER (PARTITION BY ProductId ORDER BY PriceDate) returns:" },
+      "options": [
+        { "id": "a", "text": { "en": "Each product's earliest (first-dated) price on every row of that product" } },
+        { "id": "b", "text": { "en": "The current row's price" } },
+        { "id": "c", "text": { "en": "The lowest price" } },
+        { "id": "d", "text": { "en": "The newest price" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "FIRST_VALUE reads the first row of the ordered frame — here the earliest date (default frame starts at UNBOUNDED PRECEDING, so FIRST_VALUE is reliable, unlike LAST_VALUE). Lowest price would need ORDER BY Price (c); newest would be LAST_VALUE with a full frame or FIRST_VALUE with DESC (d)." },
+      "example": { "en": "Price - FIRST_VALUE(Price) OVER (...) = change since launch." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/first-value-transact-sql"]
+    },
+    {
+      "id": "d1-ctewin-0032",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-cte-window",
+      "type": "dropdown", "difficulty": "hard",
+      "text": { "en": "Complete the recursive CTE computing each employee's depth from the CEO." },
+      "code": "WITH Org AS (\n    SELECT Id, ManagerId, 0 AS Depth\n    FROM HR.Emp WHERE ManagerId IS NULL\n    [BLANK1]\n    SELECT e.Id, e.ManagerId, o.Depth + 1\n    FROM HR.Emp e JOIN Org o ON o.Id = e.ManagerId\n)\nSELECT * FROM Org\nOPTION ([BLANK2] 0);",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "UNION ALL" } },
+            { "id": "c2", "text": { "en": "UNION" } },
+            { "id": "c3", "text": { "en": "CROSS JOIN" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "MAXRECURSION" } },
+            { "id": "c2", "text": { "en": "MAXDEPTH" } },
+            { "id": "c3", "text": { "en": "RECURSE" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "Recursive CTEs require UNION ALL between anchor and recursive member (plain UNION is rejected). The recursion-limit hint is MAXRECURSION; MAXDEPTH and RECURSE don't exist." },
+      "example": { "en": "MAXRECURSION 0 = unlimited — only with guaranteed acyclic data." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/with-common-table-expression-transact-sql"]
+    },
+    {
+      "id": "d1-ctewin-0033",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-cte-window",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A report shows each order and the average of the customer's other orders (excluding the current one). Which expression achieves this elegantly?" },
+      "options": [
+        { "id": "a", "text": { "en": "(SUM(Total) OVER (PARTITION BY CustomerId) - Total) / NULLIF(COUNT(*) OVER (PARTITION BY CustomerId) - 1, 0)" } },
+        { "id": "b", "text": { "en": "AVG(Total) OVER (PARTITION BY CustomerId)" } },
+        { "id": "c", "text": { "en": "AVG(Total) OVER (PARTITION BY CustomerId EXCLUDE CURRENT ROW)" } },
+        { "id": "d", "text": { "en": "A cursor" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "T-SQL lacks the standard's EXCLUDE CURRENT ROW (c is invalid), so subtract the current row from the window sum and divide by count-1 (NULLIF guards single-order customers). Plain AVG (b) includes the current row. Cursors (d) — never the elegant answer." },
+      "example": { "en": "The subtract-self technique generalizes to 'compare me against my peers' analytics." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/select-over-clause-transact-sql"]
+    },
+    {
+      "id": "d1-ctewin-0034",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-cte-window",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Detect gaps in sequential invoice numbers using window functions:" },
+      "options": [
+        { "id": "a", "text": { "en": "Compare InvoiceNo with LAG(InvoiceNo) OVER (ORDER BY InvoiceNo); a difference > 1 marks a gap" } },
+        { "id": "b", "text": { "en": "GROUP BY InvoiceNo HAVING COUNT(*) = 0" } },
+        { "id": "c", "text": { "en": "SELECT DISTINCT InvoiceNo" } },
+        { "id": "d", "text": { "en": "CHECKSUM over the table" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "LAG exposes the previous number; WHERE InvoiceNo - prev > 1 finds each gap's edges. HAVING COUNT(*) = 0 can never match (groups come from existing rows) (b). DISTINCT (c) and CHECKSUM (d) reveal nothing about missing values." },
+      "example": { "en": "WITH G AS (SELECT InvoiceNo, LAG(InvoiceNo) OVER (ORDER BY InvoiceNo) prev FROM Inv) SELECT prev+1 AS GapStart, InvoiceNo-1 AS GapEnd FROM G WHERE InvoiceNo - prev > 1;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/lag-transact-sql"]
+    },
+    {
+      "id": "d1-ctewin-0035",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-cte-window",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "The WITH keyword starting a CTE sometimes needs a preceding semicolon because:" },
+      "options": [
+        { "id": "a", "text": { "en": "WITH is ambiguous with other uses (table hints), so the previous statement must be clearly terminated" } },
+        { "id": "b", "text": { "en": "CTEs run in a separate transaction" } },
+        { "id": "c", "text": { "en": "Semicolons speed up parsing" } },
+        { "id": "d", "text": { "en": "It is purely decorative" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "An unterminated previous statement followed by WITH is ambiguous (WITH (NOLOCK) hints etc.), producing 'Incorrect syntax near WITH'. The defensive ;WITH idiom exists for that reason — though terminating every statement properly is the real best practice." },
+      "example": { "en": "Best practice: end statements with ; always, and the ;WITH hack becomes unnecessary." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/with-common-table-expression-transact-sql"]
+    },
+    {
+      "id": "d1-ctewin-0036",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-cte-window",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "The same CTE is referenced three times in the outer query and its underlying query is expensive. Performance tanks. What's the practical fix?" },
+      "options": [
+        { "id": "a", "text": { "en": "Materialize once into a #temp table (optionally indexed) and reference that instead" } },
+        { "id": "b", "text": { "en": "Add OPTION (FORCE MATERIALIZATION)" } },
+        { "id": "c", "text": { "en": "Convert the CTE to a view" } },
+        { "id": "d", "text": { "en": "Reference it a fourth time to trigger caching" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "CTEs may be re-executed per reference; a temp table guarantees single evaluation plus real statistics and indexing. T-SQL has no materialization hint (b — unlike PostgreSQL's MATERIALIZED). Views inline identically to CTEs (c). (d) is absurd." },
+      "example": { "en": "SELECT ... INTO #base FROM (expensive query); CREATE INDEX ix ON #base(key); then join #base three times." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/with-common-table-expression-transact-sql"]
+    },
+    {
+      "id": "d1-ctewin-0037",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-cte-window",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "Answer Yes or No: is each statement about APPLY true?" },
+      "statements": [
+        { "id": "s1", "text": { "en": "CROSS APPLY eliminates outer rows whose applied expression returns no rows." } },
+        { "id": "s2", "text": { "en": "APPLY can invoke a table-valued function with the outer row's columns as arguments." } },
+        { "id": "s3", "text": { "en": "OUTER APPLY behaves like an INNER JOIN." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "yes", "s3": "no" },
+      "explanation": { "en": "CROSS APPLY ≈ inner (drops empty), OUTER APPLY ≈ left outer (keeps empty with NULLs) — s3 reverses it. Passing correlated arguments to TVFs/subqueries is APPLY's raison d'être." },
+      "example": { "en": "Mnemonic: CROSS↔INNER, OUTER↔LEFT." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/from-transact-sql"]
+    },
+    {
+      "id": "d1-ctewin-0038",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-cte-window",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which query counts how many orders each customer placed in the preceding 3 orders (sliding count)?" },
+      "options": [
+        { "id": "a", "text": { "en": "COUNT(*) OVER (PARTITION BY CustomerId ORDER BY OrderDate ROWS BETWEEN 3 PRECEDING AND 1 PRECEDING)" } },
+        { "id": "b", "text": { "en": "COUNT(*) OVER (PARTITION BY CustomerId)" } },
+        { "id": "c", "text": { "en": "COUNT(*) GROUP BY CustomerId" } },
+        { "id": "d", "text": { "en": "NTILE(3) OVER (ORDER BY OrderDate)" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "An explicit ROWS frame from 3 PRECEDING to 1 PRECEDING counts up to the three prior orders, excluding the current. (b) counts all orders per customer; (c) collapses rows; (d) buckets rows into thirds." },
+      "example": { "en": "Frames can end before the current row — useful for 'history-only' features in ML datasets too." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/select-over-clause-transact-sql"]
+    },
+    {
+      "id": "d1-ctewin-0039",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-cte-window",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "The islands problem: group consecutive daily logins into streaks. Which classic technique applies?" },
+      "options": [
+        { "id": "a", "text": { "en": "Date minus ROW_NUMBER() (as days) is constant within each consecutive run — group by that difference" } },
+        { "id": "b", "text": { "en": "GROUP BY the date itself" } },
+        { "id": "c", "text": { "en": "A recursive CTE is the only way" } },
+        { "id": "d", "text": { "en": "PIVOT by weekday" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The gaps-and-islands trick: for consecutive dates, date - ROW_NUMBER() stays constant; each island gets its own constant to GROUP BY. Grouping by raw date (b) yields one group per day. Recursion (c) works but isn't needed. PIVOT (d) reshapes, doesn't group runs." },
+      "example": { "en": "SELECT MIN(D) StreakStart, MAX(D) StreakEnd, COUNT(*) Days FROM (SELECT D, DATEADD(day, -ROW_NUMBER() OVER (ORDER BY D), D) g FROM Logins) x GROUP BY g;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/row-number-transact-sql"]
+    },
+    {
+      "id": "d1-ctewin-0040",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-cte-window",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "PERCENT_RANK() and CUME_DIST() are examples of:" },
+      "options": [
+        { "id": "a", "text": { "en": "Analytic (statistical distribution) window functions" } },
+        { "id": "b", "text": { "en": "Aggregate functions requiring GROUP BY" } },
+        { "id": "c", "text": { "en": "String functions" } },
+        { "id": "d", "text": { "en": "JSON functions" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "They compute each row's relative position in its window's distribution (0..1): PERCENT_RANK = (rank-1)/(rows-1); CUME_DIST = rows ≤ current / total. Pure window analytics — no GROUP BY involved." },
+      "example": { "en": "Flag the top 5%: WHERE pr >= 0.95 computed from PERCENT_RANK() OVER (ORDER BY Score)." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/percent-rank-transact-sql"]
+    },
+    {
+      "id": "d1-ctewin-0041",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-cte-window",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A correlated subquery in the SELECT list computes (SELECT COUNT(*) FROM Orders o WHERE o.CustomerId = c.Id) per customer row. The window-function rewrite is:" },
+      "options": [
+        { "id": "a", "text": { "en": "JOIN once and use COUNT(*) OVER (PARTITION BY c.Id), or better, a GROUP BY/derived aggregate joined back" } },
+        { "id": "b", "text": { "en": "Impossible — correlated subqueries have no set-based equivalent" } },
+        { "id": "c", "text": { "en": "Use a cursor" } },
+        { "id": "d", "text": { "en": "Use GOTO" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Most correlated scalar subqueries rewrite as joins + window/grouped aggregates — usually faster and clearer (though the optimizer often decorrelates automatically). 'Impossible' (b) is false, and (c)/(d) are the anti-patterns the rewrite removes." },
+      "example": { "en": "LEFT JOIN (SELECT CustomerId, COUNT(*) N FROM Orders GROUP BY CustomerId) o ON o.CustomerId = c.Id" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/select-over-clause-transact-sql"]
+    },
+    {
+      "id": "d1-ctewin-0042",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-cte-window",
+      "type": "dragdrop-order", "difficulty": "hard",
+      "text": { "en": "Order these operations to build 'each customer's 3 most recent orders with running spend' efficiently." },
+      "items": [
+        { "id": "i1", "text": { "en": "Index (CustomerId, OrderDate DESC) INCLUDE (Total)" } },
+        { "id": "i2", "text": { "en": "CTE computing ROW_NUMBER() per customer by date desc" } },
+        { "id": "i3", "text": { "en": "Outer query filtering rn <= 3" } },
+        { "id": "i4", "text": { "en": "Window SUM for running spend over the filtered set" } }
+      ],
+      "answer": ["i1", "i2", "i3", "i4"],
+      "explanation": { "en": "Index first (supports the partition/order without sorting), number rows, filter to the top 3, then compute the running total on the small filtered set (a second CTE layer). Computing running sums before filtering would window over all orders needlessly." },
+      "example": { "en": "Layered CTEs: Numbered → Filtered → Final analytics is the idiomatic composition." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/row-number-transact-sql"]
+    },
+    {
+      "id": "d1-ctewin-0043",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-cte-window",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "STRING_AGG(Name, ', ') WITHIN GROUP (ORDER BY Name) does what?" },
+      "options": [
+        { "id": "a", "text": { "en": "Concatenates group members into one ordered, delimited string" } },
+        { "id": "b", "text": { "en": "Splits a string into rows" } },
+        { "id": "c", "text": { "en": "Ranks strings alphabetically" } },
+        { "id": "d", "text": { "en": "Aggregates into a JSON array" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "STRING_AGG is the list-building aggregate; WITHIN GROUP controls element order. Splitting is STRING_SPLIT (b); ranking is a window concern (c); JSON arrays come from JSON_ARRAYAGG (d)." },
+      "example": { "en": "SELECT CustomerId, STRING_AGG(Sku, ',') WITHIN GROUP (ORDER BY Sku) FROM OrderLines GROUP BY CustomerId;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/string-agg-transact-sql"]
+    },
+    {
+      "id": "d1-ctewin-0044",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-cte-window",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which WINDOW clause feature (SQL Server 2022+) reduces repetition in queries with many identical OVER clauses?" },
+      "options": [
+        { "id": "a", "text": { "en": "Named windows: WINDOW w AS (PARTITION BY CustomerId ORDER BY OrderDate), then OVER w" } },
+        { "id": "b", "text": { "en": "OVER DEFAULT" } },
+        { "id": "c", "text": { "en": "GLOBAL OVER" } },
+        { "id": "d", "text": { "en": "Window macros in sp_configure" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The WINDOW clause (compat 160) names a window specification once and reuses it across expressions — the ANSI feature T-SQL finally adopted. The other options don't exist." },
+      "example": { "en": "SELECT SUM(x) OVER w, AVG(x) OVER w, LAG(x) OVER w FROM T WINDOW w AS (PARTITION BY g ORDER BY d);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/select-window-transact-sql"]
+    },
+    {
+      "id": "d1-ctewin-0045",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-cte-window",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "Why can a huge ORDER BY-heavy window query spill to tempdb, and what's the design mitigation?" },
+      "options": [
+        { "id": "a", "text": { "en": "Window sorts need memory grants; underestimates spill the sort — support the window's PARTITION/ORDER with an index to remove the sort" } },
+        { "id": "b", "text": { "en": "Window functions always run in tempdb by design" } },
+        { "id": "c", "text": { "en": "Spills only occur with cursors" } },
+        { "id": "d", "text": { "en": "Add NOLOCK to avoid spills" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The Sort (and Window Spool) operators request memory; bad estimates → tempdb spills (warning icons in plans). An index matching PARTITION BY + ORDER BY feeds rows pre-sorted, eliminating the sort entirely. (b) is false, cursors are unrelated (c), and NOLOCK affects locking, not memory (d)." },
+      "example": { "en": "POC index pattern: (PartitionCols, OrderCols) INCLUDE (covered columns)." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-index-design-guide"]
+    },
+    {
+      "id": "d1-ctewin-0046",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-cte-window",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "A CTE can be used as the target of which statements (when it's updatable)?" },
+      "options": [
+        { "id": "a", "text": { "en": "UPDATE and DELETE (and INSERT in applicable cases)" } },
+        { "id": "b", "text": { "en": "Only SELECT" } },
+        { "id": "c", "text": { "en": "Only MERGE" } },
+        { "id": "d", "text": { "en": "DDL statements" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "CTEs follow updatable-view rules: single underlying table reachable → UPDATE/DELETE through them works (the dedup-delete pattern relies on it). They're not SELECT-only (b), MERGE-only (c), and DDL has nothing to do with CTEs (d)." },
+      "example": { "en": "WITH D AS (...rn...) DELETE FROM D WHERE rn > 1;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/with-common-table-expression-transact-sql"]
+    },
+    {
+      "id": "d1-ctewin-0047",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-cte-window",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Find the second-highest distinct salary. Which is correct and robust to ties?" },
+      "options": [
+        { "id": "a", "text": { "en": "SELECT salary FROM (SELECT salary, DENSE_RANK() OVER (ORDER BY salary DESC) dr FROM Emp) t WHERE dr = 2 GROUP BY salary" } },
+        { "id": "b", "text": { "en": "SELECT TOP 1 salary FROM Emp ORDER BY salary DESC OFFSET 1" } },
+        { "id": "c", "text": { "en": "SELECT MAX(salary) - 1 FROM Emp" } },
+        { "id": "d", "text": { "en": "ROW_NUMBER() = 2 guarantees the second-highest distinct value" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "DENSE_RANK treats equal salaries as one level, so dr = 2 is the second DISTINCT value regardless of ties. (b) mixes TOP with OFFSET — invalid together, and OFFSET by rows mishandles ties anyway. (c) does arithmetic, not ranking. ROW_NUMBER (d) counts rows, so duplicates of the top salary occupy positions 1 AND 2." },
+      "example": { "en": "Nth distinct value → DENSE_RANK = N. Nth row → ROW_NUMBER = N. Know which the question asks." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/dense-rank-transact-sql"]
+    },
+    {
+      "id": "d1-ctewin-0048",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-cte-window",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which statement about correlated subqueries and performance is most accurate?" },
+      "options": [
+        { "id": "a", "text": { "en": "The optimizer often transforms them into joins/apply internally; logical row-by-row doesn't necessarily mean physical row-by-row" } },
+        { "id": "b", "text": { "en": "They always execute once per outer row physically" } },
+        { "id": "c", "text": { "en": "They are always slower than any alternative" } },
+        { "id": "d", "text": { "en": "They bypass indexes" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Decorrelation is a standard optimizer transformation — EXISTS frequently becomes a semi-join. 'Always per-row' (b) and 'always slower' (c) are myths; well-indexed correlated patterns (APPLY TOP 1) can beat window alternatives. Indexes are used normally (d)." },
+      "example": { "en": "Judge by the actual plan, not by query shape superstition." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/performance/execution-plans"]
+    },
+    {
+      "id": "d1-ctewin-0049",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-cte-window",
+      "type": "yesno", "difficulty": "easy",
+      "text": { "en": "Answer Yes or No for each pair: does the left function need ORDER BY inside OVER?" },
+      "statements": [
+        { "id": "s1", "text": { "en": "ROW_NUMBER()" } },
+        { "id": "s2", "text": { "en": "LAG()" } },
+        { "id": "s3", "text": { "en": "SUM() used as a plain partition total" } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "yes", "s3": "no" },
+      "explanation": { "en": "Ranking and offset functions are order-dependent — ORDER BY in OVER is mandatory. Aggregate windows without ordering (partition totals) are valid; adding ORDER BY turns them into running aggregates." },
+      "example": { "en": "SUM(x) OVER (PARTITION BY g) — total; SUM(x) OVER (PARTITION BY g ORDER BY d ROWS ...) — running." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/select-over-clause-transact-sql"]
+    },
+    {
+      "id": "d1-ctewin-0050",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-cte-window",
+      "type": "dragdrop-match", "difficulty": "hard",
+      "text": { "en": "Match the analytic requirement to the tightest T-SQL construct." },
+      "items": [
+        { "id": "i1", "text": { "en": "Walk a parts-explosion hierarchy of unknown depth" } },
+        { "id": "i2", "text": { "en": "Latest reading per sensor" } },
+        { "id": "i3", "text": { "en": "7-row moving average per device" } },
+        { "id": "i4", "text": { "en": "Customers with no orders at all" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "Recursive CTE" } },
+        { "id": "t2", "text": { "en": "ROW_NUMBER = 1 (or APPLY TOP 1)" } },
+        { "id": "t3", "text": { "en": "AVG OVER with ROWS 6 PRECEDING" } },
+        { "id": "t4", "text": { "en": "NOT EXISTS anti-join" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "Unknown-depth traversal → recursion; latest-per-group → ROW_NUMBER/APPLY; sliding computations → framed window aggregates; absence checks → NOT EXISTS. Mapping requirement patterns to constructs is the core skill this subtopic tests." },
+      "example": { "en": "These four patterns cover a large share of real-world analytic T-SQL." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/select-over-clause-transact-sql"]
+    }
+  ]
+}

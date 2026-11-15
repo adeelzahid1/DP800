@@ -1,0 +1,839 @@
+{
+  "subtopic": "d1-graph-error",
+  "questions": [
+    {
+      "id": "d1-graph-0001",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-graph-error",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "In which clause of a SELECT does the MATCH predicate belong?" },
+      "options": [
+        { "id": "a", "text": { "en": "WHERE" } },
+        { "id": "b", "text": { "en": "FROM" } },
+        { "id": "c", "text": { "en": "GROUP BY" } },
+        { "id": "d", "text": { "en": "HAVING" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "MATCH is a predicate in WHERE; the node/edge tables are listed comma-style in FROM. It can't appear in FROM, GROUP BY or HAVING." },
+      "example": { "en": "FROM Person p1, Follows f, Person p2 WHERE MATCH(p1-(f)->p2)" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/match-sql-graph"]
+    },
+    {
+      "id": "d1-graph-0002",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-graph-error",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "In MATCH(a-(e)->b), what does the arrow direction express?" },
+      "options": [
+        { "id": "a", "text": { "en": "The edge goes FROM node a TO node b" } },
+        { "id": "b", "text": { "en": "Alphabetical ordering of nodes" } },
+        { "id": "c", "text": { "en": "a is newer than b" } },
+        { "id": "d", "text": { "en": "Nothing — direction is ignored" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The arrow mirrors $from_id → $to_id: a is the edge's source, b its target. Direction is semantic (who follows whom) and MATCH honors it — reversed patterns return different rows." },
+      "example": { "en": "MATCH(a<-(e)-b) flips it: b follows a." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/match-sql-graph"]
+    },
+    {
+      "id": "d1-graph-0003",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-graph-error",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which construct finds a path of ANY length between two people in a Follows graph?" },
+      "options": [
+        { "id": "a", "text": { "en": "MATCH(SHORTEST_PATH(p1(-(f)->p2)+)) with FOR PATH aliases" } },
+        { "id": "b", "text": { "en": "MATCH(p1-(f)->p2) repeated 10 times with OR" } },
+        { "id": "c", "text": { "en": "A CROSS JOIN of all nodes" } },
+        { "id": "d", "text": { "en": "SELECT * FROM Follows" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "SHORTEST_PATH with the + quantifier traverses arbitrary depth (bounded version: {1,n}). OR between MATCH patterns isn't supported (b), CROSS JOIN produces combinations not paths (c), and raw edges are single hops (d)." },
+      "example": { "en": "FROM Person p1, Follows FOR PATH f, Person FOR PATH p2 WHERE MATCH(SHORTEST_PATH(p1(-(f)->p2)+))" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/graphs/sql-graph-shortest-path"]
+    },
+    {
+      "id": "d1-graph-0004",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-graph-error",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which aggregate projects the node names along a SHORTEST_PATH result?" },
+      "options": [
+        { "id": "a", "text": { "en": "STRING_AGG(p2.Name, '->') WITHIN GROUP (GRAPH PATH)" } },
+        { "id": "b", "text": { "en": "STRING_AGG(p2.Name, '->') OVER (PARTITION BY p1.Id)" } },
+        { "id": "c", "text": { "en": "CONCAT_PATH(p2.Name)" } },
+        { "id": "d", "text": { "en": "JSON_ARRAYAGG(p2.Name)" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Graph path projection uses the special WITHIN GROUP (GRAPH PATH) form of STRING_AGG / LAST_VALUE / COUNT / SUM / AVG / MIN / MAX. The OVER clause (b) is window syntax, CONCAT_PATH (c) doesn't exist, and JSON_ARRAYAGG (d) is a JSON aggregate without graph-path semantics." },
+      "example": { "en": "LAST_VALUE(p2.Name) WITHIN GROUP (GRAPH PATH) gives the path's terminal node." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/graphs/sql-graph-shortest-path"]
+    },
+    {
+      "id": "d1-graph-0005",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-graph-error",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which function returns the message text of the error inside a CATCH block?" },
+      "options": [
+        { "id": "a", "text": { "en": "ERROR_MESSAGE()" } },
+        { "id": "b", "text": { "en": "@@ERROR" } },
+        { "id": "c", "text": { "en": "GET_ERROR()" } },
+        { "id": "d", "text": { "en": "ERROR_TEXT()" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "ERROR_MESSAGE() gives the text; @@ERROR returns only the error NUMBER of the immediately previous statement (and resets constantly). GET_ERROR and ERROR_TEXT don't exist." },
+      "example": { "en": "INSERT ErrorLog(Msg) VALUES (ERROR_MESSAGE());" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/error-message-transact-sql"]
+    },
+    {
+      "id": "d1-graph-0006",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-graph-error",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Why is @@ERROR considered fragile compared to ERROR_NUMBER() in CATCH?" },
+      "options": [
+        { "id": "a", "text": { "en": "@@ERROR resets after EVERY statement, so any intervening statement (even IF) destroys the value" } },
+        { "id": "b", "text": { "en": "@@ERROR requires sysadmin" } },
+        { "id": "c", "text": { "en": "@@ERROR returns text, not numbers" } },
+        { "id": "d", "text": { "en": "They behave identically" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The classic pre-2005 pattern required capturing @@ERROR into a variable immediately; ERROR_NUMBER() remains stable anywhere in the CATCH block. No permission issue (b); @@ERROR is numeric (c); the behaviors differ fundamentally (d)." },
+      "example": { "en": "IF @@ERROR <> 0 PRINT @@ERROR; -- the second reference already prints 0!" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/error-transact-sql"]
+    },
+    {
+      "id": "d1-graph-0007",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-graph-error",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Complete the friends-of-friends query." },
+      "code": "SELECT DISTINCT p3.Name\nFROM Person p1, Follows f1, Person p2, Follows f2, Person p3\nWHERE [BLANK1](p1-(f1)->p2-(f2)->p3)\n  AND p1.Name = 'Alice'\n  AND p3.Name [BLANK2] 'Alice';",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "MATCH" } },
+            { "id": "c2", "text": { "en": "PATH" } },
+            { "id": "c3", "text": { "en": "CONNECT" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "<>" } },
+            { "id": "c2", "text": { "en": "=" } },
+            { "id": "c3", "text": { "en": "LIKE" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "MATCH is the graph predicate keyword (PATH/CONNECT belong to other dialects — CONNECT BY is Oracle). Excluding Alice herself needs <> (two-hop paths can loop back to the start)." },
+      "example": { "en": "Also consider excluding direct friends with NOT EXISTS for a pure 'new suggestions' list." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/match-sql-graph"]
+    },
+    {
+      "id": "d1-graph-0008",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-graph-error",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "Which errors can a TRY...CATCH block catch? Answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "A constraint violation (severity 16)" } },
+        { "id": "s2", "text": { "en": "A syntax error in the same batch/scope" } },
+        { "id": "s3", "text": { "en": "A severity 21 hardware-level error" } },
+        { "id": "s4", "text": { "en": "A client-side query timeout (attention)" } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "no", "s3": "no", "s4": "no" },
+      "explanation": { "en": "CATCH handles runtime errors of severity 11–19 (constraint violations, conversion failures, deadlock victim 1205…). It cannot catch same-scope compile/syntax errors, severity ≥ 20 (connection terminated), or attention events from client timeouts — the three documented escape categories." },
+      "example": { "en": "Deadlock (1205) IS catchable — retry logic in CATCH is a legitimate pattern." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/language-elements/try-catch-transact-sql"]
+    },
+    {
+      "id": "d1-graph-0009",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-graph-error",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What is wrong with: THROW 100, 'Custom problem', 1; ?" },
+      "options": [
+        { "id": "a", "text": { "en": "Custom THROW error numbers must be ≥ 50000" } },
+        { "id": "b", "text": { "en": "THROW cannot take arguments" } },
+        { "id": "c", "text": { "en": "The severity argument is missing" } },
+        { "id": "d", "text": { "en": "Nothing is wrong" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "User-defined error numbers start at 50000; 100 is reserved system range — the statement fails. THROW's three-argument form is valid (b). Severity isn't an argument at all — THROW always raises severity 16 (c misreads the signature)." },
+      "example": { "en": ";THROW 50001, 'Custom problem', 1; -- note the preceding semicolon convention too" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/language-elements/throw-transact-sql"]
+    },
+    {
+      "id": "d1-graph-0010",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-graph-error",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A statement before THROW lacks a semicolon and the batch fails with a syntax error near THROW. Why does THROW specifically need this?" },
+      "options": [
+        { "id": "a", "text": { "en": "THROW can be parsed as a continuation of the previous statement (e.g. a column alias), so the previous statement must be explicitly terminated" } },
+        { "id": "b", "text": { "en": "THROW runs in its own transaction" } },
+        { "id": "c", "text": { "en": "All T-SQL statements require semicolons" } },
+        { "id": "d", "text": { "en": "It's a parser bug fixed in 2025" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "THROW isn't a reserved keyword, so 'SELECT x THROW ...' parses ambiguously — hence the documented guidance to terminate the preceding statement. Transactions are irrelevant (b). Semicolons are still optional for most statements (c — though recommended). It's by-design parsing, not a bug (d)." },
+      "example": { "en": "The defensive habit: always write ;THROW inside CATCH blocks." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/language-elements/throw-transact-sql"]
+    },
+    {
+      "id": "d1-graph-0011",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-graph-error",
+      "type": "dragdrop-order", "difficulty": "medium",
+      "text": { "en": "Order the events when a constraint violation occurs inside a TRY block with an open transaction and XACT_ABORT OFF." },
+      "items": [
+        { "id": "i1", "text": { "en": "The INSERT fails with a severity-16 error" } },
+        { "id": "i2", "text": { "en": "Control transfers to the CATCH block" } },
+        { "id": "i3", "text": { "en": "CATCH inspects XACT_STATE() to decide commit/rollback" } },
+        { "id": "i4", "text": { "en": "THROW re-raises the error to the caller" } }
+      ],
+      "answer": ["i1", "i2", "i3", "i4"],
+      "explanation": { "en": "Error → jump to CATCH (transaction possibly still open and committable with XACT_ABORT OFF) → interrogate XACT_STATE() and roll back as needed → re-raise. Skipping step 3 risks committing partial work or leaving orphan transactions." },
+      "example": { "en": "With XACT_ABORT ON, the transaction would arrive in CATCH already doomed (XACT_STATE() = -1)." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/language-elements/try-catch-transact-sql"]
+    },
+    {
+      "id": "d1-graph-0012",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-graph-error",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which RAISERROR capability does THROW lack?" },
+      "options": [
+        { "id": "a", "text": { "en": "printf-style message formatting with substitution parameters (%s, %d)" } },
+        { "id": "b", "text": { "en": "Raising custom messages at all" } },
+        { "id": "c", "text": { "en": "Working inside CATCH" } },
+        { "id": "d", "text": { "en": "Stopping batch execution" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "RAISERROR formats messages (%s/%d, WITH NOWAIT/LOG, severity choice); THROW takes a plain message only — use FORMATMESSAGE() to pre-format if needed. THROW does raise custom errors (b), works in CATCH (c — where it's king), and terminates the batch MORE decisively than RAISERROR (d)." },
+      "example": { "en": "DECLARE @m NVARCHAR(200) = FORMATMESSAGE('Step %s failed for id %d', 'load', @id); THROW 50002, @m, 1;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/language-elements/raiserror-transact-sql"]
+    },
+    {
+      "id": "d1-graph-0013",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-graph-error",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "An edge constraint (ADD CONSTRAINT EC CONNECTION (Person TO Company)) on an edge table does what?" },
+      "options": [
+        { "id": "a", "text": { "en": "Restricts the edge to connect only the listed node-table pairs (and blocks deleting nodes with connected edges)" } },
+        { "id": "b", "text": { "en": "Creates an index on the edge" } },
+        { "id": "c", "text": { "en": "Limits the number of edges per node" } },
+        { "id": "d", "text": { "en": "Makes the edge bidirectional" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Edge constraints are the graph world's referential integrity: only specified from/to node-type pairs are allowed, and node rows that still have edges can't be deleted. No index is implied (b), no cardinality limit exists (c), and direction semantics stay as-is (d)." },
+      "example": { "en": "ALTER TABLE WorksAt ADD CONSTRAINT EC_WorksAt CONNECTION (Person TO Company) ON DELETE NO ACTION;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/tables/graph-edge-constraints"]
+    },
+    {
+      "id": "d1-graph-0014",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-graph-error",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "ERROR_LINE() inside CATCH returns:" },
+      "options": [
+        { "id": "a", "text": { "en": "The line number where the error occurred" } },
+        { "id": "b", "text": { "en": "The error message's first line" } },
+        { "id": "c", "text": { "en": "The number of lines executed" } },
+        { "id": "d", "text": { "en": "Always 1" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "ERROR_LINE pinpoints the failing line within the routine/batch — invaluable for logging. The other readings misinterpret the function." },
+      "example": { "en": "Log Num + Msg + Proc + Line and most production errors become diagnosable from the log alone." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/error-line-transact-sql"]
+    },
+    {
+      "id": "d1-graph-0015",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-graph-error",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which pattern correctly retries a deadlock victim up to 3 times?" },
+      "options": [
+        { "id": "a", "text": { "en": "A WHILE loop around TRY/CATCH that checks ERROR_NUMBER() = 1205 in CATCH, decrements a counter, and re-attempts" } },
+        { "id": "b", "text": { "en": "SET DEADLOCK_RETRY 3" } },
+        { "id": "c", "text": { "en": "Deadlocks cannot be caught" } },
+        { "id": "d", "text": { "en": "WITH RETRY on the transaction" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Error 1205 (deadlock victim) IS catchable; manual retry logic (with a short delay) is the standard pattern. No SET/WITH retry options exist in T-SQL (b, d). (c) is false — that's timeouts/severity≥20 that escape CATCH." },
+      "example": { "en": "IF ERROR_NUMBER() = 1205 AND @retry > 0 BEGIN SET @retry -= 1; WAITFOR DELAY '00:00:00.2'; CONTINUE; END; THROW;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/language-elements/try-catch-transact-sql"]
+    },
+    {
+      "id": "d1-graph-0016",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-graph-error",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "For each statement about SHORTEST_PATH, answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "It returns ALL shortest paths between the endpoints." } },
+        { "id": "s2", "text": { "en": "{1,3} bounds the traversal to at most 3 hops." } },
+        { "id": "s3", "text": { "en": "Repeated tables in the pattern need FOR PATH aliases." } }
+      ],
+      "answerMap": { "s1": "no", "s2": "yes", "s3": "yes" },
+      "explanation": { "en": "SHORTEST_PATH returns ONE arbitrary shortest path per endpoint pair (not all ties). The {1,n} quantifier bounds hops; + means unbounded. FOR PATH marks the tables that participate in the repeatable pattern — omitting it is a compile error." },
+      "example": { "en": "MATCH(SHORTEST_PATH(p1(-(f)->p2){1,3}))" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/graphs/sql-graph-shortest-path"]
+    },
+    {
+      "id": "d1-graph-0017",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-graph-error",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Combining two MATCH patterns in one WHERE clause requires:" },
+      "options": [
+        { "id": "a", "text": { "en": "AND — OR between MATCH predicates is not supported" } },
+        { "id": "b", "text": { "en": "OR" } },
+        { "id": "c", "text": { "en": "UNION inside MATCH" } },
+        { "id": "d", "text": { "en": "A nested MATCH" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "MATCH predicates combine with AND only; expressing OR-semantics requires separate queries UNIONed at the statement level. (c) and (d) aren't valid syntax." },
+      "example": { "en": "WHERE MATCH(a-(e1)->b) AND MATCH(b-(e2)->c) -- valid; replace AND with OR → error" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/match-sql-graph"]
+    },
+    {
+      "id": "d1-graph-0018",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-graph-error",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "In a CATCH block you call a logging procedure BEFORE checking the transaction. The log INSERT fails with error 3930 ('current transaction cannot be committed'). Why?" },
+      "options": [
+        { "id": "a", "text": { "en": "The transaction is doomed (XACT_STATE() = -1): no writes are allowed until ROLLBACK — roll back first, then log" } },
+        { "id": "b", "text": { "en": "Logging inside CATCH is forbidden" } },
+        { "id": "c", "text": { "en": "The log table is corrupted" } },
+        { "id": "d", "text": { "en": "CATCH blocks are read-only" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "A doomed transaction (common with XACT_ABORT ON) permits no further writes; attempts raise 3930. Correct order: IF XACT_STATE() = -1 ROLLBACK; then log (the rollback also preserves the log row, which would otherwise be undone with the doomed transaction!). Logging is fine once handled (b, d), and corruption (c) is fiction." },
+      "example": { "en": "Pattern: capture ERROR_* into variables → rollback → insert log from variables → THROW." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/xact-state-transact-sql"]
+    },
+    {
+      "id": "d1-graph-0019",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-graph-error",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which query lists each person Alice follows together with the Since attribute stored on the edge?" },
+      "options": [
+        { "id": "a", "text": { "en": "SELECT p2.Name, f.Since FROM Person p1, Follows f, Person p2 WHERE MATCH(p1-(f)->p2) AND p1.Name='Alice'" } },
+        { "id": "b", "text": { "en": "SELECT p2.Name, Follows.Since FROM Person p2 -- edges join implicitly" } },
+        { "id": "c", "text": { "en": "Edge attributes cannot be selected" } },
+        { "id": "d", "text": { "en": "SELECT * FROM MATCH(...)" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Edge tables are regular tables: alias them in FROM, reference their columns anywhere. Implicit joins (b) don't exist — MATCH provides the connection. Edge attributes are selectable (c). MATCH is a predicate, not a rowsource (d)." },
+      "example": { "en": "Edges-with-attributes (Since, Weight, Role) are why edges are tables, not just FK pairs." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/match-sql-graph"]
+    },
+    {
+      "id": "d1-graph-0020",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-graph-error",
+      "type": "dropdown", "difficulty": "hard",
+      "text": { "en": "Complete the robust CATCH block." },
+      "code": "BEGIN CATCH\n    IF [BLANK1]() = -1\n        ROLLBACK TRANSACTION;\n    INSERT INTO dbo.ErrLog (Num, Msg)\n    VALUES (ERROR_NUMBER(), ERROR_MESSAGE());\n    [BLANK2];\nEND CATCH",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "XACT_STATE" } },
+            { "id": "c2", "text": { "en": "@@TRANCOUNT" } },
+            { "id": "c3", "text": { "en": "ERROR_STATE" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "THROW" } },
+            { "id": "c2", "text": { "en": "RETURN 0" } },
+            { "id": "c3", "text": { "en": "COMMIT" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "XACT_STATE() = -1 detects the doomed state (@@TRANCOUNT only counts nesting and can't distinguish doomed; ERROR_STATE is the error's state number). Re-raising with THROW tells the caller the truth; RETURN 0 fakes success and COMMIT after an error is exactly what must not happen blindly." },
+      "example": { "en": "This is the canonical template — memorize it as a unit." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/language-elements/try-catch-transact-sql"]
+    },
+    {
+      "id": "d1-graph-0021",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-graph-error",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "ERROR_PROCEDURE() returns NULL in your CATCH block. What does that tell you?" },
+      "options": [
+        { "id": "a", "text": { "en": "The error occurred in ad-hoc batch code, not inside a stored procedure/trigger/function" } },
+        { "id": "b", "text": { "en": "The error has no message" } },
+        { "id": "c", "text": { "en": "CATCH was entered without an error" } },
+        { "id": "d", "text": { "en": "The procedure name is encrypted" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "ERROR_PROCEDURE names the module where the error happened; NULL means the failing statement ran outside any module (ad-hoc batch/dynamic SQL). Messages always exist for real errors (b); CATCH only runs on errors (c); encryption doesn't null it (d)." },
+      "example": { "en": "Log COALESCE(ERROR_PROCEDURE(), '<ad-hoc>') for readable logs." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/error-procedure-transact-sql"]
+    },
+    {
+      "id": "d1-graph-0022",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-graph-error",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Recommendation scenario: 'people who bought what Alice bought'. Which MATCH pattern expresses it?" },
+      "options": [
+        { "id": "a", "text": { "en": "MATCH(alice-(b1)->product<-(b2)-other) with alice.Name='Alice' AND other.Id <> alice.Id" } },
+        { "id": "b", "text": { "en": "MATCH(alice-(b1)->other)" } },
+        { "id": "c", "text": { "en": "MATCH(product-(b1)->alice-(b2)->other)" } },
+        { "id": "d", "text": { "en": "MATCH(alice<-(b1)-product<-(b2)-other)" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Two Bought edges converging on the same product node: alice →bought→ product ←bought← other. (b) connects people directly with a Bought edge — type-invalid. (c) has the product buying Alice. (d) points both edges away from the people's purchases (product bought alice?)." },
+      "example": { "en": "Converging/diverging arrows on shared nodes is how co-occurrence patterns are written." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/match-sql-graph"]
+    },
+    {
+      "id": "d1-graph-0023",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-graph-error",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "What severity does a parameterless THROW use when re-raising?" },
+      "options": [
+        { "id": "a", "text": { "en": "The original error's severity" } },
+        { "id": "b", "text": { "en": "Always 16" } },
+        { "id": "c", "text": { "en": "Always 10" } },
+        { "id": "d", "text": { "en": "Configurable via SET" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Re-raise means re-raise: number, message, severity and state come from the original. It's the PARAMETERIZED THROW (50000+) that fixes severity at 16 — the nuance between the two forms. (c)/(d) are wrong for both forms." },
+      "example": { "en": "Two THROWs: 'THROW;' = faithful re-raise; 'THROW 50001, msg, 1;' = new error at severity 16." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/language-elements/throw-transact-sql"]
+    },
+    {
+      "id": "d1-graph-0024",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-graph-error",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "MATCH queries must reference node/edge tables how in the FROM clause?" },
+      "options": [
+        { "id": "a", "text": { "en": "As comma-separated table sources (old-style), with MATCH supplying the connection logic" } },
+        { "id": "b", "text": { "en": "With INNER JOIN ... ON $from_id = $node_id" } },
+        { "id": "c", "text": { "en": "Via CROSS APPLY only" } },
+        { "id": "d", "text": { "en": "Inside a derived table named GRAPH" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The documented MATCH form uses comma-joined sources; MATCH replaces explicit ON conditions. Manually joining pseudo-columns (b) works WITHOUT match but isn't the MATCH syntax asked for and loses pattern readability. (c)/(d) are invented requirements." },
+      "example": { "en": "FROM Person p1, Follows f, Person p2 WHERE MATCH(...) — commas are correct style here, exceptionally." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/match-sql-graph"]
+    },
+    {
+      "id": "d1-graph-0025",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-graph-error",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "Answer Yes or No about TRY...CATCH scope and nesting." },
+      "statements": [
+        { "id": "s1", "text": { "en": "TRY...CATCH blocks can be nested." } },
+        { "id": "s2", "text": { "en": "An error in the CATCH block itself can be caught by an outer TRY...CATCH." } },
+        { "id": "s3", "text": { "en": "A TRY block can span two batches (across GO)." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "yes", "s3": "no" },
+      "explanation": { "en": "Nesting is supported, and CATCH-block errors propagate to enclosing handlers (or the caller). TRY...CATCH cannot span batches — GO ends the construct; each batch needs its own." },
+      "example": { "en": "Caller-level TRY/CATCH around EXEC proc catches errors re-thrown from the proc's own CATCH." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/language-elements/try-catch-transact-sql"]
+    },
+    {
+      "id": "d1-graph-0026",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-graph-error",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "LAST_VALUE(p2.Name) WITHIN GROUP (GRAPH PATH) in a SHORTEST_PATH query returns:" },
+      "options": [
+        { "id": "a", "text": { "en": "The final node's name at the end of each found path" } },
+        { "id": "b", "text": { "en": "The alphabetically last name" } },
+        { "id": "c", "text": { "en": "The most recently inserted node" } },
+        { "id": "d", "text": { "en": "A random node on the path" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Graph-path aggregates run along the traversal: LAST_VALUE = the path's terminal node (useful to know WHERE you arrived when hops vary). Not alphabetical (b), not insert-time (c), not random (d)." },
+      "example": { "en": "Pair with COUNT(...) WITHIN GROUP (GRAPH PATH) to report destination + distance." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/graphs/sql-graph-shortest-path"]
+    },
+    {
+      "id": "d1-graph-0027",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-graph-error",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "Your org chart uses a self-referencing ManagerId column. When is migrating to graph tables justified versus keeping recursive CTEs?" },
+      "options": [
+        { "id": "a", "text": { "en": "When traversal queries multiply (shortest paths, many relationship types, pattern matching) — a single parent link handled fine by recursive CTEs doesn't justify graph" } },
+        { "id": "b", "text": { "en": "Always — graph is strictly better" } },
+        { "id": "c", "text": { "en": "Never — graph tables are deprecated" } },
+        { "id": "d", "text": { "en": "Only when the table exceeds 1M rows" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Graph pays off with heterogeneous relationships and pattern/path queries (SHORTEST_PATH, multi-edge MATCH). A simple hierarchy is idiomatic recursive-CTE territory. 'Always' (b) ignores migration cost; graph isn't deprecated (c); size (d) isn't the deciding axis." },
+      "example": { "en": "Decision cue in scenarios: count the RELATIONSHIP TYPES and TRAVERSAL styles, not the rows." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/graphs/sql-graph-overview"]
+    },
+    {
+      "id": "d1-graph-0028",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-graph-error",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "FORMATMESSAGE() is useful with THROW because:" },
+      "options": [
+        { "id": "a", "text": { "en": "It performs the printf-style substitution THROW lacks, producing the message string beforehand" } },
+        { "id": "b", "text": { "en": "THROW requires message ids" } },
+        { "id": "c", "text": { "en": "It logs to the Windows event log" } },
+        { "id": "d", "text": { "en": "It increases severity" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "FORMATMESSAGE('%s failed at %d', @step, @id) builds the dynamic text; THROW then raises it. THROW takes literal/variable messages, not ids (b — RAISERROR uses sys.messages ids). Event-log writing is RAISERROR WITH LOG (c). Severity stays 16 (d)." },
+      "example": { "en": "DECLARE @m NVARCHAR(2048) = FORMATMESSAGE(...); THROW 50010, @m, 1;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/formatmessage-transact-sql"]
+    },
+    {
+      "id": "d1-graph-0029",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-graph-error",
+      "type": "dragdrop-match", "difficulty": "medium",
+      "text": { "en": "Match the error-handling element to its description." },
+      "items": [
+        { "id": "i1", "text": { "en": "Returns 1205 for a deadlock victim" } },
+        { "id": "i2", "text": { "en": "Keeps its value throughout the CATCH block" } },
+        { "id": "i3", "text": { "en": "Resets after every single statement" } },
+        { "id": "i4", "text": { "en": "Raises severity-16 custom error, number ≥ 50000" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "ERROR_NUMBER() (in that deadlock's CATCH)" } },
+        { "id": "t2", "text": { "en": "Any ERROR_*() function" } },
+        { "id": "t3", "text": { "en": "@@ERROR" } },
+        { "id": "t4", "text": { "en": "THROW 50001, 'msg', 1" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "ERROR_NUMBER surfaces the caught error's code (1205 for deadlocks); the ERROR_* family is stable within CATCH; @@ERROR is the volatile legacy; parameterized THROW is the modern custom-error raiser. Distinguishing these four is the heart of the error-handling bullet." },
+      "example": { "en": "All four appear together in the canonical CATCH template." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/language-elements/try-catch-transact-sql"]
+    },
+    {
+      "id": "d1-graph-0030",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-graph-error",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A heterogeneous graph has Person and Company nodes and a WorksAt edge. Which query finds colleagues (people working at the same company)?" },
+      "options": [
+        { "id": "a", "text": { "en": "FROM Person p1, WorksAt w1, Company c, WorksAt w2, Person p2 WHERE MATCH(p1-(w1)->c<-(w2)-p2) AND p1.Id <> p2.Id" } },
+        { "id": "b", "text": { "en": "MATCH(p1-(w1)->p2)" } },
+        { "id": "c", "text": { "en": "MATCH(c-(w1)->p1-(w2)->p2)" } },
+        { "id": "d", "text": { "en": "SELECT * FROM WorksAt WHERE $from_id = $to_id" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Converging arrows on the shared company express co-membership. (b) connects people directly via WorksAt — type mismatch. (c) has the company employed by a person. (d) asks for self-loop edges — meaningless here." },
+      "example": { "en": "Same convergence pattern as 'bought the same product' — learn it once, reuse everywhere." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/match-sql-graph"]
+    },
+    {
+      "id": "d1-graph-0031",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-graph-error",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which statement about severity levels is correct?" },
+      "options": [
+        { "id": "a", "text": { "en": "11–16 are user-correctable errors; 17–19 resource/system; 20+ terminate the connection" } },
+        { "id": "b", "text": { "en": "Higher severity means lower priority" } },
+        { "id": "c", "text": { "en": "All severities are catchable" } },
+        { "id": "d", "text": { "en": "Severity 0 kills the server" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The documented bands: ≤10 informational, 11–16 user errors (constraint violations live here), 17–19 serious but catchable, 20–25 fatal to the connection and uncatchable. (b) inverts meaning, (c) ignores the ≥20 rule, (d) is backwards — 0 is informational." },
+      "example": { "en": "RAISERROR above severity 18 requires sysadmin WITH LOG." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/errors-events/database-engine-error-severities"]
+    },
+    {
+      "id": "d1-graph-0032",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-graph-error",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "In SSMS you want progress messages from a long loop to appear immediately, not buffered. Which statement?" },
+      "options": [
+        { "id": "a", "text": { "en": "RAISERROR('step %d done', 0, 1, @i) WITH NOWAIT" } },
+        { "id": "b", "text": { "en": "PRINT 'step done'" } },
+        { "id": "c", "text": { "en": "THROW 50001, 'step done', 1" } },
+        { "id": "d", "text": { "en": "SELECT 'step done'" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "RAISERROR severity 0–10 WITH NOWAIT flushes the message buffer instantly — the classic progress-reporting trick (one place RAISERROR still beats THROW). PRINT buffers (b). THROW raises a real error and kills the batch (c). SELECT emits result sets, also buffered (d)." },
+      "example": { "en": "Low-severity RAISERROR = messages; high-severity = errors. Dual personality worth knowing." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/language-elements/raiserror-transact-sql"]
+    },
+    {
+      "id": "d1-graph-0033",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-graph-error",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "SHORTEST_PATH must find paths only through edges where f.Active = 1. Where does that filter go?" },
+      "options": [
+        { "id": "a", "text": { "en": "Inside the pattern's quantified part isn't filterable per-hop in the WHERE clause — pre-filter via a view/derived requirement or apply conditions the syntax supports; per-hop edge predicates inside SHORTEST_PATH patterns are not supported in WHERE" } },
+        { "id": "b", "text": { "en": "WHERE f.Active = 1 filters each hop normally" } },
+        { "id": "c", "text": { "en": "ON (f.Active = 1) inside MATCH" } },
+        { "id": "d", "text": { "en": "HAVING f.Active = 1" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Columns of FOR PATH tables can't be referenced outside graph-path aggregates — so WHERE f.Active = 1 is invalid for the repeated edge (b). MATCH has no ON (c); HAVING needs grouping (d). Workaround: filter edges into a view/table first, build the path over that." },
+      "example": { "en": "CREATE VIEW ActiveFollows AS SELECT * FROM Follows WHERE Active = 1; -- then traverse the view" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/graphs/sql-graph-shortest-path"]
+    },
+    {
+      "id": "d1-graph-0034",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-graph-error",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What happens to the rest of the TRY block after an error transfers control to CATCH?" },
+      "options": [
+        { "id": "a", "text": { "en": "It is skipped entirely — execution never returns to the TRY block" } },
+        { "id": "b", "text": { "en": "It resumes after CATCH completes" } },
+        { "id": "c", "text": { "en": "Only the failed statement is skipped" } },
+        { "id": "d", "text": { "en": "It re-runs from the beginning" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Control flows TRY → CATCH → statement AFTER the CATCH block; remaining TRY statements never execute. There's no resume (b — some languages differ!), no skip-and-continue (c), no auto-retry (d)." },
+      "example": { "en": "Need retries? Implement them explicitly with loops around the TRY/CATCH." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/language-elements/try-catch-transact-sql"]
+    },
+    {
+      "id": "d1-graph-0035",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-graph-error",
+      "type": "yesno", "difficulty": "easy",
+      "text": { "en": "Answer Yes or No about graph pseudo-columns in queries." },
+      "statements": [
+        { "id": "s1", "text": { "en": "You can SELECT $node_id in a result set." } },
+        { "id": "s2", "text": { "en": "You can manually JOIN ON f.$from_id = p.$node_id instead of MATCH." } },
+        { "id": "s3", "text": { "en": "Applications should parse $node_id JSON for business logic." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "yes", "s3": "no" },
+      "explanation": { "en": "Pseudo-columns are selectable and manually joinable (MATCH is sugar + optimization over those joins). But $node_id's JSON representation is an internal implementation detail — business logic belongs on your own key columns, not parsed engine identifiers." },
+      "example": { "en": "Expose Person.Id to apps; keep $node_id for the engine." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/graphs/sql-graph-overview"]
+    },
+    {
+      "id": "d1-graph-0036",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-graph-error",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "An INSERT into an edge table fails with an edge-constraint violation. What does this mean?" },
+      "options": [
+        { "id": "a", "text": { "en": "The $from_id/$to_id pair references node types not allowed by the CONNECTION constraint" } },
+        { "id": "b", "text": { "en": "The edge already exists" } },
+        { "id": "c", "text": { "en": "The nodes don't exist" } },
+        { "id": "d", "text": { "en": "Edges cannot be inserted manually" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Edge constraints whitelist node-type pairs; connecting, say, Company TO Company when only Person TO Company is allowed violates it. Duplicate edges are permitted unless separately constrained (b). Nonexistent node ids produce different errors (c). Manual edge inserts are standard (d)." },
+      "example": { "en": "CONSTRAINT EC_WorksAt CONNECTION (Person TO Company)" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/tables/graph-edge-constraints"]
+    },
+    {
+      "id": "d1-graph-0037",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-graph-error",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which tool records every error a production system raises inside procs, with number, line and procedure, WITHOUT changing application behavior?" },
+      "options": [
+        { "id": "a", "text": { "en": "A log-and-rethrow CATCH pattern writing to an error table, THROW preserving original behavior" } },
+        { "id": "b", "text": { "en": "Swallowing errors in CATCH and writing to the log only" } },
+        { "id": "c", "text": { "en": "PRINT statements" } },
+        { "id": "d", "text": { "en": "Setting all severities to 10" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Log-then-THROW keeps the caller's error contract intact while capturing diagnostics. Swallowing (b) silently changes behavior — callers think operations succeeded. PRINT (c) vanishes with the session. Severity manipulation (d) isn't a thing you can globally set and would break semantics." },
+      "example": { "en": "Behavior-preserving observability = the production requirement behind the pattern." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/language-elements/try-catch-transact-sql"]
+    },
+    {
+      "id": "d1-graph-0038",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-graph-error",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "ERROR_STATE() differs from ERROR_NUMBER() how?" },
+      "options": [
+        { "id": "a", "text": { "en": "State distinguishes different SOURCES of the same error number — useful when one number can be raised from several code paths" } },
+        { "id": "b", "text": { "en": "State is the severity" } },
+        { "id": "c", "text": { "en": "They are identical" } },
+        { "id": "d", "text": { "en": "State is the line number" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Number identifies WHAT failed; state (1–255) disambiguates WHERE/WHY variants of that error — Microsoft support uses states to pinpoint internal origins, and your THROWs can use states the same way. Severity (b) and line (d) have their own functions; (c) is false." },
+      "example": { "en": ";THROW 50001, 'Validation failed', 2; -- state 2 = the inventory check branch" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/error-state-transact-sql"]
+    },
+    {
+      "id": "d1-graph-0039",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-graph-error",
+      "type": "dragdrop-order", "difficulty": "medium",
+      "text": { "en": "Order the layers of defense for data integrity, innermost (cheapest, always-on) first." },
+      "items": [
+        { "id": "i1", "text": { "en": "Column types and NOT NULL" } },
+        { "id": "i2", "text": { "en": "Declarative constraints (PK/FK/CHECK/UNIQUE)" } },
+        { "id": "i3", "text": { "en": "Trigger-based cross-row rules" } },
+        { "id": "i4", "text": { "en": "Procedure-level TRY/CATCH + validation logic" } }
+      ],
+      "answer": ["i1", "i2", "i3", "i4"],
+      "explanation": { "en": "Types reject the grossly wrong for free; constraints enforce declaratively; triggers handle what constraints can't express; procedural validation and error handling wrap the outermost business flow. Pushing rules as deep (early) as possible keeps every access path honest." },
+      "example": { "en": "Design question heuristic: choose the deepest layer capable of expressing the rule." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/tables/unique-constraints-and-check-constraints"]
+    },
+    {
+      "id": "d1-graph-0040",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-graph-error",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "To find nodes with NO outgoing Follows edges (graph anti-join), which approach works?" },
+      "options": [
+        { "id": "a", "text": { "en": "WHERE NOT EXISTS (SELECT 1 FROM Person p2, Follows f WHERE MATCH(p1-(f)->p2))" } },
+        { "id": "b", "text": { "en": "MATCH(NOT p1-(f)->p2)" } },
+        { "id": "c", "text": { "en": "MATCH(p1-(f)->NULL)" } },
+        { "id": "d", "text": { "en": "OUTER MATCH" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "MATCH has no negation/outer forms (b, d) and no NULL node concept (c); the relational NOT EXISTS wrapper around a correlated MATCH subquery provides anti-join semantics — graph and classic T-SQL compose." },
+      "example": { "en": "'Followers with no followees', 'products never bought' — same template." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/match-sql-graph"]
+    },
+    {
+      "id": "d1-graph-0041",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-graph-error",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which statement enables stricter automatic rollback semantics recommended for transactional procedures?" },
+      "options": [
+        { "id": "a", "text": { "en": "SET XACT_ABORT ON" } },
+        { "id": "b", "text": { "en": "SET IMPLICIT_TRANSACTIONS ON" } },
+        { "id": "c", "text": { "en": "SET ARITHABORT OFF" } },
+        { "id": "d", "text": { "en": "SET ROLLBACK ON" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "XACT_ABORT ON makes runtime errors doom-and-rollback the transaction — removing half-committed ambiguity. IMPLICIT_TRANSACTIONS (b) changes when transactions START (a different, often problematic behavior). ARITHABORT OFF (c) loosens arithmetic error handling. SET ROLLBACK (d) doesn't exist." },
+      "example": { "en": "Template header: SET NOCOUNT ON; SET XACT_ABORT ON;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/set-xact-abort-transact-sql"]
+    },
+    {
+      "id": "d1-graph-0042",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-graph-error",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "COUNT(p2.Name) WITHIN GROUP (GRAPH PATH) AS Hops returns 3 for a path. How many edges did the traversal cross?" },
+      "options": [
+        { "id": "a", "text": { "en": "3 — the aggregate counts traversed pattern iterations (nodes visited after the start), matching edge hops" } },
+        { "id": "b", "text": { "en": "2" } },
+        { "id": "c", "text": { "en": "4" } },
+        { "id": "d", "text": { "en": "Cannot be determined" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Each iteration of the quantified pattern adds one edge and one new node; counting the path's p2 occurrences equals the hop count. Off-by-one readings (b, c) come from counting the start node or fenceposts incorrectly." },
+      "example": { "en": "Start → A → B → C: three p2 values (A, B, C), three edges." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/graphs/sql-graph-shortest-path"]
+    },
+    {
+      "id": "d1-graph-0043",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-graph-error",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which scenario is the AI-domain bridge for graph queries mentioned in modern SQL guidance?" },
+      "options": [
+        { "id": "a", "text": { "en": "GraphRAG-style retrieval: combining relationship traversal with vector similarity to ground LLM answers in connected context" } },
+        { "id": "b", "text": { "en": "Graphs replace embeddings entirely" } },
+        { "id": "c", "text": { "en": "MATCH generates embeddings" } },
+        { "id": "d", "text": { "en": "No relationship exists between graph and AI features" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Graph + vector is an emerging retrieval pattern: vectors find semantically similar nodes, graph traversal expands to related entities (citations, ownership chains) for richer LLM context. Graphs complement, not replace, embeddings (b); MATCH traverses, never embeds (c); the synergy is real (d)." },
+      "example": { "en": "Retrieve top-k similar documents by vector, then MATCH authors/citations around them for the prompt." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/graphs/sql-graph-overview"]
+    },
+    {
+      "id": "d1-graph-0044",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-graph-error",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "sys.messages and sp_addmessage serve what purpose in error handling?" },
+      "options": [
+        { "id": "a", "text": { "en": "A catalog of reusable, localizable error messages RAISERROR can raise by id (msg_id 50001+ user-defined)" } },
+        { "id": "b", "text": { "en": "A log of all raised errors" } },
+        { "id": "c", "text": { "en": "THROW requires messages registered there" } },
+        { "id": "d", "text": { "en": "They configure severity colors in SSMS" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "sys.messages holds message templates (with language variants); sp_addmessage registers custom ones for RAISERROR(msg_id, …). It's a catalog, not an occurrence log (b). THROW uses ad-hoc strings — no registration (c). (d) is decoration fantasy." },
+      "example": { "en": "EXEC sp_addmessage 50100, 16, N'Customer %d exceeded credit limit.'; RAISERROR(50100, 16, 1, @custId);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-addmessage-transact-sql"]
+    },
+    {
+      "id": "d1-graph-0045",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-graph-error",
+      "type": "yesno", "difficulty": "hard",
+      "text": { "en": "With SET XACT_ABORT ON, an error occurs mid-transaction inside TRY. Answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "Control still reaches the CATCH block." } },
+        { "id": "s2", "text": { "en": "XACT_STATE() in CATCH returns -1." } },
+        { "id": "s3", "text": { "en": "The CATCH block can COMMIT the remaining work." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "yes", "s3": "no" },
+      "explanation": { "en": "XACT_ABORT + TRY/CATCH cooperate: CATCH still fires, but the transaction arrives doomed (-1) — only ROLLBACK is permitted; attempting COMMIT raises 3930. This triple is the exact interplay the exam's hard error-handling items test." },
+      "example": { "en": "Doomed ≠ rolled back: you must still issue the ROLLBACK yourself in CATCH." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/set-xact-abort-transact-sql"]
+    },
+    {
+      "id": "d1-graph-0046",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-graph-error",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Nested procedures: ProcA calls ProcB; ProcB's CATCH throws. ProcA has no TRY/CATCH. What happens?" },
+      "options": [
+        { "id": "a", "text": { "en": "The error propagates through ProcA to its caller/client" } },
+        { "id": "b", "text": { "en": "The error vanishes" } },
+        { "id": "c", "text": { "en": "ProcA restarts ProcB" } },
+        { "id": "d", "text": { "en": "SQL Server adds an implicit CATCH" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Unhandled errors bubble up the call stack until a TRY/CATCH or the client receives them — standard propagation. Errors never silently vanish (b), nothing auto-retries (c), and no implicit handlers exist (d)." },
+      "example": { "en": "Decide ONE layer that owns transaction/rollback handling; inner layers log-and-rethrow." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/language-elements/try-catch-transact-sql"]
+    },
+    {
+      "id": "d1-graph-0047",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-graph-error",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which exam-relevant pairing is correct?" },
+      "options": [
+        { "id": "a", "text": { "en": "MATCH → graph traversal; TRY/CATCH → error handling; both in 'write advanced T-SQL code'" } },
+        { "id": "b", "text": { "en": "MATCH → error handling" } },
+        { "id": "c", "text": { "en": "TRY/CATCH → graph pattern syntax" } },
+        { "id": "d", "text": { "en": "Neither is in the study guide" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The Domain 1 advanced T-SQL skill explicitly lists 'write graph queries that use the MATCH operator' and 'implement error handling' — this subtopic's two halves." },
+      "example": { "en": "Blueprint awareness helps allocate study effort to named bullets." },
+      "sources": ["https://learn.microsoft.com/en-us/credentials/certifications/resources/study-guides/dp-800"]
+    },
+    {
+      "id": "d1-graph-0048",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-graph-error",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A conversion error occurs while assigning to a variable inside CATCH (while logging). The original error details are lost to the caller. How should the CATCH be structured to survive logging failures?" },
+      "options": [
+        { "id": "a", "text": { "en": "Capture ERROR_* values into variables FIRST, wrap the logging itself in a nested TRY/CATCH, then THROW using the captured context" } },
+        { "id": "b", "text": { "en": "Log first, capture later" } },
+        { "id": "c", "text": { "en": "Avoid logging entirely" } },
+        { "id": "d", "text": { "en": "Use PRINT for logging" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Defensive CATCH design: snapshot the error context immediately (a failing statement inside CATCH replaces the 'current' error!), isolate the fragile logging in its own handler, and re-raise from the snapshot. (b) risks exactly the described loss; (c) sacrifices observability; (d) isn't persistence." },
+      "example": { "en": "DECLARE @n INT = ERROR_NUMBER(), @m NVARCHAR(2048) = ERROR_MESSAGE(); BEGIN TRY INSERT Log... END TRY BEGIN CATCH END CATCH; THROW 50000 + @n, @m, 1;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/language-elements/try-catch-transact-sql"]
+    },
+    {
+      "id": "d1-graph-0049",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-graph-error",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Deleting a Person node that still has Follows edges (with an edge constraint, default action) results in:" },
+      "options": [
+        { "id": "a", "text": { "en": "An error — connected nodes can't be deleted until their edges are removed (NO ACTION default)" } },
+        { "id": "b", "text": { "en": "Silent cascade deletion of edges" } },
+        { "id": "c", "text": { "en": "Orphaned edges remain" } },
+        { "id": "d", "text": { "en": "The node is soft-deleted" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Edge constraints default to ON DELETE NO ACTION — the delete fails while edges reference the node. ON DELETE CASCADE can be declared for edge-cleanup behavior (b describes the opt-in, not the default). Constraints exist precisely to prevent orphans (c); soft deletion (d) is an application pattern." },
+      "example": { "en": "CONSTRAINT EC CONNECTION (Person TO Person) ON DELETE CASCADE — opt-in edge cleanup." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/tables/graph-edge-constraints"]
+    },
+    {
+      "id": "d1-graph-0050",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-graph-error",
+      "type": "dragdrop-match", "difficulty": "medium",
+      "text": { "en": "Match each requirement to the construct." },
+      "items": [
+        { "id": "i1", "text": { "en": "Direct followers of a user" } },
+        { "id": "i2", "text": { "en": "Degrees of separation between two users" } },
+        { "id": "i3", "text": { "en": "Abort and undo the whole transaction on any runtime error" } },
+        { "id": "i4", "text": { "en": "Return the original error to the caller after logging" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "Single-hop MATCH" } },
+        { "id": "t2", "text": { "en": "SHORTEST_PATH with COUNT ... (GRAPH PATH)" } },
+        { "id": "t3", "text": { "en": "SET XACT_ABORT ON" } },
+        { "id": "t4", "text": { "en": "THROW (parameterless) in CATCH" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "One-hop queries, path-length computation, all-or-nothing transactions and faithful re-raising map to their four canonical tools — the summary of this entire subtopic in one matching exercise." },
+      "example": { "en": "If you can do this matching cold, both halves of the subtopic are exam-ready." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/match-sql-graph", "https://learn.microsoft.com/en-us/sql/t-sql/language-elements/try-catch-transact-sql"]
+    }
+  ]
+}

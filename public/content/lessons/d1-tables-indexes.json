@@ -1,0 +1,60 @@
+{
+  "subtopic": "d1-tables-indexes",
+  "title": { "en": "Tables, data types & indexes" },
+  "prerequisiteRecap": [
+    {
+      "heading": { "en": "What a table really is" },
+      "body": {
+        "en": "A table is a set of rows stored either as a **heap** (no order), as a **clustered index** (rows physically ordered by a key — the table *is* the index), or as a **columnstore** (data stored column-by-column, heavily compressed). Every additional index is a separate copy of some columns, ordered differently, that points back to the rows. Indexes buy read speed and cost write speed plus storage."
+      }
+    }
+  ],
+  "sections": [
+    {
+      "heading": { "en": "Choosing data types" },
+      "body": {
+        "en": "Smaller and more precise types win: they shrink rows, pack more rows per page, and make indexes cheaper.\n- Exact numerics: `tinyint` (0–255, 1 B), `smallint` (2 B), `int` (4 B), `bigint` (8 B), `decimal(p,s)` for money and anything that must not lose precision.\n- Approximate: `float`/`real` — never for money (binary rounding).\n- Strings: `varchar(n)` (1 B/char for most Latin collations), `nvarchar(n)` (2 B/char, full Unicode; UTF-8 collations let `varchar` hold Unicode too). `(max)` variants hold up to 2 GB but cannot be index keys.\n- Date/time: prefer `date`, `time`, `datetime2`, `datetimeoffset` over legacy `datetime`/`smalldatetime`.\n- `uniqueidentifier` (GUID, 16 B): fine as an alternate key; poor as a clustered key because random values fragment the index (`NEWSEQUENTIALID()` mitigates).\n- New in the AI era: `vector(n)` for embeddings and `json` for documents — both have their own subtopics."
+      }
+    },
+    {
+      "heading": { "en": "Rowstore indexes: clustered and nonclustered" },
+      "body": {
+        "en": "The **clustered index** defines the physical order of the table; one per table, ideally on a narrow, static, ever-increasing key (classic: `int IDENTITY`). **Nonclustered indexes** (up to 999) are side structures; their leaf rows contain the key columns plus the clustered key as the row locator. `INCLUDE` columns ride along only in the leaf level, letting an index **cover** a query (serve it entirely without touching the table). A **filtered index** (`WHERE IsActive = 1`) indexes just a slice — smaller and cheaper when queries always target that slice. **Unique** indexes enforce uniqueness and help the optimizer."
+      },
+      "code": "CREATE TABLE dbo.Orders (\n    OrderId    INT IDENTITY PRIMARY KEY,          -- clustered by default\n    CustomerId INT NOT NULL,\n    OrderDate  DATE NOT NULL,\n    Status     TINYINT NOT NULL,\n    Total      DECIMAL(12,2) NOT NULL\n);\n\n-- Covering index for: SELECT OrderDate, Total FROM Orders WHERE CustomerId = @c\nCREATE NONCLUSTERED INDEX IX_Orders_Customer\n    ON dbo.Orders (CustomerId)\n    INCLUDE (OrderDate, Total);\n\n-- Filtered index for the hot slice\nCREATE NONCLUSTERED INDEX IX_Orders_Open\n    ON dbo.Orders (OrderDate)\n    WHERE Status = 1;"
+    },
+    {
+      "heading": { "en": "Columnstore indexes" },
+      "body": {
+        "en": "Columnstore stores each column separately in compressed segments of ~1 million rows. Analytic queries that scan millions of rows but touch few columns run 10–100× faster, with ~10× compression, thanks to **batch mode** execution and **segment elimination**.\n- **Clustered columnstore (CCI)**: the whole table becomes columnstore — the default for large fact/analytic tables.\n- **Nonclustered columnstore (NCCI)**: a columnstore copy on top of a rowstore table — enables real-time operational analytics (HTAP) on an OLTP table.\nRows arrive first in a **deltastore** (rowstore buffer) until a rowgroup fills (~1,048,576 rows) and is compressed. Columnstore is poor at singleton lookups and frequent small updates — that is what rowstore B-trees are for."
+      },
+      "code": "-- Analytics table: clustered columnstore\nCREATE CLUSTERED COLUMNSTORE INDEX CCI_Sales ON dbo.FactSales;\n\n-- OLTP table + real-time analytics: nonclustered columnstore\nCREATE NONCLUSTERED COLUMNSTORE INDEX NCCI_Orders\n    ON dbo.Orders (CustomerId, OrderDate, Status, Total);"
+    },
+    {
+      "heading": { "en": "Computed columns and sizing" },
+      "body": {
+        "en": "A computed column derives from other columns (`Total AS Qty * Price`). Marked `PERSISTED` it is stored and can be indexed (and must be persisted or deterministic to be indexed). Row size matters: an 8 KB page holds the row data; wide rows mean fewer rows per page, more I/O. Keep key columns ≤ 900 bytes (clustered) / 1,700 bytes (nonclustered) — the hard key-size limits."
+      }
+    },
+    {
+      "heading": { "en": "Design heuristics the exam loves" },
+      "body": {
+        "en": "- OLTP point lookups → rowstore + narrow clustered key + covering nonclustered indexes.\n- Analytics / aggregation over millions of rows → clustered columnstore.\n- Mixed (operational analytics) → rowstore + nonclustered columnstore.\n- Queries always filtering a small slice → filtered index.\n- 'Key lookup' in a plan → add INCLUDE columns to make the index covering.\n- Avoid over-indexing: every index slows INSERT/UPDATE/DELETE."
+      }
+    }
+  ],
+  "examTips": [
+    { "en": "PRIMARY KEY defaults to a clustered index (unless one exists); UNIQUE defaults to nonclustered." },
+    { "en": "INCLUDE columns live only in the leaf — they don't count against the key-size limit and can't be used for seeking, only covering." },
+    { "en": "Columnstore keywords to spot: 'billions of rows', 'aggregations', 'compression', 'batch mode' → columnstore. 'Single row by id', 'frequent updates' → rowstore." },
+    { "en": "decimal for money; float causes rounding — a recurring wrong-option pattern." },
+    { "en": "GUID clustered keys fragment; prefer identity/sequential keys for the clustered index." },
+    { "en": "vector columns can't be B-tree or columnstore index keys, only INCLUDE columns (vector indexes are separate)." }
+  ],
+  "sources": [
+    "https://learn.microsoft.com/en-us/sql/relational-databases/indexes/clustered-and-nonclustered-indexes-described",
+    "https://learn.microsoft.com/en-us/sql/relational-databases/indexes/columnstore-indexes-overview",
+    "https://learn.microsoft.com/en-us/sql/t-sql/data-types/data-types-transact-sql",
+    "https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-index-design-guide"
+  ]
+}

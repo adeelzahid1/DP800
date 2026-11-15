@@ -1,0 +1,868 @@
+{
+  "subtopic": "d1-tables-indexes",
+  "questions": [
+    {
+      "id": "d1-tables-indexes-0001",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-tables-indexes",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "You are designing a column to store product prices that must be exact to two decimal places. Which data type should you use?" },
+      "options": [
+        { "id": "a", "text": { "en": "DECIMAL(10,2)" } },
+        { "id": "b", "text": { "en": "FLOAT" } },
+        { "id": "c", "text": { "en": "REAL" } },
+        { "id": "d", "text": { "en": "VARCHAR(20)" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "DECIMAL is an exact numeric type — amounts like 0.10 are stored precisely. FLOAT and REAL are approximate binary types and introduce rounding errors (0.1 has no exact binary representation), which is unacceptable for money. VARCHAR stores text: no arithmetic, no range checking, implicit conversions in every calculation." },
+      "example": { "en": "SELECT CAST(0.1 AS FLOAT) * 3 returns 0.30000000000000004; CAST(0.1 AS DECIMAL(10,2)) * 3 returns exactly 0.30." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/data-types/decimal-and-numeric-transact-sql"]
+    },
+    {
+      "id": "d1-tables-indexes-0002",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-tables-indexes",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "How many clustered indexes can a single table have?" },
+      "options": [
+        { "id": "a", "text": { "en": "One" } },
+        { "id": "b", "text": { "en": "Two" } },
+        { "id": "c", "text": { "en": "999" } },
+        { "id": "d", "text": { "en": "Unlimited" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The clustered index defines the physical order of the rows, and rows can only be stored in one order — so exactly one clustered index per table. 999 is the limit for NONclustered indexes. A table without any clustered index is a heap." },
+      "example": { "en": "CREATE CLUSTERED INDEX CIX ON dbo.T(Id); running it again on another column fails with 'Cannot create more than one clustered index'." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/indexes/clustered-and-nonclustered-indexes-described"]
+    },
+    {
+      "id": "d1-tables-indexes-0003",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-tables-indexes",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "A table that has no clustered index is called a:" },
+      "options": [
+        { "id": "a", "text": { "en": "Heap" } },
+        { "id": "b", "text": { "en": "Partition" } },
+        { "id": "c", "text": { "en": "Hash table" } },
+        { "id": "d", "text": { "en": "Deltastore" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "A heap is a table stored without any defined row order. A partition is a horizontal slice of a table, a hash table is the structure memory-optimized indexes use, and the deltastore is the rowstore buffer of a columnstore index — none of them describe a table lacking a clustered index." },
+      "example": { "en": "SELECT * FROM sys.indexes WHERE object_id = OBJECT_ID('dbo.T') AND type = 0 returns a row (type 0 = heap) when the table is a heap." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/indexes/heaps-tables-without-clustered-indexes"]
+    },
+    {
+      "id": "d1-tables-indexes-0004",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-tables-indexes",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A query's execution plan shows an Index Seek followed by a Key Lookup that runs thousands of times. The query reads three columns: one in the index key and two that are not in the index. What is the most efficient fix?" },
+      "options": [
+        { "id": "a", "text": { "en": "Recreate the nonclustered index with the two extra columns in the INCLUDE clause" } },
+        { "id": "b", "text": { "en": "Add the two columns to the index key" } },
+        { "id": "c", "text": { "en": "Create a second nonclustered index on the two columns" } },
+        { "id": "d", "text": { "en": "Drop the index and rely on a clustered index scan" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "INCLUDE columns are stored only in the leaf level, making the index covering so the Key Lookup disappears, without widening the key. Adding them to the key (b) also covers the query but bloats every index level and is unnecessary unless you seek or sort on them. A separate index (c) doesn't help — the engine still needs all three columns together. A full scan (d) trades a seek for reading the whole table." },
+      "example": { "en": "CREATE INDEX IX_Orders_Customer ON dbo.Orders(CustomerId) INCLUDE (OrderDate, Total);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/indexes/create-indexes-with-included-columns"]
+    },
+    {
+      "id": "d1-tables-indexes-0005",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-tables-indexes",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Your telemetry table holds 2 billion rows. Dashboards aggregate (SUM, AVG, COUNT) over tens of millions of rows but read only 4 of the 30 columns. Which index strategy fits best?" },
+      "options": [
+        { "id": "a", "text": { "en": "A clustered columnstore index" } },
+        { "id": "b", "text": { "en": "A clustered B-tree index on the timestamp" } },
+        { "id": "c", "text": { "en": "Nonclustered B-tree indexes on each of the 4 columns" } },
+        { "id": "d", "text": { "en": "A filtered index per dashboard" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Massive scans + aggregations + few columns is the textbook columnstore pattern: column segments mean only the 4 needed columns are read, with high compression and batch-mode execution. A B-tree clustered index (b) still stores complete rows, so scans read all 30 columns. Four separate B-trees (c) don't combine for aggregation scans. Filtered indexes (d) target small slices, not whole-table analytics." },
+      "example": { "en": "CREATE CLUSTERED COLUMNSTORE INDEX CCI_Telemetry ON dbo.Telemetry;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/indexes/columnstore-indexes-overview"]
+    },
+    {
+      "id": "d1-tables-indexes-0006",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-tables-indexes",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "You need real-time analytics directly on a busy OLTP table without changing its rowstore structure or slowing point lookups. What should you add?" },
+      "options": [
+        { "id": "a", "text": { "en": "A nonclustered columnstore index on the analyzed columns" } },
+        { "id": "b", "text": { "en": "A clustered columnstore index" } },
+        { "id": "c", "text": { "en": "An indexed view with SCHEMABINDING" } },
+        { "id": "d", "text": { "en": "A filtered nonclustered B-tree index" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "A nonclustered columnstore index (NCCI) layers a columnstore copy over the rowstore table — this is Microsoft's real-time operational analytics (HTAP) pattern. A clustered columnstore (b) would replace the rowstore and hurt OLTP point lookups and updates. An indexed view (c) adds maintenance cost and only covers its own definition. A filtered B-tree (d) doesn't accelerate column scans and aggregations." },
+      "example": { "en": "CREATE NONCLUSTERED COLUMNSTORE INDEX NCCI_Orders ON dbo.Orders (CustomerId, OrderDate, Total);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/indexes/get-started-with-columnstore-for-real-time-operational-analytics"]
+    },
+    {
+      "id": "d1-tables-indexes-0007",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-tables-indexes",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which data type should store user-generated text that may contain Arabic, Chinese and emoji characters, using a default (non-UTF-8) collation?" },
+      "options": [
+        { "id": "a", "text": { "en": "NVARCHAR(400)" } },
+        { "id": "b", "text": { "en": "VARCHAR(400)" } },
+        { "id": "c", "text": { "en": "CHAR(400)" } },
+        { "id": "d", "text": { "en": "TEXT" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "NVARCHAR stores Unicode (UTF-16), handling any language and emoji. VARCHAR with a non-UTF-8 collation is limited to the collation's code page and corrupts other scripts. CHAR is fixed-length (padding waste) and has the same code-page limitation. TEXT is deprecated and should not be used in new designs." },
+      "example": { "en": "DECLARE @s NVARCHAR(50) = N'مرحبا 你好 🙂'; -- the N prefix marks a Unicode literal" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/data-types/nchar-and-nvarchar-transact-sql"]
+    },
+    {
+      "id": "d1-tables-indexes-0008",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-tables-indexes",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Why is a random GUID (NEWID()) a poor choice for a clustered index key on a high-insert table?" },
+      "options": [
+        { "id": "a", "text": { "en": "Random inserts cause page splits and fragmentation throughout the index" } },
+        { "id": "b", "text": { "en": "GUID columns cannot be indexed" } },
+        { "id": "c", "text": { "en": "GUIDs are not unique enough" } },
+        { "id": "d", "text": { "en": "The clustered key must be an integer" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Random key values land at random positions, forcing page splits, fragmentation and a wide 16-byte key copied into every nonclustered index. GUIDs can absolutely be indexed (b) and are designed to be globally unique (c). Clustered keys can be any eligible type, not just integers (d). NEWSEQUENTIALID() or an integer surrogate avoids the problem." },
+      "example": { "en": "Prefer: OrderId INT IDENTITY PRIMARY KEY, plus Guid UNIQUEIDENTIFIER DEFAULT NEWSEQUENTIALID() with a nonclustered unique index if a GUID is required externally." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-index-design-guide"]
+    },
+    {
+      "id": "d1-tables-indexes-0009",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-tables-indexes",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "95% of queries against dbo.Tickets read only rows WHERE Status = 'Open', which is about 2% of the 80-million-row table. How do you index this most efficiently?" },
+      "options": [
+        { "id": "a", "text": { "en": "CREATE INDEX IX ON dbo.Tickets(CreatedAt) WHERE Status = 'Open'" } },
+        { "id": "b", "text": { "en": "CREATE INDEX IX ON dbo.Tickets(Status, CreatedAt)" } },
+        { "id": "c", "text": { "en": "CREATE CLUSTERED COLUMNSTORE INDEX CCI ON dbo.Tickets" } },
+        { "id": "d", "text": { "en": "CREATE INDEX IX ON dbo.Tickets(CreatedAt) INCLUDE (Status)" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "A filtered index stores only the ~2% open tickets: tiny, cheap to maintain, and perfectly aligned with the predicate. A full composite index (b) works but stores and maintains 100% of rows for a 2% use case. Columnstore (c) targets analytics, not selective OLTP filtering. Option (d) indexes every row by date and still has to filter Status afterwards." },
+      "example": { "en": "CREATE NONCLUSTERED INDEX IX_Tickets_Open ON dbo.Tickets(CreatedAt) INCLUDE(Assignee) WHERE Status = 'Open';" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/indexes/create-filtered-indexes"]
+    },
+    {
+      "id": "d1-tables-indexes-0010",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-tables-indexes",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "By default, what kind of index does a PRIMARY KEY constraint create when the table has no clustered index yet?" },
+      "options": [
+        { "id": "a", "text": { "en": "A unique clustered index" } },
+        { "id": "b", "text": { "en": "A unique nonclustered index" } },
+        { "id": "c", "text": { "en": "A filtered index" } },
+        { "id": "d", "text": { "en": "No index at all" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "PRIMARY KEY defaults to a unique clustered index (you can override with NONCLUSTERED). A UNIQUE constraint is the one that defaults to nonclustered (b). Filtered indexes (c) are never created by constraints. Constraints are always enforced through an index, so (d) is impossible." },
+      "example": { "en": "CREATE TABLE dbo.T (Id INT PRIMARY KEY NONCLUSTERED, Code CHAR(5) UNIQUE); -- explicit override shown" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/tables/primary-and-foreign-key-constraints"]
+    },
+    {
+      "id": "d1-tables-indexes-0011",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-tables-indexes",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "In a columnstore index, what is the deltastore?" },
+      "options": [
+        { "id": "a", "text": { "en": "A rowstore structure that buffers newly inserted rows until a rowgroup is large enough to compress" } },
+        { "id": "b", "text": { "en": "A log of deleted rows kept for point-in-time restore" } },
+        { "id": "c", "text": { "en": "The compressed dictionary shared by all column segments" } },
+        { "id": "d", "text": { "en": "A memory-optimized staging table for bulk loads" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Inserts land in the deltastore (a B-tree rowstore) until roughly 1,048,576 rows accumulate; the tuple-mover then compresses them into a columnstore rowgroup. Deleted rows are tracked in a delete bitmap, not a restore log (b). Dictionaries exist per segment but aren't the deltastore (c). It is a disk-based B-tree, not memory-optimized (d)." },
+      "example": { "en": "SELECT state_desc, total_rows FROM sys.dm_db_column_store_row_group_physical_stats WHERE object_id = OBJECT_ID('dbo.FactSales'); -- shows OPEN (delta) vs COMPRESSED rowgroups" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/indexes/columnstore-indexes-architecture"]
+    },
+    {
+      "id": "d1-tables-indexes-0012",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-tables-indexes",
+      "type": "multiple", "difficulty": "medium", "selectCount": 2,
+      "text": { "en": "Which two statements about INCLUDE columns in a nonclustered index are true? (Select 2)" },
+      "options": [
+        { "id": "a", "text": { "en": "They are stored only in the leaf level of the index" } },
+        { "id": "b", "text": { "en": "They do not count toward the index key size limit" } },
+        { "id": "c", "text": { "en": "The optimizer can seek on them" } },
+        { "id": "d", "text": { "en": "They must be the same data type as the key columns" } }
+      ],
+      "answer": ["a", "b"],
+      "explanation": { "en": "INCLUDE columns exist only at the leaf (a) and are exempt from the 1,700-byte nonclustered key limit (b) — that's exactly why wide columns go in INCLUDE. Seeks use key columns only, never INCLUDE columns (c). There is no type-matching requirement between key and included columns (d)." },
+      "example": { "en": "CREATE INDEX IX ON dbo.Docs(DocType) INCLUDE (Title); -- Title NVARCHAR(400) would not fit in the key, but is fine as INCLUDE" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/indexes/create-indexes-with-included-columns"]
+    },
+    {
+      "id": "d1-tables-indexes-0013",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-tables-indexes",
+      "type": "multiple", "difficulty": "medium", "selectCount": 3,
+      "text": { "en": "Which three workload signals point toward a columnstore index rather than B-tree rowstore indexes? (Select 3)" },
+      "options": [
+        { "id": "a", "text": { "en": "Scans over millions of rows with aggregation" } },
+        { "id": "b", "text": { "en": "Queries touch a few columns of a wide table" } },
+        { "id": "c", "text": { "en": "High compression of large historical data is desired" } },
+        { "id": "d", "text": { "en": "Frequent single-row lookups by primary key" } },
+        { "id": "e", "text": { "en": "Constant single-row UPDATEs across the whole table" } }
+      ],
+      "answer": ["a", "b", "c"],
+      "explanation": { "en": "Columnstore shines at large scans with aggregation (batch mode), reading only needed columns, and ~10× compression (a, b, c). Point lookups (d) and scattered single-row updates (e) are rowstore B-tree territory — updates in columnstore mean delete-bitmap entries plus deltastore inserts, which degrade it." },
+      "example": { "en": "Fact/telemetry/history tables → columnstore; the Orders table your app updates constantly → rowstore (optionally + NCCI)." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/indexes/columnstore-indexes-design-guidance"]
+    },
+    {
+      "id": "d1-tables-indexes-0014",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-tables-indexes",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which integer type is the smallest that can store the value 40,000?" },
+      "options": [
+        { "id": "a", "text": { "en": "INT" } },
+        { "id": "b", "text": { "en": "SMALLINT" } },
+        { "id": "c", "text": { "en": "TINYINT" } },
+        { "id": "d", "text": { "en": "BIGINT" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "SMALLINT tops out at 32,767 and TINYINT at 255, so neither holds 40,000. INT (4 bytes, up to ~2.1 billion) is the smallest that fits. BIGINT also fits but wastes 4 extra bytes per row." },
+      "example": { "en": "Ranges: TINYINT 0–255, SMALLINT ±32,767, INT ±2,147,483,647, BIGINT ±9.2 quintillion." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/data-types/int-bigint-smallint-and-tinyint-transact-sql"]
+    },
+    {
+      "id": "d1-tables-indexes-0015",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-tables-indexes",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "You must store the date and time an event occurred including the client's time zone offset. Which type preserves the offset?" },
+      "options": [
+        { "id": "a", "text": { "en": "DATETIMEOFFSET" } },
+        { "id": "b", "text": { "en": "DATETIME2" } },
+        { "id": "c", "text": { "en": "DATETIME" } },
+        { "id": "d", "text": { "en": "TIME" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "DATETIMEOFFSET stores the timestamp plus its UTC offset (e.g. +05:00). DATETIME2 and DATETIME store only a local timestamp with no zone information, and TIME stores only a time of day. Storing UTC in DATETIME2 is a valid alternative pattern, but it does not *preserve* the original offset as asked." },
+      "example": { "en": "DECLARE @t DATETIMEOFFSET(3) = '2026-03-12 09:30:00.000 +05:00'; SELECT SWITCHOFFSET(@t, '+00:00');" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/data-types/datetimeoffset-transact-sql"]
+    },
+    {
+      "id": "d1-tables-indexes-0016",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-tables-indexes",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "For each statement about index limits, answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "A table can have up to 999 nonclustered indexes." } },
+        { "id": "s2", "text": { "en": "A clustered index key can be at most 900 bytes." } },
+        { "id": "s3", "text": { "en": "A VARCHAR(MAX) column can be an index key column." } },
+        { "id": "s4", "text": { "en": "A nonclustered index key can be at most 1,700 bytes." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "yes", "s3": "no", "s4": "yes" },
+      "explanation": { "en": "The documented limits are 999 nonclustered indexes, 900 bytes for a clustered key and 1,700 bytes for a nonclustered key. MAX types (varchar(max), nvarchar(max), varbinary(max)) can never be key columns — they can only appear as INCLUDE columns." },
+      "example": { "en": "CREATE INDEX IX ON dbo.T(BigText) fails for BigText VARCHAR(MAX); CREATE INDEX IX ON dbo.T(Id) INCLUDE (BigText) works." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/sql-server/maximum-capacity-specifications-for-sql-server"]
+    },
+    {
+      "id": "d1-tables-indexes-0017",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-tables-indexes",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What must be true of a computed column before you can create an index on it?" },
+      "options": [
+        { "id": "a", "text": { "en": "It must be deterministic (or marked PERSISTED)" } },
+        { "id": "b", "text": { "en": "It must reference columns from another table" } },
+        { "id": "c", "text": { "en": "It must be nullable" } },
+        { "id": "d", "text": { "en": "It must use only numeric data types" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Indexable computed columns must be deterministic and precise (PERSISTED relaxes the precision requirement by storing the value). Computed columns can only reference columns in the same table (b is backwards). Nullability is irrelevant (c), and any indexable data type works, not just numerics (d)." },
+      "example": { "en": "ALTER TABLE dbo.Orders ADD Year AS YEAR(OrderDate) PERSISTED; CREATE INDEX IX_Orders_Year ON dbo.Orders(Year);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/indexes/indexes-on-computed-columns"]
+    },
+    {
+      "id": "d1-tables-indexes-0018",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-tables-indexes",
+      "type": "dragdrop-order", "difficulty": "medium",
+      "text": { "en": "Arrange the steps in the order SQL Server fills a clustered columnstore index with newly inserted trickle data." },
+      "items": [
+        { "id": "i1", "text": { "en": "Rows are inserted into an open deltastore rowgroup" } },
+        { "id": "i2", "text": { "en": "The rowgroup reaches ~1,048,576 rows and closes" } },
+        { "id": "i3", "text": { "en": "The tuple-mover compresses the closed rowgroup into column segments" } },
+        { "id": "i4", "text": { "en": "Queries read the compressed segments with batch-mode execution" } }
+      ],
+      "answer": ["i1", "i2", "i3", "i4"],
+      "explanation": { "en": "Trickle inserts buffer in an OPEN deltastore rowgroup; at ~1,048,576 rows it CLOSEs; the background tuple-mover compresses it into COMPRESSED column segments; thereafter scans enjoy compression and batch mode. (Bulk loads of ≥102,400 rows can skip the deltastore and compress directly.)" },
+      "example": { "en": "Monitor with sys.dm_db_column_store_row_group_physical_stats: state_desc OPEN → CLOSED → COMPRESSED." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/indexes/columnstore-indexes-data-loading-guidance"]
+    },
+    {
+      "id": "d1-tables-indexes-0019",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-tables-indexes",
+      "type": "dragdrop-match", "difficulty": "medium",
+      "text": { "en": "Match each workload to the most appropriate index strategy." },
+      "items": [
+        { "id": "i1", "text": { "en": "Single-row lookups by OrderId in an OLTP app" } },
+        { "id": "i2", "text": { "en": "Nightly aggregation over 500M historical rows" } },
+        { "id": "i3", "text": { "en": "Live dashboards on a hot OLTP table" } },
+        { "id": "i4", "text": { "en": "Queries that always filter IsDeleted = 0 (1% of rows are 0)" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "Clustered B-tree (rowstore)" } },
+        { "id": "t2", "text": { "en": "Clustered columnstore" } },
+        { "id": "t3", "text": { "en": "Rowstore + nonclustered columnstore" } },
+        { "id": "t4", "text": { "en": "Filtered nonclustered index" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "Point lookups → clustered B-tree seek. Massive historical aggregation → clustered columnstore. Analytics on a live OLTP table without disturbing it → rowstore plus nonclustered columnstore (real-time operational analytics). A predicate hitting a tiny stable slice → filtered index." },
+      "example": { "en": "These four pairings cover the vast majority of DP-800 'choose the index' scenarios." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/indexes/columnstore-indexes-design-guidance"]
+    },
+    {
+      "id": "d1-tables-indexes-0020",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-tables-indexes",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Complete the statement to create a covering index for: SELECT OrderDate, Total FROM dbo.Orders WHERE CustomerId = @c" },
+      "code": "CREATE NONCLUSTERED INDEX IX_Orders_Customer\n    ON dbo.Orders ( [BLANK1] )\n    [BLANK2] (OrderDate, Total);",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "CustomerId" } },
+            { "id": "c2", "text": { "en": "OrderDate, Total" } },
+            { "id": "c3", "text": { "en": "CustomerId, OrderDate, Total" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "INCLUDE" } },
+            { "id": "c2", "text": { "en": "WHERE" } },
+            { "id": "c3", "text": { "en": "WITH" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "The seek predicate is CustomerId, so it is the key. OrderDate and Total are only output columns, so INCLUDE carries them in the leaf level, making the index covering. WHERE would create a filtered index and WITH introduces index options — neither adds leaf-only columns. Putting all three columns in the key (choice 3 for blank 1) works but needlessly widens all index levels." },
+      "example": { "en": "Rule of thumb: columns you filter/sort on → key; columns you only SELECT → INCLUDE." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/indexes/create-indexes-with-included-columns"]
+    },
+    {
+      "id": "d1-tables-indexes-0021",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-tables-indexes",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "What is the storage size of a UNIQUEIDENTIFIER column?" },
+      "options": [
+        { "id": "a", "text": { "en": "16 bytes" } },
+        { "id": "b", "text": { "en": "4 bytes" } },
+        { "id": "c", "text": { "en": "8 bytes" } },
+        { "id": "d", "text": { "en": "36 bytes" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "A GUID is 16 bytes of binary. 4 and 8 bytes are INT and BIGINT sizes. 36 is the length of its *string* representation (with hyphens), not its storage size — storing GUIDs as CHAR(36) wastes 20 bytes per value and loses type safety." },
+      "example": { "en": "A clustered GUID key is copied into every nonclustered index row: 16 B vs 4 B for INT quadruples that overhead." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/data-types/uniqueidentifier-transact-sql"]
+    },
+    {
+      "id": "d1-tables-indexes-0022",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-tables-indexes",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which statement about a unique index with a filter (filtered unique index) is correct?" },
+      "options": [
+        { "id": "a", "text": { "en": "It enforces uniqueness only among rows that satisfy the filter predicate" } },
+        { "id": "b", "text": { "en": "It enforces uniqueness across the whole table" } },
+        { "id": "c", "text": { "en": "Filtered indexes cannot be unique" } },
+        { "id": "d", "text": { "en": "It requires the filtered column to be NOT NULL" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Uniqueness applies only within the filtered subset — the classic trick to allow multiple NULLs while keeping non-NULL values unique (WHERE Email IS NOT NULL). It does not police rows outside the filter (b). Filtered indexes can be unique (c). The filter typically targets NULLs, so NOT NULL is certainly not required (d)." },
+      "example": { "en": "CREATE UNIQUE INDEX UX_Users_Email ON dbo.Users(Email) WHERE Email IS NOT NULL; -- many NULL emails allowed, duplicates of real emails blocked" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/indexes/create-filtered-indexes"]
+    },
+    {
+      "id": "d1-tables-indexes-0023",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-tables-indexes",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A composite index exists on (LastName, FirstName). Which query CANNOT seek on this index?" },
+      "options": [
+        { "id": "a", "text": { "en": "WHERE FirstName = 'Sara'" } },
+        { "id": "b", "text": { "en": "WHERE LastName = 'Khan'" } },
+        { "id": "c", "text": { "en": "WHERE LastName = 'Khan' AND FirstName = 'Sara'" } },
+        { "id": "d", "text": { "en": "WHERE LastName LIKE 'Kh%'" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "A composite B-tree is ordered by the leading column first; without a predicate on LastName the engine cannot seek and must scan (a). Predicates on the leading column alone (b), both columns (c), or a leading-prefix LIKE on the leading column (d) can all seek. This 'leftmost column' rule is a staple exam concept." },
+      "example": { "en": "Think of a phone book sorted by last name then first name: finding every 'Sara' requires reading the whole book." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-index-design-guide"]
+    },
+    {
+      "id": "d1-tables-indexes-0024",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-tables-indexes",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which columnstore feature lets a scan skip entire 1M-row chunks whose min/max metadata excludes the predicate range?" },
+      "options": [
+        { "id": "a", "text": { "en": "Rowgroup (segment) elimination" } },
+        { "id": "b", "text": { "en": "Batch-mode execution" } },
+        { "id": "c", "text": { "en": "Delete bitmap" } },
+        { "id": "d", "text": { "en": "Dictionary encoding" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Each segment stores min/max values; if WHERE OrderDate >= '2026-01-01' can't match a segment's range, the whole segment is skipped — that's segment (rowgroup) elimination. Batch mode (b) processes rows in ~900-row batches for CPU efficiency but doesn't skip data. The delete bitmap (c) tracks deletions; dictionary encoding (d) is a compression technique." },
+      "example": { "en": "Loading data pre-sorted by date maximizes elimination for date-range dashboards." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/indexes/columnstore-indexes-query-performance"]
+    },
+    {
+      "id": "d1-tables-indexes-0025",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-tables-indexes",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "A table has a vector(1536) column for embeddings. Answer Yes or No for each statement." },
+      "statements": [
+        { "id": "s1", "text": { "en": "You can create a B-tree nonclustered index with the vector column as a key column." } },
+        { "id": "s2", "text": { "en": "You can list the vector column in the INCLUDE clause of a B-tree index." } },
+        { "id": "s3", "text": { "en": "You can put a DEFAULT constraint on the vector column." } },
+        { "id": "s4", "text": { "en": "You can store the vector column in a memory-optimized table." } }
+      ],
+      "answerMap": { "s1": "no", "s2": "yes", "s3": "no", "s4": "no" },
+      "explanation": { "en": "Vector columns cannot be B-tree or columnstore key columns (no meaningful ordering), but they can be INCLUDE columns. Vector columns support only NULL/NOT NULL constraints — DEFAULT, CHECK, PK, FK and UNIQUE are not allowed — and they cannot be used in memory-optimized tables. Nearest-neighbor acceleration uses the separate CREATE VECTOR INDEX statement instead." },
+      "example": { "en": "CREATE TABLE dbo.Docs (Id INT PRIMARY KEY, Embedding VECTOR(1536) NOT NULL); CREATE VECTOR INDEX VIX ON dbo.Docs(Embedding) WITH (METRIC='cosine', TYPE='diskann');" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/data-types/vector-data-type"]
+    },
+    {
+      "id": "d1-tables-indexes-0026",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-tables-indexes",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "What is the page size SQL Server uses to store rowstore data?" },
+      "options": [
+        { "id": "a", "text": { "en": "8 KB" } },
+        { "id": "b", "text": { "en": "4 KB" } },
+        { "id": "c", "text": { "en": "16 KB" } },
+        { "id": "d", "text": { "en": "64 KB" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Pages are 8 KB (8,192 bytes, ~8,060 usable for row data); eight pages form a 64 KB extent — 64 KB is the extent size, not the page size. 4 KB and 16 KB are page sizes in other database engines, a common distractor." },
+      "example": { "en": "Narrower rows → more rows per 8 KB page → fewer logical reads for the same query." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/pages-and-extents-architecture-guide"]
+    },
+    {
+      "id": "d1-tables-indexes-0027",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-tables-indexes",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Your team adds nine nonclustered indexes to a table that receives 5,000 INSERTs per minute, and insert latency rises sharply. Why?" },
+      "options": [
+        { "id": "a", "text": { "en": "Every insert must also write a row into each of the nine index structures" } },
+        { "id": "b", "text": { "en": "Nonclustered indexes lock the whole table during inserts" } },
+        { "id": "c", "text": { "en": "SQL Server rebuilds each index after every insert" } },
+        { "id": "d", "text": { "en": "The table exceeded the maximum index count" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Each index is a separate sorted structure that must be maintained on every write — nine extra B-tree inserts (plus logging) per row. Indexes don't take table locks for ordinary inserts (b), are never auto-rebuilt per statement (c), and the limit is 999, far above nine (d). Index design is always a read-vs-write trade-off." },
+      "example": { "en": "Review sys.dm_db_index_usage_stats: indexes with many updates and zero seeks/scans are pure write overhead." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-index-design-guide"]
+    },
+    {
+      "id": "d1-tables-indexes-0028",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-tables-indexes",
+      "type": "dropdown", "difficulty": "easy",
+      "text": { "en": "Complete the table definition for a product catalog that stores Unicode names and exact prices." },
+      "code": "CREATE TABLE dbo.Product (\n    ProductId INT IDENTITY PRIMARY KEY,\n    Name      [BLANK1] (200) NOT NULL,\n    Price     [BLANK2] (10,2) NOT NULL\n);",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "NVARCHAR" } },
+            { "id": "c2", "text": { "en": "FLOAT" } },
+            { "id": "c3", "text": { "en": "VARBINARY" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "DECIMAL" } },
+            { "id": "c2", "text": { "en": "REAL" } },
+            { "id": "c3", "text": { "en": "MONEYTEXT" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "NVARCHAR(200) holds Unicode product names of varying length. DECIMAL(10,2) stores exact prices. FLOAT/REAL are approximate (rounding errors in money), VARBINARY stores bytes not text, and MONEYTEXT is not a SQL Server type." },
+      "example": { "en": "DECIMAL(10,2) ranges to ±99,999,999.99 — size precision to the realistic business range." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/data-types/data-types-transact-sql"]
+    },
+    {
+      "id": "d1-tables-indexes-0029",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-tables-indexes",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "Which statement about batch-mode execution is accurate?" },
+      "options": [
+        { "id": "a", "text": { "en": "Operators process groups of roughly 900 rows at a time, drastically reducing per-row CPU overhead" } },
+        { "id": "b", "text": { "en": "It executes multiple T-SQL batches in parallel sessions" } },
+        { "id": "c", "text": { "en": "It is only available when a table is memory-optimized" } },
+        { "id": "d", "text": { "en": "It bypasses the transaction log for faster inserts" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Batch mode passes vectors of ~900 rows between operators, amortizing CPU costs — the engine of columnstore's analytic speed (and available for rowstore in modern compatibility levels). It has nothing to do with multiple sessions (b), memory-optimized tables (c — that's In-Memory OLTP), or skipping the log (d — logging always happens for durable tables)." },
+      "example": { "en": "In a plan, check the operator property 'Actual Execution Mode: Batch'." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/performance/intelligent-query-processing-details"]
+    },
+    {
+      "id": "d1-tables-indexes-0030",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-tables-indexes",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "When should you choose VARCHAR over NVARCHAR for a new column (classic non-UTF-8 collation)?" },
+      "options": [
+        { "id": "a", "text": { "en": "When the data is guaranteed to fit the collation's code page (e.g. ASCII codes) and you want to halve storage" } },
+        { "id": "b", "text": { "en": "When you need to store any possible language" } },
+        { "id": "c", "text": { "en": "When the column will be encrypted" } },
+        { "id": "d", "text": { "en": "Never — VARCHAR is deprecated" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "VARCHAR uses 1 byte per character (non-UTF-8 collations), so for constrained data like ISO country codes or invoice numbers it halves storage versus NVARCHAR. Any-language data needs NVARCHAR or a UTF-8 collation (b). Encryption works with both (c). VARCHAR is fully supported, not deprecated — TEXT/NTEXT are (d)." },
+      "example": { "en": "CountryCode CHAR(2), Sku VARCHAR(20), CustomerName NVARCHAR(100) — pick per column, not per table." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/data-types/char-and-varchar-transact-sql"]
+    },
+    {
+      "id": "d1-tables-indexes-0031",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-tables-indexes",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What does index fragmentation primarily affect in a disk-based rowstore index?" },
+      "options": [
+        { "id": "a", "text": { "en": "The efficiency of range scans and readahead, plus wasted space from low page density" } },
+        { "id": "b", "text": { "en": "The correctness of query results" } },
+        { "id": "c", "text": { "en": "Whether the index can be used by the optimizer at all" } },
+        { "id": "d", "text": { "en": "The maximum number of rows the table can hold" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Logical fragmentation scatters pages out of order (hurting scans/readahead) and page splits leave pages half-empty (wasting buffer pool and disk). Results remain correct (b), the optimizer still uses fragmented indexes (c), and no row-count limit changes (d). Fix with REORGANIZE (light) or REBUILD (full)." },
+      "example": { "en": "SELECT avg_fragmentation_in_percent FROM sys.dm_db_index_physical_stats(DB_ID(), OBJECT_ID('dbo.Orders'), NULL, NULL, 'LIMITED');" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/indexes/reorganize-and-rebuild-indexes"]
+    },
+    {
+      "id": "d1-tables-indexes-0032",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-tables-indexes",
+      "type": "multiple", "difficulty": "hard", "selectCount": 2,
+      "text": { "en": "Which two actions let bulk loads into a clustered columnstore index achieve maximum compression quality immediately (bypassing the deltastore)? (Select 2)" },
+      "options": [
+        { "id": "a", "text": { "en": "Load in batches of at least 102,400 rows" } },
+        { "id": "b", "text": { "en": "Aim for batch sizes near 1,048,576 rows per rowgroup" } },
+        { "id": "c", "text": { "en": "Load one row at a time inside a loop" } },
+        { "id": "d", "text": { "en": "Disable the transaction log first" } }
+      ],
+      "answer": ["a", "b"],
+      "explanation": { "en": "Batches of ≥102,400 rows go straight to compressed rowgroups, and sizing near the ~1,048,576-row maximum produces full, optimal rowgroups. Single-row inserts (c) all land in the deltastore — the slowest path. You cannot 'disable' the transaction log (d); minimal logging depends on recovery model and bulk operations, not a switch." },
+      "example": { "en": "Use bulk insert APIs/BULK INSERT with BATCHSIZE = 1048576 for large loads into columnstore." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/indexes/columnstore-indexes-data-loading-guidance"]
+    },
+    {
+      "id": "d1-tables-indexes-0033",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-tables-indexes",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which statement creates a nonclustered index on the Email column of dbo.Users?" },
+      "options": [
+        { "id": "a", "text": { "en": "CREATE NONCLUSTERED INDEX IX_Users_Email ON dbo.Users(Email);" } },
+        { "id": "b", "text": { "en": "ALTER TABLE dbo.Users ADD INDEX Email;" } },
+        { "id": "c", "text": { "en": "CREATE INDEX dbo.Users ON Email;" } },
+        { "id": "d", "text": { "en": "ADD INDEX IX_Users_Email TO dbo.Users(Email);" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "CREATE [NONCLUSTERED] INDEX name ON table(column) is the correct T-SQL. ALTER TABLE … ADD INDEX is MySQL syntax (b); (c) reverses index and table names; (d) is not a T-SQL statement at all." },
+      "example": { "en": "Omitting NONCLUSTERED also works — it is the default for CREATE INDEX." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-index-transact-sql"]
+    },
+    {
+      "id": "d1-tables-indexes-0034",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-tables-indexes",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A report filters WHERE YEAR(OrderDate) = 2026 and ignores an existing index on OrderDate. What is the cause?" },
+      "options": [
+        { "id": "a", "text": { "en": "Wrapping the column in a function makes the predicate non-SARGable, preventing an index seek" } },
+        { "id": "b", "text": { "en": "Indexes cannot be used with date columns" } },
+        { "id": "c", "text": { "en": "YEAR() is nondeterministic" } },
+        { "id": "d", "text": { "en": "The index needs to be rebuilt first" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Applying a function to the indexed column hides it from seek logic (non-SARGable). Rewrite as a range: OrderDate >= '2026-01-01' AND OrderDate < '2027-01-01'. Date columns index perfectly well (b); YEAR() is deterministic (c); rebuilding changes nothing about predicate shape (d)." },
+      "example": { "en": "Same trap family: LEFT(Name,1)='A' → Name LIKE 'A%'; CAST(Col AS …) in WHERE → cast the parameter instead." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-index-design-guide"]
+    },
+    {
+      "id": "d1-tables-indexes-0035",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-tables-indexes",
+      "type": "yesno", "difficulty": "easy",
+      "text": { "en": "Answer Yes or No for each statement about clustered indexes." },
+      "statements": [
+        { "id": "s1", "text": { "en": "The leaf level of a clustered index contains the actual data rows." } },
+        { "id": "s2", "text": { "en": "Nonclustered indexes on the table use the clustered key as their row locator." } },
+        { "id": "s3", "text": { "en": "A clustered index must be created on the primary key column." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "yes", "s3": "no" },
+      "explanation": { "en": "The clustered leaf *is* the table data, and every nonclustered index row carries the clustered key to locate its base row — this is why wide clustered keys are expensive. The clustered index often sits on the PK by default, but it can be created on any eligible column(s); PK and clustering are independent choices." },
+      "example": { "en": "CREATE TABLE T (Id INT PRIMARY KEY NONCLUSTERED, CreatedAt DATETIME2); CREATE CLUSTERED INDEX CIX ON T(CreatedAt);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/indexes/clustered-and-nonclustered-indexes-described"]
+    },
+    {
+      "id": "d1-tables-indexes-0036",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-tables-indexes",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which column is the best candidate for the leading key of a composite index supporting: WHERE TenantId = @t AND CreatedAt >= @from AND CreatedAt < @to?" },
+      "options": [
+        { "id": "a", "text": { "en": "TenantId (equality predicate first, then the range column)" } },
+        { "id": "b", "text": { "en": "CreatedAt (ranges should always lead)" } },
+        { "id": "c", "text": { "en": "Either order performs identically" } },
+        { "id": "d", "text": { "en": "Neither — use two single-column indexes" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Equality columns lead, range columns follow: (TenantId, CreatedAt) lets the seek pin TenantId and then scan the date range contiguously. Leading with the range (b) scatters each tenant's rows across the whole date span. Order matters greatly (c is false). Two single-column indexes (d) force an index intersection, usually worse than one composite." },
+      "example": { "en": "CREATE INDEX IX ON dbo.Events(TenantId, CreatedAt) INCLUDE (Payload);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-index-design-guide"]
+    },
+    {
+      "id": "d1-tables-indexes-0037",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-tables-indexes",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which type should store a true/false flag with minimal storage?" },
+      "options": [
+        { "id": "a", "text": { "en": "BIT" } },
+        { "id": "b", "text": { "en": "CHAR(5)" } },
+        { "id": "c", "text": { "en": "INT" } },
+        { "id": "d", "text": { "en": "NVARCHAR(5)" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "BIT stores 0/1/NULL, and up to eight BIT columns share a single byte. CHAR(5)/'true'-style strings (b, d) waste space and invite inconsistent values ('True', 'YES'); INT (c) spends 4 bytes on a flag." },
+      "example": { "en": "IsActive BIT NOT NULL CONSTRAINT DF_Users_IsActive DEFAULT (1)" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/data-types/bit-transact-sql"]
+    },
+    {
+      "id": "d1-tables-indexes-0038",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-tables-indexes",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "sys.dm_db_index_usage_stats shows an index with user_seeks = 0, user_scans = 0, user_lookups = 0 and user_updates = 1,200,000 since the last restart. What should you do?" },
+      "options": [
+        { "id": "a", "text": { "en": "Consider dropping the index — it is maintained constantly but never used for reads" } },
+        { "id": "b", "text": { "en": "Rebuild it to reset the counters" } },
+        { "id": "c", "text": { "en": "Convert it to a clustered index" } },
+        { "id": "d", "text": { "en": "Add INCLUDE columns so it gets used" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "1.2M updates with zero reads means pure write overhead — a textbook drop candidate (verify across a full business cycle first, since the DMV resets on restart). Rebuilding (b) fixes fragmentation, not uselessness. Converting to clustered (c) is a redesign, not a response to this signal. Adding INCLUDEs (d) makes an unused index even costlier." },
+      "example": { "en": "Also check sys.dm_db_missing_index_* before dropping: the right index might be a modified version of this one." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-views/sys-dm-db-index-usage-stats-transact-sql"]
+    },
+    {
+      "id": "d1-tables-indexes-0039",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-tables-indexes",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Complete the statement that creates an indexed, persisted computed column extracting the order year." },
+      "code": "ALTER TABLE dbo.Orders\n    ADD OrderYear AS YEAR(OrderDate) [BLANK1];\nGO\nCREATE NONCLUSTERED INDEX IX_Orders_Year\n    ON dbo.Orders ( [BLANK2] );",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "PERSISTED" } },
+            { "id": "c2", "text": { "en": "MATERIALIZED" } },
+            { "id": "c3", "text": { "en": "STORED" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "OrderYear" } },
+            { "id": "c2", "text": { "en": "YEAR(OrderDate)" } },
+            { "id": "c3", "text": { "en": "OrderDate.Year" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "PERSISTED is the T-SQL keyword that physically stores a computed column (MATERIALIZED and STORED belong to other database products). The index then references the column name — you cannot index an inline expression like YEAR(OrderDate) directly, and dot-property syntax does not exist in T-SQL." },
+      "example": { "en": "Queries filtering WHERE OrderYear = 2026 can now seek, while the base data stays normalized." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/tables/specify-computed-columns-in-a-table"]
+    },
+    {
+      "id": "d1-tables-indexes-0040",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-tables-indexes",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What is the practical difference between REBUILD and REORGANIZE for a rowstore index?" },
+      "options": [
+        { "id": "a", "text": { "en": "REBUILD recreates the index from scratch (can be online); REORGANIZE defragments leaf pages in place and is always online" } },
+        { "id": "b", "text": { "en": "REORGANIZE drops and recreates the index; REBUILD compacts pages" } },
+        { "id": "c", "text": { "en": "They are synonyms" } },
+        { "id": "d", "text": { "en": "REBUILD only works on columnstore indexes" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "REBUILD constructs a fresh copy (updating statistics with fullscan as a side effect; ONLINE = ON available in Enterprise/Azure), while REORGANIZE shuffles leaf pages into order in-place with minimal blocking. Option (b) swaps the definitions, they are not synonyms (c), and both apply to rowstore and columnstore alike (d)." },
+      "example": { "en": "ALTER INDEX IX_Orders_Customer ON dbo.Orders REBUILD WITH (ONLINE = ON); ALTER INDEX ALL ON dbo.Orders REORGANIZE;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/indexes/reorganize-and-rebuild-indexes"]
+    },
+    {
+      "id": "d1-tables-indexes-0041",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-tables-indexes",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Your app stores uploaded PDF files (up to 50 MB each). Which column type is appropriate?" },
+      "options": [
+        { "id": "a", "text": { "en": "VARBINARY(MAX)" } },
+        { "id": "b", "text": { "en": "NVARCHAR(MAX)" } },
+        { "id": "c", "text": { "en": "IMAGE" } },
+        { "id": "d", "text": { "en": "VARBINARY(8000)" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Binary documents belong in VARBINARY(MAX) (up to 2 GB). NVARCHAR(MAX) stores text, and round-tripping binary through text encodings corrupts or bloats it. IMAGE is deprecated. VARBINARY(8000) caps at 8 KB — far too small for 50 MB files. (For very large blob volumes, FILESTREAM or external storage are architectural alternatives.)" },
+      "example": { "en": "Content VARBINARY(MAX) NOT NULL — consider storing a hash column alongside for deduplication." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/data-types/binary-and-varbinary-transact-sql"]
+    },
+    {
+      "id": "d1-tables-indexes-0042",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-tables-indexes",
+      "type": "multiple", "difficulty": "medium", "selectCount": 2,
+      "text": { "en": "Which two characteristics make a column a good clustered index key? (Select 2)" },
+      "options": [
+        { "id": "a", "text": { "en": "Narrow (few bytes)" } },
+        { "id": "b", "text": { "en": "Ever-increasing and rarely updated" } },
+        { "id": "c", "text": { "en": "Frequently updated" } },
+        { "id": "d", "text": { "en": "Very wide, like NVARCHAR(400)" } }
+      ],
+      "answer": ["a", "b"],
+      "explanation": { "en": "Narrow keys keep every nonclustered index small (the clustered key is embedded in each) and ever-increasing values append at the end, avoiding page splits. Frequently updated keys (c) force row movement and nonclustered maintenance; wide keys (d) bloat all indexes. The classic ideal: INT/BIGINT IDENTITY." },
+      "example": { "en": "Mnemonic: clustered keys should be NUSE — Narrow, Unique, Static, Ever-increasing." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-index-design-guide"]
+    },
+    {
+      "id": "d1-tables-indexes-0043",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-tables-indexes",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A clustered columnstore table also needs to enforce a unique OrderId and support occasional single-order lookups. What is the standard design?" },
+      "options": [
+        { "id": "a", "text": { "en": "Keep the clustered columnstore and add a nonclustered B-tree unique index (or PK) on OrderId" } },
+        { "id": "b", "text": { "en": "Columnstore tables cannot have any B-tree indexes" } },
+        { "id": "c", "text": { "en": "Replace the columnstore with a clustered B-tree on OrderId" } },
+        { "id": "d", "text": { "en": "Create a second copy of the table for lookups" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Since SQL Server 2016, B-tree nonclustered indexes (including PK/UNIQUE constraints) can coexist on a clustered columnstore table — giving analytic scans *and* enforced uniqueness with fast point lookups. Option (b) is outdated, (c) sacrifices the analytics benefit, and (d) duplicates data with sync headaches." },
+      "example": { "en": "CREATE CLUSTERED COLUMNSTORE INDEX CCI ON dbo.FactOrders; ALTER TABLE dbo.FactOrders ADD CONSTRAINT PK_FactOrders PRIMARY KEY NONCLUSTERED (OrderId);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/indexes/columnstore-indexes-design-guidance"]
+    },
+    {
+      "id": "d1-tables-indexes-0044",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-tables-indexes",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "IDENTITY(1000, 5) on an INT column means:" },
+      "options": [
+        { "id": "a", "text": { "en": "Values start at 1000 and increment by 5" } },
+        { "id": "b", "text": { "en": "Values start at 5 and increment by 1000" } },
+        { "id": "c", "text": { "en": "The column allows at most 1000 rows" } },
+        { "id": "d", "text": { "en": "Values are random between 5 and 1000" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "IDENTITY(seed, increment): the first argument is the starting value, the second the step — 1000, 1005, 1010… Option (b) reverses the arguments; (c) and (d) misread IDENTITY entirely (it is sequential, not random, with no row limit)." },
+      "example": { "en": "Gaps are normal: rollbacks and server restarts consume identity values without inserting rows — never rely on identity values being contiguous." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-table-transact-sql-identity-property"]
+    },
+    {
+      "id": "d1-tables-indexes-0045",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-tables-indexes",
+      "type": "dragdrop-order", "difficulty": "hard",
+      "text": { "en": "Order these index access patterns from cheapest to most expensive for retrieving ONE row by a highly selective predicate from a large rowstore table." },
+      "items": [
+        { "id": "i1", "text": { "en": "Covering index seek (no lookup)" } },
+        { "id": "i2", "text": { "en": "Index seek + key lookup" } },
+        { "id": "i3", "text": { "en": "Full clustered index scan" } }
+      ],
+      "answer": ["i1", "i2", "i3"],
+      "explanation": { "en": "A covering seek reads only a few index pages. A seek plus key lookup adds an extra traversal into the clustered index for the missing columns. A full scan reads the entire table — orders of magnitude more pages for a single-row result." },
+      "example": { "en": "One key lookup is cheap; a million of them (from an unselective seek) can be slower than a scan — that's why the optimizer sometimes 'tips' to scanning." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-index-design-guide"]
+    },
+    {
+      "id": "d1-tables-indexes-0046",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-tables-indexes",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which statement about SPARSE columns is true?" },
+      "options": [
+        { "id": "a", "text": { "en": "They store NULL values with zero space at the cost of extra overhead for non-NULL values" } },
+        { "id": "b", "text": { "en": "They compress all values by 50%" } },
+        { "id": "c", "text": { "en": "They disallow NULL values" } },
+        { "id": "d", "text": { "en": "They are required for columnstore tables" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "SPARSE optimizes for mostly-NULL columns: NULLs cost nothing, but non-NULL values take ~4 extra bytes — worthwhile only when the vast majority of values are NULL (Microsoft suggests 20–40%+ NULL density depending on type). It is not general compression (b), it exists specifically FOR nullable data (c), and columnstore has no such requirement (d)." },
+      "example": { "en": "LegacyCode INT SPARSE NULL — appropriate when, say, 95% of rows have no legacy code." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/tables/use-sparse-columns"]
+    },
+    {
+      "id": "d1-tables-indexes-0047",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-tables-indexes",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Row compression and page compression on a rowstore table primarily trade:" },
+      "options": [
+        { "id": "a", "text": { "en": "Extra CPU for less storage and I/O" } },
+        { "id": "b", "text": { "en": "Durability for speed" } },
+        { "id": "c", "text": { "en": "Query correctness for space" } },
+        { "id": "d", "text": { "en": "Index count for page density" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Compression shrinks pages (row: variable-length storage of fixed types; page: adds prefix + dictionary compression), reducing I/O and buffer-pool pressure while spending CPU to compress/decompress. Durability (b) and correctness (c) are never affected, and the index limit (d) is unrelated." },
+      "example": { "en": "ALTER TABLE dbo.AuditLog REBUILD WITH (DATA_COMPRESSION = PAGE); -- estimate first with sp_estimate_data_compression_savings" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/data-compression/data-compression"]
+    },
+    {
+      "id": "d1-tables-indexes-0048",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-tables-indexes",
+      "type": "dropdown", "difficulty": "hard",
+      "text": { "en": "Complete the filtered unique index that allows unlimited NULL emails but blocks duplicate real emails." },
+      "code": "CREATE [BLANK1] NONCLUSTERED INDEX UX_Users_Email\n    ON dbo.Users (Email)\n    WHERE [BLANK2];",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "UNIQUE" } },
+            { "id": "c2", "text": { "en": "FILTERED" } },
+            { "id": "c3", "text": { "en": "DISTINCT" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "Email IS NOT NULL" } },
+            { "id": "c2", "text": { "en": "Email IS NULL" } },
+            { "id": "c3", "text": { "en": "Email <> ''" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "UNIQUE makes the index enforce uniqueness; the WHERE Email IS NOT NULL filter excludes NULLs from that enforcement, so any number of users can lack an email. FILTERED and DISTINCT are not index keywords (the filter comes from WHERE). Filtering on IS NULL would do the opposite, and <> '' doesn't exclude NULLs (NULL <> '' is UNKNOWN)." },
+      "example": { "en": "A plain UNIQUE constraint allows only ONE NULL in SQL Server — this pattern is the standard workaround." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/indexes/create-filtered-indexes"]
+    },
+    {
+      "id": "d1-tables-indexes-0049",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-tables-indexes",
+      "type": "dragdrop-match", "difficulty": "easy",
+      "text": { "en": "Match each value to the narrowest data type that stores it correctly." },
+      "items": [
+        { "id": "i1", "text": { "en": "Customer age (0–120)" } },
+        { "id": "i2", "text": { "en": "Invoice amount 12345678.99" } },
+        { "id": "i3", "text": { "en": "Product description in any language" } },
+        { "id": "i4", "text": { "en": "An embedding with 768 numbers" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "TINYINT" } },
+        { "id": "t2", "text": { "en": "DECIMAL(10,2)" } },
+        { "id": "t3", "text": { "en": "NVARCHAR(MAX)" } },
+        { "id": "t4", "text": { "en": "VECTOR(768)" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "Ages fit TINYINT (0–255, one byte). Exact money needs DECIMAL. Any-language free text needs a Unicode type. A 768-dimension embedding belongs in VECTOR(768), which stores float32 values in an optimized binary format." },
+      "example": { "en": "Choosing the narrowest correct type is a recurring micro-decision in exam scenarios." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/data-types/data-types-transact-sql", "https://learn.microsoft.com/en-us/sql/t-sql/data-types/vector-data-type"]
+    },
+    {
+      "id": "d1-tables-indexes-0050",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-tables-indexes",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "In SQL Server 2025, what is the maximum number of dimensions for a vector column using the default base type?" },
+      "options": [
+        { "id": "a", "text": { "en": "1,998 (float32)" } },
+        { "id": "b", "text": { "en": "3,996 (float32)" } },
+        { "id": "c", "text": { "en": "1,536" } },
+        { "id": "d", "text": { "en": "65,535" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The default base type is float32, capped at 1,998 dimensions; float16 (half precision) doubles that to 3,996. 1,536 (c) is just a popular embedding model's dimension count (text-embedding-ada-002), not a limit, and 65,535 (d) is far beyond either cap." },
+      "example": { "en": "CREATE TABLE T (v VECTOR(1998)); -- OK. VECTOR(3996, float16) for half-precision (preview in SQL Server 2025, GA in Azure SQL)." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/data-types/vector-data-type"]
+    }
+  ]
+}

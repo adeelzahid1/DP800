@@ -1,0 +1,63 @@
+{
+  "subtopic": "d1-cte-window",
+  "title": { "en": "CTEs, window functions & correlated queries" },
+  "prerequisiteRecap": [
+    {
+      "heading": { "en": "Subqueries first" },
+      "body": {
+        "en": "A subquery is a query inside another. A **self-contained** subquery runs once (`WHERE Price > (SELECT AVG(Price) FROM P)`). A **correlated** subquery references the outer row and conceptually runs per row (`WHERE EXISTS (SELECT 1 FROM Orders o WHERE o.CustomerId = c.CustomerId)`). CTEs and window functions often replace both with clearer, faster constructs."
+      }
+    }
+  ],
+  "sections": [
+    {
+      "heading": { "en": "Common table expressions (CTEs)" },
+      "body": {
+        "en": "`WITH name AS (SELECT …) SELECT … FROM name` defines a named, temporary result for ONE statement. Multiple CTEs chain with commas and may reference earlier ones. CTEs are **not materialized** — they inline like views; referencing a CTE twice may execute it twice. Rules: the WITH statement must be the first in the batch (precede with `;`), and the outer statement must immediately follow."
+      },
+      "code": "WITH MonthlySales AS (\n    SELECT CustomerId, DATETRUNC(month, OrderDate) AS Mon, SUM(Total) AS Sales\n    FROM Sales.Orders\n    GROUP BY CustomerId, DATETRUNC(month, OrderDate)\n),\nRanked AS (\n    SELECT *, RANK() OVER (PARTITION BY Mon ORDER BY Sales DESC) AS Rnk\n    FROM MonthlySales\n)\nSELECT * FROM Ranked WHERE Rnk <= 3;   -- top 3 customers per month"
+    },
+    {
+      "heading": { "en": "Recursive CTEs" },
+      "body": {
+        "en": "A recursive CTE has an **anchor** member UNION ALL'd with a **recursive** member that references the CTE itself — the T-SQL way to walk hierarchies (org charts, BOMs, folder trees). Default recursion limit is 100 levels; change with `OPTION (MAXRECURSION n)` (0 = unlimited). Exceeding the limit raises error 530."
+      },
+      "code": "WITH OrgChart AS (\n    SELECT EmployeeId, ManagerId, Name, 0 AS Lvl\n    FROM HR.Employees\n    WHERE ManagerId IS NULL                    -- anchor: the CEO\n    UNION ALL\n    SELECT e.EmployeeId, e.ManagerId, e.Name, oc.Lvl + 1\n    FROM HR.Employees AS e\n    JOIN OrgChart AS oc ON oc.EmployeeId = e.ManagerId   -- recursive member\n)\nSELECT * FROM OrgChart ORDER BY Lvl\nOPTION (MAXRECURSION 500);"
+    },
+    {
+      "heading": { "en": "Window functions: the OVER clause" },
+      "body": {
+        "en": "Window functions compute across a set of rows **without collapsing them** (unlike GROUP BY). `OVER ([PARTITION BY …] [ORDER BY …] [frame])`:\n- **Ranking**: `ROW_NUMBER()` (unique 1,2,3…), `RANK()` (ties share rank, gaps follow: 1,1,3), `DENSE_RANK()` (ties share, no gaps: 1,1,2), `NTILE(n)` (n buckets).\n- **Offset**: `LAG(col, n, default)` / `LEAD(...)` read previous/next rows; `FIRST_VALUE`/`LAST_VALUE` read frame edges.\n- **Aggregate windows**: `SUM(x) OVER (PARTITION BY … ORDER BY … ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)` = running total.\nFrame subtlety: with ORDER BY but no frame, the default is `RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW` — which treats ties as one unit and makes LAST_VALUE 'not work' as beginners expect. Specify `ROWS …` explicitly for running calculations."
+      },
+      "code": "SELECT OrderId, CustomerId, OrderDate, Total,\n       ROW_NUMBER() OVER (PARTITION BY CustomerId ORDER BY OrderDate)      AS OrderSeq,\n       SUM(Total)   OVER (PARTITION BY CustomerId ORDER BY OrderDate\n                          ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS RunningSpend,\n       LAG(Total, 1, 0) OVER (PARTITION BY CustomerId ORDER BY OrderDate)   AS PrevTotal\nFROM Sales.Orders;"
+    },
+    {
+      "heading": { "en": "Classic patterns" },
+      "body": {
+        "en": "- **Top-N per group**: ROW_NUMBER() in a CTE, filter `WHERE rn <= N` outside (window functions are not allowed directly in WHERE — they evaluate in the SELECT phase).\n- **De-duplication**: ROW_NUMBER() PARTITION BY the duplicate key; `DELETE` where rn > 1.\n- **Running totals / moving averages**: SUM/AVG OVER with ROWS frames (`ROWS BETWEEN 6 PRECEDING AND CURRENT ROW` = 7-row moving window).\n- **Gaps/changes between rows**: LAG comparisons.\n- **Percent of total**: `100.0 * Total / SUM(Total) OVER ()`."
+      }
+    },
+    {
+      "heading": { "en": "Correlated queries done right" },
+      "body": {
+        "en": "`EXISTS` / `NOT EXISTS` are the safe idioms (NOT IN breaks on NULLs). `CROSS/OUTER APPLY` is the 'correlated FROM': invoke a TOP-N subquery or TVF per outer row — the standard alternative to ROW_NUMBER for top-N-per-group. The optimizer frequently decorrelates these into joins; write for clarity and verify plans."
+      },
+      "code": "-- Latest order per customer via APPLY\nSELECT c.Name, o.*\nFROM Sales.Customers AS c\nOUTER APPLY (\n    SELECT TOP (1) OrderId, OrderDate, Total\n    FROM Sales.Orders AS x\n    WHERE x.CustomerId = c.CustomerId\n    ORDER BY OrderDate DESC\n) AS o;"
+    }
+  ],
+  "examTips": [
+    { "en": "RANK 1,1,3 vs DENSE_RANK 1,1,2 vs ROW_NUMBER 1,2,3 — the single most-tested distinction." },
+    { "en": "Window functions can't appear in WHERE — wrap in CTE/derived table and filter outside." },
+    { "en": "Recursive CTE = anchor UNION ALL recursive member; MAXRECURSION default 100, 0 = unlimited." },
+    { "en": "Running totals need an explicit ROWS frame; default RANGE frame mishandles ties and hurts performance." },
+    { "en": "CTEs aren't materialized — referenced twice means potentially computed twice." },
+    { "en": "NOT EXISTS over NOT IN when NULLs are possible." },
+    { "en": "LAG/LEAD take (column, offset, default) — the third argument avoids NULL for edge rows." }
+  ],
+  "sources": [
+    "https://learn.microsoft.com/en-us/sql/t-sql/queries/with-common-table-expression-transact-sql",
+    "https://learn.microsoft.com/en-us/sql/t-sql/queries/select-over-clause-transact-sql",
+    "https://learn.microsoft.com/en-us/sql/t-sql/functions/ranking-functions-transact-sql",
+    "https://learn.microsoft.com/en-us/sql/t-sql/functions/lag-transact-sql"
+  ]
+}

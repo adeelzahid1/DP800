@@ -1,0 +1,864 @@
+{
+  "subtopic": "d3-rag-implementation",
+  "cases": [
+    {
+      "id": "case-ri-pharma",
+      "title": { "en": "Contoso Pharmacy medication assistant" },
+      "scenario": {
+        "en": "Contoso Pharmacy runs **SQL Server 2025 on an Azure VM** (connected to Azure Arc). A stored procedure answers pharmacists' questions using drug-interaction records and calls an Azure OpenAI chat deployment.\n- Security requires managed identity; no API keys.\n- Some answers are long (5,000+ characters) and currently come back as NULL.\n- Other answers stop mid-sentence.\n- Finance wants per-request token usage logged in `dbo.AiCallLog`."
+      }
+    }
+  ],
+  "questions": [
+    {
+      "id": "d3-ri-0001",
+      "domain": "ai-capabilities", "topic": "t-rag", "subtopic": "d3-rag-implementation",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Why convert retrieved rows to JSON before sending them to the language model?" },
+      "options": [
+        { "id": "a", "text": { "en": "JSON keeps field names attached to values, so the model can interpret and reference each value" } },
+        { "id": "b", "text": { "en": "Models only accept binary input" } },
+        { "id": "c", "text": { "en": "JSON is smaller than any other format" } },
+        { "id": "d", "text": { "en": "sp_invoke_external_rest_endpoint rejects text" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Raw result sets lose column meaning when flattened into text; JSON preserves structure in a text form models read well. Models take text, JSON isn't always smallest, and the procedure accepts JSON, XML or text payloads." },
+      "example": { "en": "{\"ProductName\":\"Mountain-500\",\"Price\":564.99}" },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-rag-with-sql/3-prepare-retrieval-context-augmentation"]
+    },
+    {
+      "id": "d3-ri-0002",
+      "domain": "ai-capabilities", "topic": "t-rag", "subtopic": "d3-rag-implementation",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What's the difference between FOR JSON AUTO and FOR JSON PATH?" },
+      "options": [
+        { "id": "a", "text": { "en": "AUTO derives structure from the query; PATH gives explicit control over names and nesting through column aliases" } },
+        { "id": "b", "text": { "en": "AUTO produces XML" } },
+        { "id": "c", "text": { "en": "PATH can't rename columns" } },
+        { "id": "d", "text": { "en": "They're identical" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Use AUTO for quick output and PATH when you need a specific shape (e.g., aliases like 'product.name' create nested objects). Both produce JSON." },
+      "example": { "en": "SELECT Name AS 'product.name', ListPrice AS 'product.price' … FOR JSON PATH" },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-rag-with-sql/3-prepare-retrieval-context-augmentation"]
+    },
+    {
+      "id": "d3-ri-0003",
+      "domain": "ai-capabilities", "topic": "t-rag", "subtopic": "d3-rag-implementation",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "SELECT Name AS 'product.name', Size AS 'product.size' FROM … FOR JSON PATH returns what shape?" },
+      "options": [
+        { "id": "a", "text": { "en": "[{\"product\":{\"name\":\"…\",\"size\":\"…\"}}]" } },
+        { "id": "b", "text": { "en": "[{\"product.name\":\"…\",\"product.size\":\"…\"}]" } },
+        { "id": "c", "text": { "en": "<product name=\"…\"/>" } },
+        { "id": "d", "text": { "en": "\"…,…\"" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "In PATH mode, dots in aliases create nested objects. The keys aren't literal dotted names, and the output is JSON, not XML or CSV." },
+      "example": { "en": "Group related fields under one object for clearer context." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/json/format-query-results-as-json-with-for-json-sql-server"]
+    },
+    {
+      "id": "d3-ri-0004",
+      "domain": "ai-capabilities", "topic": "t-rag", "subtopic": "d3-rag-implementation",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "You retrieve exactly one order for the prompt and want a JSON object, not an array with one element. Which option?" },
+      "options": [
+        { "id": "a", "text": { "en": "WITHOUT_ARRAY_WRAPPER" } },
+        { "id": "b", "text": { "en": "INCLUDE_NULL_VALUES" } },
+        { "id": "c", "text": { "en": "ROOT('order')" } },
+        { "id": "d", "text": { "en": "AUTO" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "WITHOUT_ARRAY_WRAPPER removes the square brackets for single-record results. INCLUDE_NULL_VALUES keeps nulls, ROOT adds a named wrapper, and AUTO is a mode." },
+      "example": { "en": "… WHERE OrderId = @id FOR JSON PATH, WITHOUT_ARRAY_WRAPPER;" },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-rag-with-sql/3-prepare-retrieval-context-augmentation"]
+    },
+    {
+      "id": "d3-ri-0005",
+      "domain": "ai-capabilities", "topic": "t-rag", "subtopic": "d3-rag-implementation",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "ShippedDate is NULL for unshipped orders, and the model should know an order hasn't shipped. FOR JSON omits the property. What do you add?" },
+      "options": [
+        { "id": "a", "text": { "en": "INCLUDE_NULL_VALUES" } },
+        { "id": "b", "text": { "en": "WITHOUT_ARRAY_WRAPPER" } },
+        { "id": "c", "text": { "en": "ROOT('orders')" } },
+        { "id": "d", "text": { "en": "Nothing; nulls are always included" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "By default FOR JSON omits NULL properties; INCLUDE_NULL_VALUES outputs \"ShippedDate\":null when absence is meaningful. The other options change wrapping." },
+      "example": { "en": "Or replace with a clear value: ISNULL(CONVERT(varchar(10), ShippedDate, 23), 'not shipped')." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-rag-with-sql/3-prepare-retrieval-context-augmentation"]
+    },
+    {
+      "id": "d3-ri-0006",
+      "domain": "ai-capabilities", "topic": "t-rag", "subtopic": "d3-rag-implementation",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What does ROOT('products') do in a FOR JSON query?" },
+      "options": [
+        { "id": "a", "text": { "en": "Wraps the output in an object with a 'products' property, telling the model what kind of data it is" } },
+        { "id": "b", "text": { "en": "Filters rows to the products table" } },
+        { "id": "c", "text": { "en": "Removes the array brackets" } },
+        { "id": "d", "text": { "en": "Converts the output to XML" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "ROOT adds a named top-level wrapper: {\"products\":[…]}. It doesn't filter, unwrap or change format." },
+      "example": { "en": "FOR JSON PATH, ROOT('products')" },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-rag-with-sql/3-prepare-retrieval-context-augmentation"]
+    },
+    {
+      "id": "d3-ri-0007",
+      "domain": "ai-capabilities", "topic": "t-rag", "subtopic": "d3-rag-implementation",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "SET @context = (SELECT … WHERE … FOR JSON PATH) matches no rows. What's @context, and what should the procedure do?" },
+      "options": [
+        { "id": "a", "text": { "en": "NULL — check for it and return a 'no information found' answer (concatenating NULL into the prompt would make the whole message NULL)" } },
+        { "id": "b", "text": { "en": "An empty array '[]' that's safe to send" } },
+        { "id": "c", "text": { "en": "An error is raised automatically" } },
+        { "id": "d", "text": { "en": "The string 'null'" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "A FOR JSON subquery with no rows returns NULL; '…' + NULL yields NULL with default settings, producing a broken prompt. Handle it explicitly (and avoid calling the model)." },
+      "example": { "en": "IF @context IS NULL BEGIN SET @Answer = N'No matching records.'; RETURN; END" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/json/format-query-results-as-json-with-for-json-sql-server"]
+    },
+    {
+      "id": "d3-ri-0008",
+      "domain": "ai-capabilities", "topic": "t-rag", "subtopic": "d3-rag-implementation",
+      "type": "multiple", "difficulty": "medium", "selectCount": 2,
+      "text": { "en": "For a product-compatibility question, which two columns belong in the context JSON? (Select 2)" },
+      "options": [
+        { "id": "a", "text": { "en": "Product name and specifications" } },
+        { "id": "b", "text": { "en": "Product number (for citation)" } },
+        { "id": "c", "text": { "en": "rowguid" } },
+        { "id": "d", "text": { "en": "ModifiedDate audit column" } },
+        { "id": "e", "text": { "en": "Internal warehouse bin code" } }
+      ],
+      "answer": ["a", "b"],
+      "explanation": { "en": "Include what helps answer and cite. GUIDs, audit timestamps and internal codes add tokens and noise without helping the customer." },
+      "example": { "en": "SELECT ProductNumber AS id, Name, Size, Weight … FOR JSON PATH" },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-rag-with-sql/3-prepare-retrieval-context-augmentation"]
+    },
+    {
+      "id": "d3-ri-0009",
+      "domain": "ai-capabilities", "topic": "t-rag", "subtopic": "d3-rag-implementation",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "You want each order in the context to contain an array of its order lines. Which construct helps in Azure SQL Database / SQL Server 2025?" },
+      "options": [
+        { "id": "a", "text": { "en": "A correlated subquery with FOR JSON PATH (or JSON_ARRAYAGG) producing a nested 'lines' array per order" } },
+        { "id": "b", "text": { "en": "STRING_SPLIT on the order lines" } },
+        { "id": "c", "text": { "en": "PIVOT" } },
+        { "id": "d", "text": { "en": "A CROSS JOIN without grouping" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Nested FOR JSON subqueries (or JSON_ARRAYAGG aggregating JSON_OBJECTs) build hierarchical JSON. STRING_SPLIT splits strings, PIVOT rotates columns, and a cross join duplicates data." },
+      "example": { "en": "SELECT o.OrderNumber, (SELECT l.Product, l.Qty FROM dbo.Lines l WHERE l.OrderId = o.OrderId FOR JSON PATH) AS lines FROM dbo.Orders o FOR JSON PATH" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/json-arrayagg-transact-sql"]
+    },
+    {
+      "id": "d3-ri-0010",
+      "domain": "ai-capabilities", "topic": "t-rag", "subtopic": "d3-rag-implementation",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "In a chat completions request, what goes in the system message?" },
+      "options": [
+        { "id": "a", "text": { "en": "Rules for the assistant: role, grounding instructions, format and what to do when information is missing" } },
+        { "id": "b", "text": { "en": "The user's question only" } },
+        { "id": "c", "text": { "en": "The API key" } },
+        { "id": "d", "text": { "en": "The model's previous answers only" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The system role sets behavior; the user role carries the question and context; assistant messages hold earlier replies in multi-turn chats. Keys go in credentials, never in messages." },
+      "example": { "en": "\"Answer only from the provided data. If missing, say so.\"" },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-rag-with-sql/4-augment-prompts-database-context"]
+    },
+    {
+      "id": "d3-ri-0011",
+      "domain": "ai-capabilities", "topic": "t-rag", "subtopic": "d3-rag-implementation",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which system-message instructions best ground a RAG assistant?" },
+      "options": [
+        { "id": "a", "text": { "en": "Use only the provided data; don't invent features; say when information is missing; keep answers brief; cite IDs" } },
+        { "id": "b", "text": { "en": "Be creative and fill gaps with likely details" } },
+        { "id": "c", "text": { "en": "Ignore the context if you know better" } },
+        { "id": "d", "text": { "en": "Always answer, even without data" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Scope, honesty and format instructions keep answers tied to your data. The other instructions invite hallucinations." },
+      "example": { "en": "Rules numbered 1–5 in the system message." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-rag-with-sql/4-augment-prompts-database-context"]
+    },
+    {
+      "id": "d3-ri-0012",
+      "domain": "ai-capabilities", "topic": "t-rag", "subtopic": "d3-rag-implementation",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which temperature setting suits a factual RAG assistant?" },
+      "options": [
+        { "id": "a", "text": { "en": "A low value (around 0.0–0.5) for consistent, factual answers" } },
+        { "id": "b", "text": { "en": "2.0 for maximum accuracy" } },
+        { "id": "c", "text": { "en": "Temperature doesn't affect output" } },
+        { "id": "d", "text": { "en": "Negative values" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Temperature (0–2) controls randomness; lower is more deterministic and better for grounded answers. High values increase creativity and variation; negatives aren't valid." },
+      "example": { "en": "'temperature': 0.2" },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-rag-with-sql/4-augment-prompts-database-context"]
+    },
+    {
+      "id": "d3-ri-0013",
+      "domain": "ai-capabilities", "topic": "t-rag", "subtopic": "d3-rag-implementation",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "What does max_tokens control in the request payload?" },
+      "options": [
+        { "id": "a", "text": { "en": "The maximum length of the generated response" } },
+        { "id": "b", "text": { "en": "The size of the retrieved context" } },
+        { "id": "c", "text": { "en": "The number of retries" } },
+        { "id": "d", "text": { "en": "The embedding dimensions" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "max_tokens limits output length (and cost). You control context size in your retrieval query; retries and dimensions are separate settings." },
+      "example": { "en": "'max_tokens': 500" },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-rag-with-sql/4-augment-prompts-database-context"]
+    },
+    {
+      "id": "d3-ri-0014",
+      "domain": "ai-capabilities", "topic": "t-rag", "subtopic": "d3-rag-implementation",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A developer builds the payload by concatenating strings: '{\"role\":\"user\",\"content\":\"' + @question + '\"}'. A question containing a double quote breaks the request. What's the best fix?" },
+      "options": [
+        { "id": "a", "text": { "en": "Build the payload with JSON_OBJECT/JSON_ARRAY, which escape values automatically (or use STRING_ESCAPE(@question, 'json'))" } },
+        { "id": "b", "text": { "en": "Remove all quotes from user input" } },
+        { "id": "c", "text": { "en": "Send the payload as XML" } },
+        { "id": "d", "text": { "en": "Increase @timeout" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "JSON builders produce valid JSON with proper escaping of quotes and newlines. Stripping characters changes meaning, XML isn't what the chat API expects, and timeouts are unrelated." },
+      "example": { "en": "JSON_OBJECT('role':'user','content': @userMessage)" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/json-object-transact-sql"]
+    },
+    {
+      "id": "d3-ri-0015",
+      "domain": "ai-capabilities", "topic": "t-rag", "subtopic": "d3-rag-implementation",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Complete the chat completions payload." },
+      "code": "SET @payload = JSON_OBJECT(\n    'messages': [BLANK1](\n        JSON_OBJECT('role': '[BLANK2]', 'content': @rules),\n        JSON_OBJECT('role': 'user',     'content': 'Context: ' + @context + CHAR(10) + 'Question: ' + @q)\n    ),\n    '[BLANK3]': 400,\n    'temperature': 0.2\n);",
+      "blanks": [
+        { "id": "b1", "label": { "en": "BLANK1" }, "choices": [
+          { "id": "c1", "text": { "en": "JSON_ARRAY" } },
+          { "id": "c2", "text": { "en": "JSON_QUERY" } },
+          { "id": "c3", "text": { "en": "OPENJSON" } }
+        ] },
+        { "id": "b2", "label": { "en": "BLANK2" }, "choices": [
+          { "id": "c1", "text": { "en": "assistant" } },
+          { "id": "c2", "text": { "en": "system" } },
+          { "id": "c3", "text": { "en": "admin" } }
+        ] },
+        { "id": "b3", "label": { "en": "BLANK3" }, "choices": [
+          { "id": "c1", "text": { "en": "max_tokens" } },
+          { "id": "c2", "text": { "en": "top_n" } },
+          { "id": "c3", "text": { "en": "retry_count" } }
+        ] }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c2", "b3": "c1" },
+      "explanation": { "en": "messages is an array of role/content objects built with JSON_ARRAY; the rules go in the system role; max_tokens caps the response. JSON_QUERY and OPENJSON read JSON rather than build arrays; 'admin' isn't a role; top_n and retry_count aren't chat parameters." },
+      "example": { "en": "Earlier turns can be added as {'role':'assistant','content':…}." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-rag-with-sql/4-augment-prompts-database-context"]
+    },
+    {
+      "id": "d3-ri-0016",
+      "domain": "ai-capabilities", "topic": "t-rag", "subtopic": "d3-rag-implementation",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which URL does a RAG procedure call to generate an answer with an Azure OpenAI chat deployment?" },
+      "options": [
+        { "id": "a", "text": { "en": "https://{resource}.openai.azure.com/openai/deployments/{deployment}/chat/completions?api-version={version}" } },
+        { "id": "b", "text": { "en": "https://{resource}.openai.azure.com/openai/deployments/{deployment}/embeddings?api-version={version}" } },
+        { "id": "c", "text": { "en": "sql://{resource}/chat" } },
+        { "id": "d", "text": { "en": "http://{resource}.openai.azure.com/chat" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Generation uses the chat/completions endpoint; /embeddings returns vectors. HTTPS is required, and sql:// isn't a protocol." },
+      "example": { "en": "@url = N'https://aw-openai.openai.azure.com/openai/deployments/gpt-4o/chat/completions?api-version=2024-10-21'" },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-rag-with-sql/5-generate-process-rag-responses"]
+    },
+    {
+      "id": "d3-ri-0017",
+      "domain": "ai-capabilities", "topic": "t-rag", "subtopic": "d3-rag-implementation",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "What HTTP method does sp_invoke_external_rest_endpoint use if @method isn't specified?" },
+      "options": [
+        { "id": "a", "text": { "en": "POST" } },
+        { "id": "b", "text": { "en": "GET" } },
+        { "id": "c", "text": { "en": "PUT" } },
+        { "id": "d", "text": { "en": "PATCH" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "@method defaults to POST; accepted values are GET, POST, PUT, PATCH, DELETE and HEAD." },
+      "example": { "en": "Chat completions calls are POSTs." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-invoke-external-rest-endpoint-transact-sql"]
+    },
+    {
+      "id": "d3-ri-0018",
+      "domain": "ai-capabilities", "topic": "t-rag", "subtopic": "d3-rag-implementation",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Long completions occasionally fail with a timeout exception after 30 seconds. What's the default and allowed range of @timeout?" },
+      "options": [
+        { "id": "a", "text": { "en": "Default 30 seconds; 1–230 seconds allowed (cumulative across retries)" } },
+        { "id": "b", "text": { "en": "Default 60; unlimited" } },
+        { "id": "c", "text": { "en": "Default 5; 1–30" } },
+        { "id": "d", "text": { "en": "There's no timeout" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "@timeout is a smallint in seconds, default 30, range 1–230; with @retry_count it's the cumulative limit for all attempts. Raise it (or shorten responses) for slow generations." },
+      "example": { "en": "@timeout = 120" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-invoke-external-rest-endpoint-transact-sql"]
+    },
+    {
+      "id": "d3-ri-0019",
+      "domain": "ai-capabilities", "topic": "t-rag", "subtopic": "d3-rag-implementation",
+      "type": "multiple", "difficulty": "hard", "selectCount": 3,
+      "text": { "en": "With @retry_count set, which three HTTP status codes trigger an automatic retry? (Select 3)" },
+      "options": [
+        { "id": "a", "text": { "en": "429 Too Many Requests" } },
+        { "id": "b", "text": { "en": "503 Service Unavailable" } },
+        { "id": "c", "text": { "en": "408 Request Timeout" } },
+        { "id": "d", "text": { "en": "401 Unauthorized" } },
+        { "id": "e", "text": { "en": "400 Bad Request" } }
+      ],
+      "answer": ["a", "b", "c"],
+      "explanation": { "en": "Retries cover transient errors: 408, 429, 500, 502, 503, 504 (using Retry-After when present, otherwise backoff). 401 and 400 indicate problems retries won't fix." },
+      "example": { "en": "@retry_count = 3 (allowed 0–10)" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-invoke-external-rest-endpoint-transact-sql"]
+    },
+    {
+      "id": "d3-ri-0020",
+      "domain": "ai-capabilities", "topic": "t-rag", "subtopic": "d3-rag-implementation",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "EXEC @rc = sp_invoke_external_rest_endpoint … returns @rc = 429. What happened?" },
+      "options": [
+        { "id": "a", "text": { "en": "The HTTP call completed but the endpoint answered 429 (rate limited); success would have returned 0" } },
+        { "id": "b", "text": { "en": "429 rows were returned" } },
+        { "id": "c", "text": { "en": "The call succeeded with 429 tokens" } },
+        { "id": "d", "text": { "en": "SQL error 429 was raised" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The return value is 0 for any 2xx response and otherwise the HTTP status code. If the call can't be made at all, an exception is thrown instead." },
+      "example": { "en": "IF @rc = 429 → retry later or raise 'service busy'." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-invoke-external-rest-endpoint-transact-sql"]
+    },
+    {
+      "id": "d3-ri-0021",
+      "domain": "ai-capabilities", "topic": "t-rag", "subtopic": "d3-rag-implementation",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "How does T-SQL code access the body the model returned?" },
+      "options": [
+        { "id": "a", "text": { "en": "Through the @response OUTPUT parameter (nvarchar(max))" } },
+        { "id": "b", "text": { "en": "From a result set named result" } },
+        { "id": "c", "text": { "en": "From sys.dm_exec_requests" } },
+        { "id": "d", "text": { "en": "From the return value" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "@response receives the wrapped response (status, headers and result). The return value only reports success or the HTTP status." },
+      "example": { "en": "@response = @response OUTPUT" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-invoke-external-rest-endpoint-transact-sql"]
+    },
+    {
+      "id": "d3-ri-0022",
+      "domain": "ai-capabilities", "topic": "t-rag", "subtopic": "d3-rag-implementation",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which JSON path returns the assistant's answer text from @response for a chat completions call?" },
+      "options": [
+        { "id": "a", "text": { "en": "$.result.choices[0].message.content" } },
+        { "id": "b", "text": { "en": "$.choices[0].message.content" } },
+        { "id": "c", "text": { "en": "$.response.content" } },
+        { "id": "d", "text": { "en": "$.result.data[0].embedding" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The procedure nests the API body under result, so the path starts with $.result. $.choices… would be the raw API body; $.result.data[0].embedding is for embeddings." },
+      "example": { "en": "JSON_VALUE(@response, '$.result.choices[0].message.content')" },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-rag-with-sql/5-generate-process-rag-responses"]
+    },
+    {
+      "id": "d3-ri-0023",
+      "domain": "ai-capabilities", "topic": "t-rag", "subtopic": "d3-rag-implementation",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Where in @response is the HTTP status code?" },
+      "options": [
+        { "id": "a", "text": { "en": "$.response.status.http.code" } },
+        { "id": "b", "text": { "en": "$.result.status" } },
+        { "id": "c", "text": { "en": "$.http" } },
+        { "id": "d", "text": { "en": "$.headers.code" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The response envelope holds status (http code and description) and headers; result holds the API body." },
+      "example": { "en": "JSON_VALUE(@response, '$.response.status.http.description')" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-invoke-external-rest-endpoint-transact-sql"]
+    },
+    {
+      "id": "d3-ri-0024",
+      "domain": "ai-capabilities", "topic": "t-rag", "subtopic": "d3-rag-implementation",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "JSON_VALUE(@response, '$.result.choices[0].message.content') returns NULL even though the call succeeded and the answer is 6,000 characters. Why, and what's the fix?" },
+      "options": [
+        { "id": "a", "text": { "en": "JSON_VALUE returns nvarchar(4000) and yields NULL in lax mode for longer values; use OPENJSON … WITH (content NVARCHAR(MAX) '$.message.content') instead" } },
+        { "id": "b", "text": { "en": "The path is case-insensitive" } },
+        { "id": "c", "text": { "en": "The model returned an empty answer" } },
+        { "id": "d", "text": { "en": "@response must be varchar" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Values over 4,000 characters make JSON_VALUE return NULL (lax) or error (strict). OPENJSON with an nvarchar(max) column handles long text (SQL Server 2025 also offers RETURNING nvarchar(max) for json-typed input). Paths are case-sensitive, and nvarchar is correct." },
+      "example": { "en": "SELECT content FROM OPENJSON(@response, '$.result.choices') WITH (content NVARCHAR(MAX) '$.message.content');" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/json-value-transact-sql"]
+    },
+    {
+      "id": "d3-ri-0025",
+      "domain": "ai-capabilities", "topic": "t-rag", "subtopic": "d3-rag-implementation",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "You need the whole choices array (an array of objects) from @response. Which function?" },
+      "options": [
+        { "id": "a", "text": { "en": "JSON_QUERY(@response, '$.result.choices')" } },
+        { "id": "b", "text": { "en": "JSON_VALUE(@response, '$.result.choices')" } },
+        { "id": "c", "text": { "en": "ISJSON(@response)" } },
+        { "id": "d", "text": { "en": "JSON_MODIFY(@response, '$.result.choices', NULL)" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "JSON_QUERY returns objects or arrays; JSON_VALUE returns scalars (NULL for arrays in lax mode). ISJSON validates, and JSON_MODIFY changes JSON." },
+      "example": { "en": "Iterate with OPENJSON(@response, '$.result.choices')." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/json-value-transact-sql"]
+    },
+    {
+      "id": "d3-ri-0026",
+      "domain": "ai-capabilities", "topic": "t-rag", "subtopic": "d3-rag-implementation",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Some answers end mid-sentence. $.result.choices[0].finish_reason is 'length'. What does it mean?" },
+      "options": [
+        { "id": "a", "text": { "en": "Generation stopped because it reached max_tokens; raise max_tokens or ask for shorter answers" } },
+        { "id": "b", "text": { "en": "The prompt was too short" } },
+        { "id": "c", "text": { "en": "The network dropped the connection" } },
+        { "id": "d", "text": { "en": "The model refused for safety reasons" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "finish_reason 'length' indicates truncation by the token limit ('stop' is a natural end; 'content_filter' indicates filtering). It isn't a network or prompt-length problem." },
+      "example": { "en": "Log finish_reason and alert when 'length' is frequent." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-rag-with-sql/4-augment-prompts-database-context"]
+    },
+    {
+      "id": "d3-ri-0027",
+      "domain": "ai-capabilities", "topic": "t-rag", "subtopic": "d3-rag-implementation",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "How do you record how many tokens each RAG call used?" },
+      "options": [
+        { "id": "a", "text": { "en": "Read $.result.usage.total_tokens (and prompt/completion tokens) from @response and insert it into a log table" } },
+        { "id": "b", "text": { "en": "Count characters in @payload" } },
+        { "id": "c", "text": { "en": "Query sys.external_models" } },
+        { "id": "d", "text": { "en": "It isn't available" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The API response includes a usage object. Character counts only approximate tokens, and the catalog view has no usage data." },
+      "example": { "en": "INSERT dbo.AiCallLog(..., TotalTokens) VALUES (..., JSON_VALUE(@response, '$.result.usage.total_tokens'));" },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-rag-with-sql/5-generate-process-rag-responses"]
+    },
+    {
+      "id": "d3-ri-0028",
+      "domain": "ai-capabilities", "topic": "t-rag", "subtopic": "d3-rag-implementation",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "The model uses a strict json_schema response format: {\"category\": …, \"urgency\": …}. How do you get urgency in T-SQL?" },
+      "options": [
+        { "id": "a", "text": { "en": "Extract message.content (a JSON string), then parse it again: JSON_VALUE(@content, '$.urgency')" } },
+        { "id": "b", "text": { "en": "JSON_VALUE(@response, '$.result.urgency')" } },
+        { "id": "c", "text": { "en": "JSON_VALUE(@response, '$.urgency')" } },
+        { "id": "d", "text": { "en": "Structured output can't be parsed in T-SQL" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Structured output is returned as a JSON string inside message.content, so you extract it first and then parse that string. The other paths don't exist in the envelope." },
+      "example": { "en": "SELECT j.category, j.urgency FROM OPENJSON(@content) WITH (category NVARCHAR(50), urgency NVARCHAR(10)) AS j;" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/foundry/openai/how-to/structured-outputs"]
+    },
+    {
+      "id": "d3-ri-0029",
+      "domain": "ai-capabilities", "topic": "t-rag", "subtopic": "d3-rag-implementation",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "The procedure returns @rc = 401 or 403. What should you check?" },
+      "options": [
+        { "id": "a", "text": { "en": "The credential configuration — managed identity enabled and granted the Azure OpenAI role, or a valid API key — and the credential name/URL" } },
+        { "id": "b", "text": { "en": "The vector index metric" } },
+        { "id": "c", "text": { "en": "The temperature value" } },
+        { "id": "d", "text": { "en": "The FOR JSON options" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "401/403 mean authentication or authorization failed at the endpoint. Index, temperature and JSON shaping don't cause auth errors." },
+      "example": { "en": "Assign 'Cognitive Services OpenAI User' to the server's managed identity." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-rag-with-sql/5-generate-process-rag-responses"]
+    },
+    {
+      "id": "d3-ri-0030",
+      "domain": "ai-capabilities", "topic": "t-rag", "subtopic": "d3-rag-implementation",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What happens when the HTTPS call can't be made at all (for example, DNS failure)?" },
+      "options": [
+        { "id": "a", "text": { "en": "An exception is thrown, so wrap the call in TRY…CATCH" } },
+        { "id": "b", "text": { "en": "@rc returns 0" } },
+        { "id": "c", "text": { "en": "@response contains an empty answer" } },
+        { "id": "d", "text": { "en": "The procedure waits indefinitely" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Non-2xx responses return the status code; failure to make the call raises an exception. Handle both. The timeout bounds waiting." },
+      "example": { "en": "BEGIN TRY EXEC @rc = sp_invoke_external_rest_endpoint …; END TRY BEGIN CATCH …log ERROR_MESSAGE()… END CATCH" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-invoke-external-rest-endpoint-transact-sql"]
+    },
+    {
+      "id": "d3-ri-0031",
+      "domain": "ai-capabilities", "topic": "t-rag", "subtopic": "d3-rag-implementation",
+      "type": "multiple", "difficulty": "medium", "selectCount": 2,
+      "text": { "en": "Which two permissions does a principal need to call sp_invoke_external_rest_endpoint with a database scoped credential? (Select 2)" },
+      "options": [
+        { "id": "a", "text": { "en": "EXECUTE ANY EXTERNAL ENDPOINT" } },
+        { "id": "b", "text": { "en": "REFERENCES on the database scoped credential" } },
+        { "id": "c", "text": { "en": "ALTER ANY EXTERNAL MODEL" } },
+        { "id": "d", "text": { "en": "CONTROL SERVER" } },
+        { "id": "e", "text": { "en": "VIEW SERVER STATE" } }
+      ],
+      "answer": ["a", "b"],
+      "explanation": { "en": "The procedure requires EXECUTE ANY EXTERNAL ENDPOINT, and using a credential requires REFERENCES on it. The others aren't required (and CONTROL SERVER is excessive)." },
+      "example": { "en": "GRANT REFERENCES ON DATABASE SCOPED CREDENTIAL::[https://aw-openai.openai.azure.com] TO rag_runner;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-invoke-external-rest-endpoint-transact-sql"]
+    },
+    {
+      "id": "d3-ri-0032",
+      "domain": "ai-capabilities", "topic": "t-rag", "subtopic": "d3-rag-implementation",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Create a managed identity credential for Azure OpenAI chat calls." },
+      "code": "CREATE DATABASE SCOPED CREDENTIAL [[BLANK1]]\n    WITH IDENTITY = '[BLANK2]',\n         SECRET   = '{\"resourceid\":\"[BLANK3]\"}';",
+      "blanks": [
+        { "id": "b1", "label": { "en": "BLANK1" }, "choices": [
+          { "id": "c1", "text": { "en": "https://aw-openai.openai.azure.com" } },
+          { "id": "c2", "text": { "en": "https://aw-openai.openai.azure.com/openai/deployments/gpt-4o/chat/completions?api-version=2024-10-21" } },
+          { "id": "c3", "text": { "en": "aw-openai" } }
+        ] },
+        { "id": "b2", "label": { "en": "BLANK2" }, "choices": [
+          { "id": "c1", "text": { "en": "Managed Identity" } },
+          { "id": "c2", "text": { "en": "HTTPEndpointQueryString" } },
+          { "id": "c3", "text": { "en": "SQL Login" } }
+        ] },
+        { "id": "b3", "label": { "en": "BLANK3" }, "choices": [
+          { "id": "c1", "text": { "en": "https://cognitiveservices.azure.com" } },
+          { "id": "c2", "text": { "en": "https://database.windows.net" } },
+          { "id": "c3", "text": { "en": "https://graph.microsoft.com" } }
+        ] }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1", "b3": "c1" },
+      "explanation": { "en": "The credential name is a URL without a query string that's equal to or more generic than the called URL. IDENTITY 'Managed Identity' uses the server's identity, requesting a token for the Cognitive Services resource. Query-string credentials and SQL logins aren't managed identity." },
+      "example": { "en": "Then @credential = [https://aw-openai.openai.azure.com]" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-invoke-external-rest-endpoint-transact-sql"]
+    },
+    {
+      "id": "d3-ri-0033",
+      "domain": "ai-capabilities", "topic": "t-rag", "subtopic": "d3-rag-implementation",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which Azure role should the Azure SQL logical server's managed identity have on the Azure OpenAI resource to call chat completions?" },
+      "options": [
+        { "id": "a", "text": { "en": "Cognitive Services OpenAI User" } },
+        { "id": "b", "text": { "en": "Owner on the subscription" } },
+        { "id": "c", "text": { "en": "SQL DB Contributor" } },
+        { "id": "d", "text": { "en": "Reader" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The documented example grants Cognitive Services OpenAI User for inference calls (least privilege). Owner is excessive, SQL DB Contributor manages databases, and Reader can't call inference APIs." },
+      "example": { "en": "az role assignment create --role \"Cognitive Services OpenAI User\" --assignee <server-principal-id> --scope <openai-resource-id>" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-invoke-external-rest-endpoint-transact-sql"]
+    },
+    {
+      "id": "d3-ri-0034",
+      "domain": "ai-capabilities", "topic": "t-rag", "subtopic": "d3-rag-implementation",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "On Azure SQL Managed Instance (SQL Server 2025 update policy), the RAG procedure fails because the external endpoint feature is off. What enables it?" },
+      "options": [
+        { "id": "a", "text": { "en": "EXECUTE sp_configure 'external rest endpoint enabled', 1; RECONFIGURE WITH OVERRIDE; (requires ALTER SETTINGS)" } },
+        { "id": "b", "text": { "en": "ALTER DATABASE SCOPED CONFIGURATION SET REST = ON" } },
+        { "id": "c", "text": { "en": "It's always on in Managed Instance" } },
+        { "id": "d", "text": { "en": "Install the Azure CLI on the instance" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The procedure is disabled by default in SQL Server 2025 and Managed Instance and enabled with sp_configure by someone with ALTER SETTINGS. It's on by default in Azure SQL Database and Fabric." },
+      "example": { "en": "SELECT value_in_use FROM sys.configurations WHERE name = 'external rest endpoint enabled';" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-invoke-external-rest-endpoint-transact-sql"]
+    },
+    {
+      "id": "d3-ri-0035",
+      "domain": "ai-capabilities", "topic": "t-rag", "subtopic": "d3-rag-implementation",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "How must @headers be formatted?" },
+      "options": [
+        { "id": "a", "text": { "en": "As flat JSON (no nested objects), e.g. N'{\"Accept\":\"application/json\"}'" } },
+        { "id": "b", "text": { "en": "As XML" } },
+        { "id": "c", "text": { "en": "As 'Name: value' lines" } },
+        { "id": "d", "text": { "en": "Nested JSON objects are required" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Headers are passed as a flat JSON document (nvarchar(4000)); forbidden headers are ignored. XML, raw header lines or nested JSON aren't accepted." },
+      "example": { "en": "content-type and accept default to application/json; user-agent is always set by SQL." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-invoke-external-rest-endpoint-transact-sql"]
+    },
+    {
+      "id": "d3-ri-0036",
+      "domain": "ai-capabilities", "topic": "t-rag", "subtopic": "d3-rag-implementation",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What's the maximum payload size (sent or received) for sp_invoke_external_rest_endpoint?" },
+      "options": [
+        { "id": "a", "text": { "en": "100 MB (UTF-8 encoded)" } },
+        { "id": "b", "text": { "en": "4,000 characters" } },
+        { "id": "c", "text": { "en": "8 KB" } },
+        { "id": "d", "text": { "en": "2 GB" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Payloads are limited to 100 MB over the wire. 8 KB is the URL and header limit; 4,000 relates to nvarchar(4000) parameters like @url and @headers." },
+      "example": { "en": "Model context windows usually limit you long before 100 MB." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-invoke-external-rest-endpoint-transact-sql"]
+    },
+    {
+      "id": "d3-ri-0037",
+      "domain": "ai-capabilities", "topic": "t-rag", "subtopic": "d3-rag-implementation",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "Under load, calls fail with error 10928: 'The outbound connections limit for the database … has been reached.' What's happening?" },
+      "options": [
+        { "id": "a", "text": { "en": "Concurrent outbound connections are capped (a share of worker threads); reduce concurrency, queue requests, or scale up — check sys.dm_user_db_resource_governance" } },
+        { "id": "b", "text": { "en": "Azure OpenAI returned 10928 tokens" } },
+        { "id": "c", "text": { "en": "The credential expired" } },
+        { "id": "d", "text": { "en": "The vector index is full" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Outbound REST concurrency is throttled per database (and per pool: error 10936). It's not a token count, credential or index issue." },
+      "example": { "en": "SELECT primary_group_max_outbound_connection_workers FROM sys.dm_user_db_resource_governance WHERE database_id = DB_ID();" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-invoke-external-rest-endpoint-transact-sql"]
+    },
+    {
+      "id": "d3-ri-0038",
+      "domain": "ai-capabilities", "topic": "t-rag", "subtopic": "d3-rag-implementation",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "While sessions wait for the LLM to respond, which wait type do they report?" },
+      "options": [
+        { "id": "a", "text": { "en": "HTTP_EXTERNAL_CONNECTION" } },
+        { "id": "b", "text": { "en": "PAGEIOLATCH_SH" } },
+        { "id": "c", "text": { "en": "LCK_M_X" } },
+        { "id": "d", "text": { "en": "CXPACKET" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "sp_invoke_external_rest_endpoint reports HTTP_EXTERNAL_CONNECTION while waiting. The others are I/O, locking and parallelism waits." },
+      "example": { "en": "High HTTP_EXTERNAL_CONNECTION waits point to endpoint latency." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-invoke-external-rest-endpoint-transact-sql"]
+    },
+    {
+      "id": "d3-ri-0039",
+      "domain": "ai-capabilities", "topic": "t-rag", "subtopic": "d3-rag-implementation",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "An endpoint responds with HTTP 302 redirect. What does sp_invoke_external_rest_endpoint do?" },
+      "options": [
+        { "id": "a", "text": { "en": "It doesn't follow redirects; you get the 302 status and must call the final URL directly" } },
+        { "id": "b", "text": { "en": "It follows up to 10 redirects" } },
+        { "id": "c", "text": { "en": "It retries the original URL" } },
+        { "id": "d", "text": { "en": "It converts the call to GET" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The procedure doesn't automatically follow HTTP redirects. 302 isn't in the retry list either." },
+      "example": { "en": "Configure the final endpoint URL (and matching credential)." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-invoke-external-rest-endpoint-transact-sql"]
+    },
+    {
+      "id": "d3-ri-0040",
+      "domain": "ai-capabilities", "topic": "t-rag", "subtopic": "d3-rag-implementation",
+      "type": "dragdrop-order", "difficulty": "medium",
+      "text": { "en": "Order the steps inside a RAG stored procedure." },
+      "items": [
+        { "id": "i1", "text": { "en": "Embed the question with AI_GENERATE_EMBEDDINGS" } },
+        { "id": "i2", "text": { "en": "Retrieve top matches and convert them with FOR JSON" } },
+        { "id": "i3", "text": { "en": "Build the payload with JSON_OBJECT/JSON_ARRAY" } },
+        { "id": "i4", "text": { "en": "Call sp_invoke_external_rest_endpoint with @response OUTPUT" } },
+        { "id": "i5", "text": { "en": "Check the return code and extract $.result.choices[0].message.content" } }
+      ],
+      "answer": ["i1", "i2", "i3", "i4", "i5"],
+      "explanation": { "en": "Each step depends on the previous one: vector → context → prompt → call → parse." },
+      "example": { "en": "Microsoft Learn's dbo.AskProductQuestion follows this sequence." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-rag-with-sql/5-generate-process-rag-responses"]
+    },
+    {
+      "id": "d3-ri-0041",
+      "domain": "ai-capabilities", "topic": "t-rag", "subtopic": "d3-rag-implementation",
+      "type": "dropdown", "difficulty": "hard",
+      "text": { "en": "Extract a possibly long answer (over 4,000 characters) and the finish reason." },
+      "code": "SELECT c.answer, c.finish_reason\nFROM [BLANK1](@response, '[BLANK2]')\nWITH (\n    answer        NVARCHAR([BLANK3]) '$.message.content',\n    finish_reason NVARCHAR(20)        '$.finish_reason'\n) AS c;",
+      "blanks": [
+        { "id": "b1", "label": { "en": "BLANK1" }, "choices": [
+          { "id": "c1", "text": { "en": "OPENJSON" } },
+          { "id": "c2", "text": { "en": "JSON_VALUE" } },
+          { "id": "c3", "text": { "en": "OPENROWSET" } }
+        ] },
+        { "id": "b2", "label": { "en": "BLANK2" }, "choices": [
+          { "id": "c1", "text": { "en": "$.result.choices" } },
+          { "id": "c2", "text": { "en": "$.choices" } },
+          { "id": "c3", "text": { "en": "$.response.status" } }
+        ] },
+        { "id": "b3", "label": { "en": "BLANK3" }, "choices": [
+          { "id": "c1", "text": { "en": "MAX" } },
+          { "id": "c2", "text": { "en": "4000" } },
+          { "id": "c3", "text": { "en": "100" } }
+        ] }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1", "b3": "c1" },
+      "explanation": { "en": "OPENJSON with a WITH clause shreds the choices array into typed columns, and nvarchar(max) avoids the 4,000-character limit of JSON_VALUE. The array lives at $.result.choices inside the procedure's envelope." },
+      "example": { "en": "One row per choice (normally one)." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/json-value-transact-sql"]
+    },
+    {
+      "id": "d3-ri-0042",
+      "domain": "ai-capabilities", "topic": "t-rag", "subtopic": "d3-rag-implementation",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "For a follow-up question in a conversation, how do you give the model the earlier exchange?" },
+      "options": [
+        { "id": "a", "text": { "en": "Include prior user and assistant messages (in order) in the messages array, plus fresh retrieved context" } },
+        { "id": "b", "text": { "en": "The model remembers previous calls automatically" } },
+        { "id": "c", "text": { "en": "Increase temperature" } },
+        { "id": "d", "text": { "en": "Store history in the vector index" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Chat APIs are stateless per request; you send relevant history as assistant/user messages. Temperature and vector indexes don't carry conversation state." },
+      "example": { "en": "JSON_ARRAY(system, user1, assistant1, user2)" },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-rag-with-sql/4-augment-prompts-database-context"]
+    },
+    {
+      "id": "d3-ri-0043",
+      "domain": "ai-capabilities", "topic": "t-rag", "subtopic": "d3-rag-implementation",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "You need to send 500 rows to an Azure Function for processing. What's the recommended approach?" },
+      "options": [
+        { "id": "a", "text": { "en": "Batch the rows into one JSON document with FOR JSON and make a single call" } },
+        { "id": "b", "text": { "en": "Call the endpoint once per row in a cursor" } },
+        { "id": "c", "text": { "en": "Send CSV text without headers" } },
+        { "id": "d", "text": { "en": "Use a linked server" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The docs recommend batching rows with FOR JSON to avoid per-call HTTPS overhead (and throttling). Row-by-row calls are slow; CSV loses structure; linked servers don't call REST APIs." },
+      "example": { "en": "SET @payload = (SELECT … FOR JSON AUTO);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-invoke-external-rest-endpoint-transact-sql"]
+    },
+    {
+      "id": "d3-ri-0044",
+      "domain": "ai-capabilities", "topic": "t-rag", "subtopic": "d3-rag-implementation",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "Retrieved support tickets can contain user-written text. How should the prompt include them to reduce prompt-injection risk?" },
+      "options": [
+        { "id": "a", "text": { "en": "Keep instructions only in the system message, wrap retrieved JSON in clear delimiters (e.g., <context>…</context>) and tell the model to treat it as data" } },
+        { "id": "b", "text": { "en": "Put the tickets in the system message" } },
+        { "id": "c", "text": { "en": "Concatenate tickets after the instructions without separation" } },
+        { "id": "d", "text": { "en": "Raise temperature" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Separating trusted instructions from untrusted data, and saying so, makes injection harder (combine with output validation). Mixing data into instructions increases the risk." },
+      "example": { "en": "'<context>' + @context + '</context>'" },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-rag-with-sql/4-augment-prompts-database-context"]
+    },
+    {
+      "id": "d3-ri-0045",
+      "domain": "ai-capabilities", "topic": "t-rag", "subtopic": "d3-rag-implementation",
+      "type": "single", "difficulty": "hard",
+      "caseId": "case-ri-pharma",
+      "text": { "en": "What must Contoso configure on SQL Server 2025 to call Azure OpenAI with managed identity?" },
+      "options": [
+        { "id": "a", "text": { "en": "Enable 'external rest endpoint enabled' and 'allow server scoped db credentials', use the Arc primary managed identity with an Azure OpenAI role, and a credential WITH IDENTITY = 'Managed Identity'" } },
+        { "id": "b", "text": { "en": "Store an API key in a credential" } },
+        { "id": "c", "text": { "en": "Nothing; it works by default" } },
+        { "id": "d", "text": { "en": "Install Azure AI Search on the VM" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "SQL Server 2025 needs the REST feature enabled and server-scoped DB credentials allowed to use the Arc-provided managed identity, plus RBAC on the OpenAI resource. API keys violate policy, defaults are off, and AI Search isn't required." },
+      "example": { "en": "EXECUTE sp_configure 'allow server scoped db credentials', 1; RECONFIGURE WITH OVERRIDE;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-invoke-external-rest-endpoint-transact-sql"]
+    },
+    {
+      "id": "d3-ri-0046",
+      "domain": "ai-capabilities", "topic": "t-rag", "subtopic": "d3-rag-implementation",
+      "type": "single", "difficulty": "hard",
+      "caseId": "case-ri-pharma",
+      "text": { "en": "Why do long answers (5,000+ characters) come back as NULL, and what's the fix?" },
+      "options": [
+        { "id": "a", "text": { "en": "The procedure extracts them with JSON_VALUE, limited to 4,000 characters in lax mode; extract with OPENJSON … WITH (answer NVARCHAR(MAX) '$.message.content')" } },
+        { "id": "b", "text": { "en": "Azure OpenAI can't return more than 4,000 characters" } },
+        { "id": "c", "text": { "en": "@response is limited to 4,000 characters" } },
+        { "id": "d", "text": { "en": "The timeout is too short" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "@response is nvarchar(max) and the model can return longer text; JSON_VALUE's nvarchar(4000) result is the bottleneck. A timeout would raise an error rather than NULL." },
+      "example": { "en": "SELECT answer FROM OPENJSON(@response, '$.result.choices') WITH (answer NVARCHAR(MAX) '$.message.content');" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/json-value-transact-sql"]
+    },
+    {
+      "id": "d3-ri-0047",
+      "domain": "ai-capabilities", "topic": "t-rag", "subtopic": "d3-rag-implementation",
+      "type": "single", "difficulty": "medium",
+      "caseId": "case-ri-pharma",
+      "text": { "en": "Other answers stop mid-sentence. What should Contoso check first?" },
+      "options": [
+        { "id": "a", "text": { "en": "finish_reason: if it's 'length', max_tokens is too low for those answers" } },
+        { "id": "b", "text": { "en": "The vector index version" } },
+        { "id": "c", "text": { "en": "The FOR JSON ROOT option" } },
+        { "id": "d", "text": { "en": "The database collation" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Truncation by the token limit shows as finish_reason 'length'; raise max_tokens or request more concise answers. The other settings don't truncate generated text." },
+      "example": { "en": "'max_tokens': 1200" },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-rag-with-sql/4-augment-prompts-database-context"]
+    },
+    {
+      "id": "d3-ri-0048",
+      "domain": "ai-capabilities", "topic": "t-rag", "subtopic": "d3-rag-implementation",
+      "type": "single", "difficulty": "medium",
+      "caseId": "case-ri-pharma",
+      "text": { "en": "How should the procedure log token usage for Finance?" },
+      "options": [
+        { "id": "a", "text": { "en": "After each call, insert JSON_VALUE(@response, '$.result.usage.total_tokens') (and prompt/completion tokens, status, timestamp) into dbo.AiCallLog" } },
+        { "id": "b", "text": { "en": "Estimate tokens as LEN(@payload)" } },
+        { "id": "c", "text": { "en": "Read tokens from sys.dm_os_wait_stats" } },
+        { "id": "d", "text": { "en": "Tokens can't be tracked from SQL" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The usage object in the API result gives exact counts. Length is only an approximation, and wait stats don't contain tokens." },
+      "example": { "en": "Also log @rc and the HTTP description for failed calls." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-rag-with-sql/5-generate-process-rag-responses"]
+    },
+    {
+      "id": "d3-ri-0049",
+      "domain": "ai-capabilities", "topic": "t-rag", "subtopic": "d3-rag-implementation",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "For each statement about sp_invoke_external_rest_endpoint, answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "It accepts JSON, XML or text payloads." } },
+        { "id": "s2", "text": { "en": "Only HTTPS endpoints with TLS are supported." } },
+        { "id": "s3", "text": { "en": "It's enabled by default in Azure SQL Database." } },
+        { "id": "s4", "text": { "en": "@retry_count accepts values up to 50." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "yes", "s3": "yes", "s4": "no" },
+      "explanation": { "en": "Payloads can be JSON, XML or text; HTTPS/TLS is mandatory; Azure SQL Database and Fabric enable it by default; @retry_count accepts 0–10." },
+      "example": { "en": "@retry_count = 5" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-invoke-external-rest-endpoint-transact-sql"]
+    },
+    {
+      "id": "d3-ri-0050",
+      "domain": "ai-capabilities", "topic": "t-rag", "subtopic": "d3-rag-implementation",
+      "type": "dragdrop-match", "difficulty": "medium",
+      "text": { "en": "Match each JSON feature to its role in a RAG procedure." },
+      "items": [
+        { "id": "i1", "text": { "en": "FOR JSON PATH" } },
+        { "id": "i2", "text": { "en": "JSON_OBJECT / JSON_ARRAY" } },
+        { "id": "i3", "text": { "en": "JSON_VALUE" } },
+        { "id": "i4", "text": { "en": "OPENJSON … WITH" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "Turn retrieved rows into context JSON" } },
+        { "id": "t2", "text": { "en": "Build the request payload with correct escaping" } },
+        { "id": "t3", "text": { "en": "Read a short scalar such as the HTTP status or token count" } },
+        { "id": "t4", "text": { "en": "Shred the choices array, including long answer text" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "Each JSON feature fits a step: serialize context, construct payload, read small values, and parse arrays/long text." },
+      "example": { "en": "JSON_QUERY completes the toolbox for returning objects/arrays." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-rag-with-sql/3-prepare-retrieval-context-augmentation", "https://learn.microsoft.com/en-us/sql/t-sql/functions/json-value-transact-sql"]
+    }
+  ]
+}

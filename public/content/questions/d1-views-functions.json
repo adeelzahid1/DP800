@@ -1,0 +1,869 @@
+{
+  "subtopic": "d1-views-functions",
+  "questions": [
+    {
+      "id": "d1-viewfn-0001",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-views-functions",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "You need a reusable query that behaves like a view but accepts a @customerId parameter. What should you create?" },
+      "options": [
+        { "id": "a", "text": { "en": "An inline table-valued function" } },
+        { "id": "b", "text": { "en": "A view with a parameter" } },
+        { "id": "c", "text": { "en": "A scalar function" } },
+        { "id": "d", "text": { "en": "A trigger" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Inline TVFs are exactly 'parameterized views': a single RETURN (SELECT…) the optimizer expands inline. Views cannot take parameters (b). A scalar function returns one value, not a rowset (c). Triggers react to DML — irrelevant (d)." },
+      "example": { "en": "CREATE FUNCTION Sales.GetOrders(@customerId INT) RETURNS TABLE AS RETURN (SELECT ... WHERE CustomerId = @customerId);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/user-defined-functions/create-user-defined-functions-database-engine"]
+    },
+    {
+      "id": "d1-viewfn-0002",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-views-functions",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "What does WITH SCHEMABINDING on a view do?" },
+      "options": [
+        { "id": "a", "text": { "en": "Prevents dropping or altering the referenced columns/tables while the view exists" } },
+        { "id": "b", "text": { "en": "Encrypts the view definition" } },
+        { "id": "c", "text": { "en": "Caches the view's results" } },
+        { "id": "d", "text": { "en": "Grants the view owner's permissions to callers" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Schemabinding ties the view to the referenced schema, blocking breaking changes underneath it — and it's the prerequisite for indexing the view. Encryption is WITH ENCRYPTION (b). Result storage needs an indexed view's clustered index, not schemabinding alone (c). Permission chaining is ownership chaining, a separate mechanism (d)." },
+      "example": { "en": "ALTER TABLE ... DROP COLUMN X fails with 'object is schemabound' if a schemabound view uses X." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/views/views"]
+    },
+    {
+      "id": "d1-viewfn-0003",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-views-functions",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A dashboard reads SUM(Total) grouped by day thousands of times per hour from a 400M-row table. Writes are moderate. Which object pre-computes and auto-maintains this aggregate?" },
+      "options": [
+        { "id": "a", "text": { "en": "An indexed view with SCHEMABINDING, COUNT_BIG(*) and a unique clustered index" } },
+        { "id": "b", "text": { "en": "A regular view" } },
+        { "id": "c", "text": { "en": "An mTVF refreshed by Agent job" } },
+        { "id": "d", "text": { "en": "A scalar UDF per day" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "An indexed view materializes the aggregate; the engine keeps it in sync on every write and can answer reads from the tiny stored result. A plain view (b) recomputes the aggregation every call. An Agent-refreshed function (c) serves stale data and TVFs aren't materialized anyway. Scalar UDFs per day (d) is row-by-row madness." },
+      "example": { "en": "CREATE VIEW v WITH SCHEMABINDING AS SELECT OrderDate, SUM(Total) Revenue, COUNT_BIG(*) N FROM Sales.Orders GROUP BY OrderDate; CREATE UNIQUE CLUSTERED INDEX CIX ON v(OrderDate);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/views/create-indexed-views"]
+    },
+    {
+      "id": "d1-viewfn-0004",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-views-functions",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Why must an aggregating indexed view include COUNT_BIG(*)?" },
+      "options": [
+        { "id": "a", "text": { "en": "The engine needs the row count per group to maintain the aggregates incrementally when rows are deleted" } },
+        { "id": "b", "text": { "en": "COUNT(*) is deprecated" } },
+        { "id": "c", "text": { "en": "To prevent integer overflow in query results" } },
+        { "id": "d", "text": { "en": "It is only a style convention" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "When base rows are deleted, the engine must know whether a group became empty (drop the row) or just smaller (adjust SUM) — the stored COUNT_BIG enables that bookkeeping. COUNT(*) isn't deprecated (b); the bigint width is about maintenance bookkeeping, not your result's type (c); and it's a hard requirement, not style (d)." },
+      "example": { "en": "Omitting COUNT_BIG(*) in a GROUP BY indexed view fails at CREATE INDEX time." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/views/create-indexed-views"]
+    },
+    {
+      "id": "d1-viewfn-0005",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-views-functions",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A view defined as SELECT * FROM Orders WHERE Region = 'EU' WITH CHECK OPTION. What does an UPDATE through the view setting Region = 'US' do?" },
+      "options": [
+        { "id": "a", "text": { "en": "Fails — CHECK OPTION rejects changes that would make rows invisible to the view" } },
+        { "id": "b", "text": { "en": "Succeeds; the row silently disappears from the view" } },
+        { "id": "c", "text": { "en": "Updates the row and changes the view's filter" } },
+        { "id": "d", "text": { "en": "Converts the UPDATE into a DELETE" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "WITH CHECK OPTION enforces the view's predicate on INSERT/UPDATE through the view. Without it, (b) would happen — the silent-disappearance behavior the option exists to prevent. Views never rewrite their own filters (c) or transform statements (d)." },
+      "example": { "en": "Msg 550: 'The attempted insert or update failed because the target view ... specifies WITH CHECK OPTION'." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-view-transact-sql"]
+    },
+    {
+      "id": "d1-viewfn-0006",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-views-functions",
+      "type": "multiple", "difficulty": "medium", "selectCount": 2,
+      "text": { "en": "Which two statements about inline vs multi-statement TVFs are true? (Select 2)" },
+      "options": [
+        { "id": "a", "text": { "en": "An inline TVF contains exactly one SELECT in RETURN ( … )" } },
+        { "id": "b", "text": { "en": "The optimizer expands inline TVFs into the calling query like a view" } },
+        { "id": "c", "text": { "en": "Multi-statement TVFs generally give the optimizer better cardinality estimates" } },
+        { "id": "d", "text": { "en": "Inline TVFs can contain IF/ELSE logic" } }
+      ],
+      "answer": ["a", "b"],
+      "explanation": { "en": "iTVFs are single-SELECT and get inlined — the two properties that make them fast. mTVFs are the ones with historically POOR estimates (c reverses it). IF/ELSE requires a BEGIN/END body, i.e. a multi-statement function (d) — in an iTVF you'd express branching with CASE or WHERE logic." },
+      "example": { "en": "RETURNS TABLE AS RETURN (SELECT …) = inline; RETURNS @t TABLE (…) BEGIN … END = multi-statement." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/user-defined-functions/create-user-defined-functions-database-engine"]
+    },
+    {
+      "id": "d1-viewfn-0007",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-views-functions",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which operator invokes a TVF once per row of an outer table?" },
+      "options": [
+        { "id": "a", "text": { "en": "CROSS APPLY" } },
+        { "id": "b", "text": { "en": "INNER JOIN" } },
+        { "id": "c", "text": { "en": "UNION ALL" } },
+        { "id": "d", "text": { "en": "PIVOT" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "APPLY (CROSS = inner semantics, OUTER = keep rows with empty results) passes each outer row's columns as arguments to the TVF. JOIN cannot pass correlated arguments to a function (b). UNION ALL combines sets (c), PIVOT rotates (d)." },
+      "example": { "en": "SELECT c.Name, o.* FROM Customers c CROSS APPLY Sales.GetCustomerOrders(c.CustomerId) o;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/from-transact-sql"]
+    },
+    {
+      "id": "d1-viewfn-0008",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-views-functions",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "For each statement about views, answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "A view can accept parameters." } },
+        { "id": "s2", "text": { "en": "ORDER BY in a view (without TOP/OFFSET) is rejected." } },
+        { "id": "s3", "text": { "en": "Granting SELECT on a view can give access to data whose base table the user cannot query." } },
+        { "id": "s4", "text": { "en": "A view always physically stores its result set." } }
+      ],
+      "answerMap": { "s1": "no", "s2": "yes", "s3": "yes", "s4": "no" },
+      "explanation": { "en": "Views are parameterless (use iTVFs). Bare ORDER BY is invalid inside views. Ownership chaining lets a view expose selected data without base-table grants — a core security pattern. Only *indexed* views store results; ordinary views are expanded at query time." },
+      "example": { "en": "GRANT SELECT ON Sales.vOpenOrders TO Analyst; -- no grant on Sales.Orders needed (same owner)" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/views/views"]
+    },
+    {
+      "id": "d1-viewfn-0009",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-views-functions",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A query calling dbo.GetDiscount(Price) per row is slow on SQL Server 2017 but fast after upgrading to 2022 with compatibility level 160. What most likely explains it?" },
+      "options": [
+        { "id": "a", "text": { "en": "Scalar UDF inlining (2019+) transformed the function into relational expressions inside the plan" } },
+        { "id": "b", "text": { "en": "2022 caches function results permanently" } },
+        { "id": "c", "text": { "en": "The function became a stored procedure" } },
+        { "id": "d", "text": { "en": "Row-mode execution was removed" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Scalar UDF inlining (intelligent query processing, compat 150+) rewrites eligible T-SQL scalar UDFs into the query, eliminating per-row invocation overhead. No permanent result cache exists (b), objects don't transmute (c), and row mode remains (d)." },
+      "example": { "en": "SELECT is_inlineable FROM sys.sql_modules WHERE object_id = OBJECT_ID('dbo.GetDiscount');" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/user-defined-functions/scalar-udf-inlining"]
+    },
+    {
+      "id": "d1-viewfn-0010",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-views-functions",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Complete the inline table-valued function." },
+      "code": "CREATE FUNCTION Sales.GetTopOrders (@n INT)\nRETURNS [BLANK1]\nAS [BLANK2]\n(\n    SELECT TOP (@n) OrderId, Total\n    FROM Sales.Orders\n    ORDER BY Total DESC\n);",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "TABLE" } },
+            { "id": "c2", "text": { "en": "@t TABLE (OrderId INT, Total DECIMAL(12,2))" } },
+            { "id": "c3", "text": { "en": "ROWSET" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "RETURN" } },
+            { "id": "c2", "text": { "en": "BEGIN" } },
+            { "id": "c3", "text": { "en": "SELECT" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "Inline TVFs declare RETURNS TABLE (no column list) and go straight to RETURN (query). Declaring @t TABLE(...) with BEGIN would make it multi-statement — losing inlining. ROWSET isn't a T-SQL keyword." },
+      "example": { "en": "The absence of BEGIN/END is the visual signature of an inline TVF." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-function-transact-sql"]
+    },
+    {
+      "id": "d1-viewfn-0011",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-views-functions",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which restriction applies to T-SQL scalar user-defined functions?" },
+      "options": [
+        { "id": "a", "text": { "en": "They cannot modify database state (no INSERT/UPDATE/DELETE on permanent tables)" } },
+        { "id": "b", "text": { "en": "They cannot call other functions" } },
+        { "id": "c", "text": { "en": "They cannot use parameters" } },
+        { "id": "d", "text": { "en": "They cannot return dates" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Functions must be side-effect free — they can read but not change permanent data (table variables inside are fine). Nesting functions is allowed (b), parameters are the point (c), and any scalar type can be returned, dates included (d)." },
+      "example": { "en": "Need side effects + a return value? That's a stored procedure with OUTPUT parameters." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/user-defined-functions/user-defined-functions"]
+    },
+    {
+      "id": "d1-viewfn-0012",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-views-functions",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "sp_refreshview is needed when:" },
+      "options": [
+        { "id": "a", "text": { "en": "A non-schemabound view used SELECT * and the base table gained columns — the view's metadata is stale" } },
+        { "id": "b", "text": { "en": "An indexed view's data is out of date" } },
+        { "id": "c", "text": { "en": "A view's permissions changed" } },
+        { "id": "d", "text": { "en": "Every night, as routine maintenance" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Views snapshot their column metadata at creation; SELECT * views don't see later-added columns until refreshed (one of several reasons to avoid SELECT * in views). Indexed views are always transactionally current (b). Permissions (c) don't involve metadata refresh, and no routine refresh is needed (d)." },
+      "example": { "en": "EXEC sp_refreshview 'Sales.vOrders'; -- or ALTER the view with explicit columns" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-refreshview-transact-sql"]
+    },
+    {
+      "id": "d1-viewfn-0013",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-views-functions",
+      "type": "dragdrop-match", "difficulty": "medium",
+      "text": { "en": "Match each requirement to the right object." },
+      "items": [
+        { "id": "i1", "text": { "en": "Hide salary columns; expose only name & department" } },
+        { "id": "i2", "text": { "en": "Reusable filtered rowset taking @region" } },
+        { "id": "i3", "text": { "en": "Pre-computed, always-current daily totals" } },
+        { "id": "i4", "text": { "en": "Compute a tax amount per row in SELECTs" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "View" } },
+        { "id": "t2", "text": { "en": "Inline TVF" } },
+        { "id": "t3", "text": { "en": "Indexed view" } },
+        { "id": "t4", "text": { "en": "Scalar function" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "Column-hiding interface → view; parameterized rowset → iTVF; materialized aggregate → indexed view; per-row calculation → scalar function (or computed column). This mapping decides most 'which object' questions." },
+      "example": { "en": "When two could work, the differentiator is parameters (TVF) or materialization (indexed view)." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/views/views"]
+    },
+    {
+      "id": "d1-viewfn-0014",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-views-functions",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which statement changes an existing view's definition while preserving its permissions?" },
+      "options": [
+        { "id": "a", "text": { "en": "ALTER VIEW (or CREATE OR ALTER VIEW)" } },
+        { "id": "b", "text": { "en": "DROP VIEW then CREATE VIEW" } },
+        { "id": "c", "text": { "en": "UPDATE VIEW" } },
+        { "id": "d", "text": { "en": "sp_rename" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "ALTER VIEW (and the idempotent CREATE OR ALTER) replaces the definition keeping grants intact. DROP+CREATE (b) loses permissions. UPDATE VIEW isn't T-SQL (c) — UPDATE through a view changes data, not definition. sp_rename renames only (d)." },
+      "example": { "en": "CREATE OR ALTER VIEW Sales.vOrders AS SELECT ...; -- deployment-friendly" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-view-transact-sql"]
+    },
+    {
+      "id": "d1-viewfn-0015",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-views-functions",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "In Azure SQL Database / SQL Server Enterprise, when can a query benefit from an indexed view WITHOUT referencing the view by name?" },
+      "options": [
+        { "id": "a", "text": { "en": "The optimizer can automatically match a query against the base tables to an existing indexed view" } },
+        { "id": "b", "text": { "en": "Never — the view must be named with NOEXPAND" } },
+        { "id": "c", "text": { "en": "Only inside stored procedures" } },
+        { "id": "d", "text": { "en": "Only when the view has no aggregation" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Automatic indexed-view matching (Enterprise-class feature, available in Azure SQL Database) lets queries over the base tables silently use the materialized view. On lower editions the NOEXPAND hint on the view reference is required — but that's not 'never' for the editions in question (b). No procedure (c) or aggregation (d) conditions exist." },
+      "example": { "en": "On Standard edition: SELECT * FROM Sales.vDailyRevenue WITH (NOEXPAND);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/views/create-indexed-views"]
+    },
+    {
+      "id": "d1-viewfn-0016",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-views-functions",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which of these can you NOT do through a view that joins two tables?" },
+      "options": [
+        { "id": "a", "text": { "en": "A single UPDATE statement that modifies columns from both base tables" } },
+        { "id": "b", "text": { "en": "SELECT with additional filters" } },
+        { "id": "c", "text": { "en": "An UPDATE affecting columns of only one base table" } },
+        { "id": "d", "text": { "en": "Build another view on top of it" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "DML through a multi-table view may touch only ONE base table per statement. Single-table-targeting updates work (c), reads filter freely (b), and views stack (d). (INSTEAD OF triggers are the workaround for multi-table modifications.)" },
+      "example": { "en": "Msg 4405: 'View or function ... is not updatable because the modification affects multiple base tables.'" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-view-transact-sql"]
+    },
+    {
+      "id": "d1-viewfn-0017",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-views-functions",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "For each statement about indexed views, answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "The first index on a view must be a unique clustered index." } },
+        { "id": "s2", "text": { "en": "The view must be created WITH SCHEMABINDING." } },
+        { "id": "s3", "text": { "en": "Base-table writes become cheaper after indexing a view." } },
+        { "id": "s4", "text": { "en": "Nondeterministic functions like GETDATE() are allowed in the view." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "yes", "s3": "no", "s4": "no" },
+      "explanation": { "en": "Unique clustered index first and SCHEMABINDING are hard requirements. Writes get *more* expensive — the view is one more structure to maintain synchronously. Determinism is required throughout; GETDATE() & friends disqualify the view from indexing." },
+      "example": { "en": "Indexed views trade write cost for read speed — never free." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/views/create-indexed-views"]
+    },
+    {
+      "id": "d1-viewfn-0018",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-views-functions",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A multi-statement TVF builds its @result table in 5 steps. Queries joining it misestimate rows badly on SQL Server 2016. What modern feature (2017+) specifically improves this?" },
+      "options": [
+        { "id": "a", "text": { "en": "Interleaved execution for multi-statement TVFs" } },
+        { "id": "b", "text": { "en": "Columnstore indexes" } },
+        { "id": "c", "text": { "en": "Query Store" } },
+        { "id": "d", "text": { "en": "Temporal tables" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Interleaved execution pauses optimization, executes the mTVF, and re-optimizes with the ACTUAL row count — replacing the old fixed guess (100 rows). Columnstore (b) is storage, Query Store (c) records history, temporal (d) is versioning." },
+      "example": { "en": "Part of the Intelligent Query Processing family; still, prefer rewriting mTVFs as inline when possible." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/performance/intelligent-query-processing-details"]
+    },
+    {
+      "id": "d1-viewfn-0019",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-views-functions",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "CREATE VIEW ... WITH ENCRYPTION does what?" },
+      "options": [
+        { "id": "a", "text": { "en": "Obfuscates the view's definition text in catalog views" } },
+        { "id": "b", "text": { "en": "Encrypts the data returned by the view with TLS" } },
+        { "id": "c", "text": { "en": "Requires Always Encrypted on base tables" } },
+        { "id": "d", "text": { "en": "Compresses the view output" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "WITH ENCRYPTION hides the module's source (sys.sql_modules shows NULL) — light obfuscation of intellectual property, not data protection. Data-in-transit encryption is a connection concern (b); Always Encrypted (c) and compression (d) are unrelated." },
+      "example": { "en": "Caution: keep the original script in source control — you can't recover the text from the server easily." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-view-transact-sql"]
+    },
+    {
+      "id": "d1-viewfn-0020",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-views-functions",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Complete the indexed view setup." },
+      "code": "CREATE VIEW Sales.vRevenue\nWITH [BLANK1]\nAS\nSELECT CustomerId, SUM(Total) AS Revenue, [BLANK2](*) AS N\nFROM Sales.Orders\nGROUP BY CustomerId;\nGO\nCREATE UNIQUE CLUSTERED INDEX CIX ON Sales.vRevenue (CustomerId);",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "SCHEMABINDING" } },
+            { "id": "c2", "text": { "en": "ENCRYPTION" } },
+            { "id": "c3", "text": { "en": "CHECK OPTION" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "COUNT_BIG" } },
+            { "id": "c2", "text": { "en": "COUNT" } },
+            { "id": "c3", "text": { "en": "SUM" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "The two famous indexed-view requirements in one statement: SCHEMABINDING and COUNT_BIG(*). ENCRYPTION/CHECK OPTION don't satisfy the binding requirement, and plain COUNT(*) is rejected at index creation." },
+      "example": { "en": "Also note the two-part table name Sales.Orders — single-part names fail under schemabinding." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/views/create-indexed-views"]
+    },
+    {
+      "id": "d1-viewfn-0021",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-views-functions",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Why is SELECT * discouraged inside view definitions?" },
+      "options": [
+        { "id": "a", "text": { "en": "The column list is frozen at creation, so later table changes cause stale metadata or subtle breakage" } },
+        { "id": "b", "text": { "en": "SELECT * is not allowed in views" } },
+        { "id": "c", "text": { "en": "It disables all indexes" } },
+        { "id": "d", "text": { "en": "It requires sysadmin" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The view binds to the columns existing at CREATE time; adding/reordering table columns leads to wrong or stale output until sp_refreshview. SELECT * is legal (b) — just hazardous. Indexes (c) and permissions (d) are unaffected." },
+      "example": { "en": "Explicit column lists also document intent and survive table refactoring reviews." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/views/views"]
+    },
+    {
+      "id": "d1-viewfn-0022",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-views-functions",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A schemabound view uses AI_GENERATE_EMBEDDINGS with an external model. You try DROP VIEW and get an error about the external model dependency. What does the documentation say?" },
+      "options": [
+        { "id": "a", "text": { "en": "Schemabound views referencing an external model can't be dropped until the view definition is altered to remove the dependency" } },
+        { "id": "b", "text": { "en": "External models can never be used in views" } },
+        { "id": "c", "text": { "en": "You must drop the external model first" } },
+        { "id": "d", "text": { "en": "Restart the instance to clear the binding" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Documented behavior: SCHEMABINDING + external model reference ⇒ modify or remove the dependency before dropping. Views CAN use external models (b). Dropping the model first (c) is blocked by the same binding. Restarting (d) changes nothing about catalog dependencies." },
+      "example": { "en": "ALTER VIEW to remove AI_GENERATE_EMBEDDINGS, then DROP VIEW succeeds." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-external-model-transact-sql"]
+    },
+    {
+      "id": "d1-viewfn-0023",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-views-functions",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which function type can VECTOR_SEARCH NOT be used in, per its documented limitations?" },
+      "options": [
+        { "id": "a", "text": { "en": "The body of a view" } },
+        { "id": "b", "text": { "en": "An ad-hoc SELECT statement" } },
+        { "id": "c", "text": { "en": "A stored procedure" } },
+        { "id": "d", "text": { "en": "A batch with variables" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "VECTOR_SEARCH cannot be used in a view body (documented limitation); ad-hoc queries, procedures and batches are fine. A cross-feature fact linking programmability objects to the AI domain." },
+      "example": { "en": "Wrap vector search in a stored procedure or iTVF-calling pattern at the application layer instead of a view." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-search-transact-sql"]
+    },
+    {
+      "id": "d1-viewfn-0024",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-views-functions",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "What does OUTER APPLY do that CROSS APPLY does not?" },
+      "options": [
+        { "id": "a", "text": { "en": "Keeps outer rows even when the applied function/subquery returns no rows (NULLs fill in)" } },
+        { "id": "b", "text": { "en": "Runs the function only once total" } },
+        { "id": "c", "text": { "en": "Allows joining more than two tables" } },
+        { "id": "d", "text": { "en": "Sorts the result" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "OUTER APPLY is to CROSS APPLY what LEFT JOIN is to INNER JOIN: empty results don't eliminate the outer row. Both invoke per outer row (b), joins aren't limited anyway (c), and no ordering is implied (d)." },
+      "example": { "en": "Customers with no orders still appear: OUTER APPLY Sales.GetCustomerOrders(c.Id) o" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/from-transact-sql"]
+    },
+    {
+      "id": "d1-viewfn-0025",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-views-functions",
+      "type": "dragdrop-order", "difficulty": "medium",
+      "text": { "en": "Order the steps to convert a slow multi-statement TVF into the fastest equivalent." },
+      "items": [
+        { "id": "i1", "text": { "en": "Verify the logic can be expressed as a single SELECT" } },
+        { "id": "i2", "text": { "en": "Rewrite as RETURNS TABLE AS RETURN (SELECT …)" } },
+        { "id": "i3", "text": { "en": "Recreate callers' plans (recompile / clear affected plans)" } },
+        { "id": "i4", "text": { "en": "Compare plans and verify the function is now expanded inline" } }
+      ],
+      "answer": ["i1", "i2", "i3", "i4"],
+      "explanation": { "en": "Confirm feasibility first (multi-step state machines may not reduce to one SELECT), rewrite to inline form, invalidate old cached plans, then verify in the execution plan that no TVF black-box operator remains." },
+      "example": { "en": "Most mTVFs built from one temp-table fill + final select are one CTE away from being inline." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/user-defined-functions/create-user-defined-functions-database-engine"]
+    },
+    {
+      "id": "d1-viewfn-0026",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-views-functions",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A junior dev wraps every column access in dbo.fn_Clean(col) in WHERE clauses. Searches got slow. Primary reason?" },
+      "options": [
+        { "id": "a", "text": { "en": "Function-wrapped predicates are non-SARGable, so indexes can't seek" } },
+        { "id": "b", "text": { "en": "Functions lock the table" } },
+        { "id": "c", "text": { "en": "The function recompiles per call" } },
+        { "id": "d", "text": { "en": "WHERE clauses can't contain functions" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Wrapping the column defeats index seeks (the same rule as YEAR(col) = …), and the UDF adds per-row cost on top. No special locking (b) or per-call recompiles (c) occur, and functions are legal in WHERE (d) — just costly when applied to columns rather than parameters." },
+      "example": { "en": "Fix: clean data at write time, or apply the function to the parameter side: col = dbo.fn_Clean(@input)." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-index-design-guide"]
+    },
+    {
+      "id": "d1-viewfn-0027",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-views-functions",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which system view shows a function's definition and whether it is schema-bound?" },
+      "options": [
+        { "id": "a", "text": { "en": "sys.sql_modules (definition, is_schema_bound)" } },
+        { "id": "b", "text": { "en": "sys.dm_exec_query_stats" } },
+        { "id": "c", "text": { "en": "sys.function_definitions" } },
+        { "id": "d", "text": { "en": "INFORMATION_SCHEMA.TABLES" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "sys.sql_modules holds the T-SQL text plus flags (is_schema_bound, is_inlineable…). Query stats (b) track performance, not definitions. sys.function_definitions doesn't exist, and INFORMATION_SCHEMA.TABLES lists tables/views without body text." },
+      "example": { "en": "SELECT definition, is_inlineable FROM sys.sql_modules WHERE object_id = OBJECT_ID('dbo.GetAge');" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-sql-modules-transact-sql"]
+    },
+    {
+      "id": "d1-viewfn-0028",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-views-functions",
+      "type": "yesno", "difficulty": "hard",
+      "text": { "en": "Scalar UDF inlining will NOT occur in which cases? Answer Yes (blocks inlining) or No (doesn't block)." },
+      "statements": [
+        { "id": "s1", "text": { "en": "The function uses GETDATE() with certain time-dependent patterns." } },
+        { "id": "s2", "text": { "en": "The function takes two parameters." } },
+        { "id": "s3", "text": { "en": "The function invokes itself recursively." } },
+        { "id": "s4", "text": { "en": "The function is referenced in a computed column." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "no", "s3": "yes", "s4": "yes" },
+      "explanation": { "en": "Inlining has a documented blocker list: time-dependent intrinsics in some patterns, recursion, and use in computed columns/check constraints all block it. Parameter count is irrelevant. When inlining matters, check sys.sql_modules.is_inlineable and the plan." },
+      "example": { "en": "WITH INLINE = OFF can also disable it explicitly per function." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/user-defined-functions/scalar-udf-inlining"]
+    },
+    {
+      "id": "d1-viewfn-0029",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-views-functions",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "To list all views that depend on table Sales.Orders before refactoring it, which is the supported approach?" },
+      "options": [
+        { "id": "a", "text": { "en": "Query sys.dm_sql_referencing_entities('Sales.Orders', 'OBJECT')" } },
+        { "id": "b", "text": { "en": "Search the file system for .sql files" } },
+        { "id": "c", "text": { "en": "DROP the table and note the errors" } },
+        { "id": "d", "text": { "en": "sys.dm_exec_requests" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "sys.dm_sql_referencing_entities returns objects referencing a given entity (sys.sql_expression_dependencies is the catalog-level alternative). File searches (b) miss ad-hoc objects; destructive discovery (c) is reckless; dm_exec_requests shows running queries only (d)." },
+      "example": { "en": "SELECT referencing_schema_name, referencing_entity_name FROM sys.dm_sql_referencing_entities('Sales.Orders','OBJECT');" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-views/sys-dm-sql-referencing-entities-transact-sql"]
+    },
+    {
+      "id": "d1-viewfn-0030",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-views-functions",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "The security team wants analysts to query order data but never see the CreditCardHash column, without changing the table. Minimal-effort solution?" },
+      "options": [
+        { "id": "a", "text": { "en": "A view omitting the column; grant analysts SELECT on the view only" } },
+        { "id": "b", "text": { "en": "Give analysts db_owner and ask them not to select it" } },
+        { "id": "c", "text": { "en": "Drop the column" } },
+        { "id": "d", "text": { "en": "Store the hash in a file instead" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Vertical security via views is the classic pattern: the view projects safe columns, ownership chaining makes base-table grants unnecessary. Trust-based 'please don't' (b) isn't security. Dropping (c) destroys needed data. Files (d) trade one problem for five. (Column-level GRANT/DENY is the alternative; views scale better.)" },
+      "example": { "en": "CREATE VIEW Sales.vOrdersSafe AS SELECT OrderId, CustomerId, Total FROM Sales.Orders; GRANT SELECT ON Sales.vOrdersSafe TO AnalystRole;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/views/views"]
+    },
+    {
+      "id": "d1-viewfn-0031",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-views-functions",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "An ORDER BY inside a view with TOP 100 PERCENT is used, hoping the view returns sorted rows. What actually happens?" },
+      "options": [
+        { "id": "a", "text": { "en": "The optimizer ignores the pointless sort; callers get no guaranteed order without their own ORDER BY" } },
+        { "id": "b", "text": { "en": "The view reliably returns sorted rows" } },
+        { "id": "c", "text": { "en": "The view fails to compile" } },
+        { "id": "d", "text": { "en": "Rows are sorted only on Enterprise edition" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "TOP 100 PERCENT … ORDER BY compiles (c is wrong) but the optimizer recognizes it as a no-op and discards the sort — order is a property of the outer query only. There's never a guarantee (b) and no edition dependence (d). A long-lived myth the exam enjoys puncturing." },
+      "example": { "en": "Correct: SELECT * FROM Sales.vOrders ORDER BY OrderDate DESC; -- order at the call site" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-view-transact-sql"]
+    },
+    {
+      "id": "d1-viewfn-0032",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-views-functions",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which object CAN contain multiple result-shaping statements (DECLARE, IF, INSERT into its own table variable) and still be used in a FROM clause?" },
+      "options": [
+        { "id": "a", "text": { "en": "A multi-statement table-valued function" } },
+        { "id": "b", "text": { "en": "A view" } },
+        { "id": "c", "text": { "en": "A stored procedure" } },
+        { "id": "d", "text": { "en": "A scalar function" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "mTVFs allow procedural logic while remaining FROM-able. Views are single-SELECT (b). Procedures can't be referenced in FROM (c) — you'd INSERT…EXEC instead. Scalar functions return one value (d)." },
+      "example": { "en": "SELECT * FROM dbo.ComplexRowsetFn(@p) f JOIN ... -- works; SELECT * FROM EXEC proc -- doesn't" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-function-transact-sql"]
+    },
+    {
+      "id": "d1-viewfn-0033",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-views-functions",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What's the practical difference between granting SELECT on a view vs on the underlying table (same owner)?" },
+      "options": [
+        { "id": "a", "text": { "en": "The view grant exposes only the view's columns/rows; ownership chaining means no table permission is required or implied" } },
+        { "id": "b", "text": { "en": "Both grants are equivalent" } },
+        { "id": "c", "text": { "en": "View grants expire after 30 days" } },
+        { "id": "d", "text": { "en": "View grants require sysadmin" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Ownership chaining checks permissions at the view only (when view and table share an owner) — the user cannot bypass the view to read hidden columns. The grants are decidedly not equivalent (b); no expiry (c) or sysadmin requirement (d) exists." },
+      "example": { "en": "This chaining principle also powers stored-procedure-based security APIs." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/authentication-access/ownership-chains"]
+    },
+    {
+      "id": "d1-viewfn-0034",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-views-functions",
+      "type": "dropdown", "difficulty": "easy",
+      "text": { "en": "Complete the scalar function definition." },
+      "code": "CREATE FUNCTION dbo.ToFahrenheit (@celsius DECIMAL(5,2))\nRETURNS [BLANK1]\nAS\nBEGIN\n    [BLANK2] (@celsius * 9.0 / 5.0) + 32;\nEND;",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "DECIMAL(6,2)" } },
+            { "id": "c2", "text": { "en": "TABLE" } },
+            { "id": "c3", "text": { "en": "CURSOR" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "RETURN" } },
+            { "id": "c2", "text": { "en": "SELECT" } },
+            { "id": "c3", "text": { "en": "OUTPUT" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "A scalar function RETURNS a scalar type and exits with RETURN expression. TABLE would make it a TVF with different syntax; CURSOR returns aren't allowed. SELECT doesn't return from a function and OUTPUT belongs to procedure parameters." },
+      "example": { "en": "SELECT dbo.ToFahrenheit(100); -- 212.00" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-function-transact-sql"]
+    },
+    {
+      "id": "d1-viewfn-0035",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-views-functions",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Nested views (views built on views, four levels deep) are causing baffling performance issues. What's the root engineering problem?" },
+      "options": [
+        { "id": "a", "text": { "en": "Each layer hides complexity; the final expanded query joins far more than any author realizes, defeating optimization and review" } },
+        { "id": "b", "text": { "en": "SQL Server executes each view layer separately and caches intermediate results" } },
+        { "id": "c", "text": { "en": "Nesting views is forbidden beyond two levels" } },
+        { "id": "d", "text": { "en": "Views acquire exclusive locks per layer" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Views expand into one giant query at optimization; deep nesting multiplies joins, repeated table accesses and predicate complexity that no one sees in any single definition. There's no per-layer execution or caching (b), no nesting limit of two (c — the limit is 32), and no special locking (d)." },
+      "example": { "en": "Guidance: keep view hierarchies shallow; materialize genuinely reused intermediate results." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/views/views"]
+    },
+    {
+      "id": "d1-viewfn-0036",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-views-functions",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which statement about functions and transactions is true?" },
+      "options": [
+        { "id": "a", "text": { "en": "Functions cannot contain BEGIN TRANSACTION / COMMIT statements" } },
+        { "id": "b", "text": { "en": "Each function call runs in its own transaction" } },
+        { "id": "c", "text": { "en": "Functions automatically commit after RETURN" } },
+        { "id": "d", "text": { "en": "Only TVFs may start transactions" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Transaction control is a side effect — forbidden inside functions (they participate in the caller's transaction implicitly). (b)–(d) all presume functions manage transactions, which they never do; that's procedure territory." },
+      "example": { "en": "Needing BEGIN TRAN inside 'a function' is the signal it should be a stored procedure." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/user-defined-functions/user-defined-functions"]
+    },
+    {
+      "id": "d1-viewfn-0037",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-views-functions",
+      "type": "dragdrop-match", "difficulty": "hard",
+      "text": { "en": "Match the symptom to the most likely cause." },
+      "items": [
+        { "id": "i1", "text": { "en": "View suddenly returns wrong columns after table refactor" } },
+        { "id": "i2", "text": { "en": "Per-row UDF makes a report 50× slower on old compat level" } },
+        { "id": "i3", "text": { "en": "Join to a TVF estimates 100 rows but returns 2M" } },
+        { "id": "i4", "text": { "en": "ALTER TABLE DROP COLUMN fails with binding error" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "SELECT * view with stale metadata" } },
+        { "id": "t2", "text": { "en": "Non-inlined scalar UDF" } },
+        { "id": "t3", "text": { "en": "Multi-statement TVF fixed-guess estimate" } },
+        { "id": "t4", "text": { "en": "Schemabound object references the column" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "Four classic programmability failure signatures: stale star-view metadata, per-row scalar UDF overhead, the mTVF's legacy 100-row guess, and schemabinding protecting referenced columns. Recognizing symptoms is half of the exam's scenario questions." },
+      "example": { "en": "Fixes: explicit columns + sp_refreshview; upgrade compat/rewrite inline; convert to iTVF; alter the bound object first." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/user-defined-functions/scalar-udf-inlining"]
+    },
+    {
+      "id": "d1-viewfn-0038",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-views-functions",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "What is the maximum nesting level for views?" },
+      "options": [
+        { "id": "a", "text": { "en": "32" } },
+        { "id": "b", "text": { "en": "2" } },
+        { "id": "c", "text": { "en": "8" } },
+        { "id": "d", "text": { "en": "Unlimited" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Views can nest up to 32 levels (same as procedure nesting). The practical advice is to stay far below it, but 32 is the documented limit." },
+      "example": { "en": "Exceeding it raises: 'Maximum stored procedure, function, trigger, or view nesting level exceeded (limit 32).'" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-view-transact-sql"]
+    },
+    {
+      "id": "d1-viewfn-0039",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-views-functions",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Your inline TVF must return no rows (not fail) when @status is invalid. Which technique fits the single-SELECT constraint?" },
+      "options": [
+        { "id": "a", "text": { "en": "Add the validation into the WHERE clause (e.g. AND @status IN ('open','closed'))" } },
+        { "id": "b", "text": { "en": "Add IF @status NOT IN (...) RETURN;" } },
+        { "id": "c", "text": { "en": "RAISERROR inside the RETURN clause" } },
+        { "id": "d", "text": { "en": "Convert to a scalar function" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "iTVF logic must live inside the one SELECT — predicates on parameters handle validation set-wise. IF/RETURN (b) requires a multi-statement body. RAISERROR can't appear in an inline RETURN (c). Scalar functions return values, not rowsets (d)." },
+      "example": { "en": "RETURN (SELECT ... FROM Orders WHERE Status = @status AND @status IN ('open','closed'));" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-function-transact-sql"]
+    },
+    {
+      "id": "d1-viewfn-0040",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-views-functions",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which maintenance consideration applies to indexed views on tables with heavy bulk loads?" },
+      "options": [
+        { "id": "a", "text": { "en": "Every load pays the synchronous cost of maintaining the view's index; consider dropping/recreating around huge loads" } },
+        { "id": "b", "text": { "en": "Indexed views refresh asynchronously, so loads are unaffected" } },
+        { "id": "c", "text": { "en": "Loads bypass indexed views automatically" } },
+        { "id": "d", "text": { "en": "Indexed views block all bulk inserts permanently" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Indexed views are maintained synchronously within each transaction — bulk loads carry that overhead row by row. There is no async refresh in SQL Server (b — that's other products' materialized views), no bypassing (c), and loads work, just slower (d overstates)." },
+      "example": { "en": "ETL window pattern: DROP INDEX on view → load → recreate index (which also defragments it)." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/views/create-indexed-views"]
+    },
+    {
+      "id": "d1-viewfn-0041",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-views-functions",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "Can each item be referenced in the FROM clause of a SELECT? Answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "A view" } },
+        { "id": "s2", "text": { "en": "An inline TVF (with arguments)" } },
+        { "id": "s3", "text": { "en": "A stored procedure" } },
+        { "id": "s4", "text": { "en": "A scalar UDF" } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "yes", "s3": "no", "s4": "no" },
+      "explanation": { "en": "Views and TVFs are rowset sources — valid FROM targets. Stored procedures are not composable in queries (INSERT…EXEC is the workaround). Scalar UDFs appear in expressions (SELECT list, WHERE), not as FROM sources." },
+      "example": { "en": "SELECT * FROM dbo.GetOrders(42) o JOIN Sales.vCustomers c ON ... -- both legal sources" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/from-transact-sql"]
+    },
+    {
+      "id": "d1-viewfn-0042",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-views-functions",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "An indexed view exists on Standard edition SQL Server. Queries against base tables don't use it, and even SELECTs from the view are slow. What's missing?" },
+      "options": [
+        { "id": "a", "text": { "en": "The NOEXPAND hint — without it, non-Enterprise editions expand the view and ignore its index" } },
+        { "id": "b", "text": { "en": "A columnstore index" } },
+        { "id": "c", "text": { "en": "Statistics on the view" } },
+        { "id": "d", "text": { "en": "The view must be re-created nightly" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "On editions without automatic indexed-view matching, you must query the view WITH (NOEXPAND) to use its clustered index; otherwise the definition is expanded against base tables. Columnstore (b) is orthogonal; stats exist via the index (c); no recreation schedule applies (d)." },
+      "example": { "en": "SELECT * FROM Sales.vDailyRevenue WITH (NOEXPAND) WHERE OrderDate >= @from;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/hints-transact-sql-table"]
+    },
+    {
+      "id": "d1-viewfn-0043",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-views-functions",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Why does CREATE FUNCTION ... RETURNS TABLE WITH SCHEMABINDING matter for performance-critical iTVFs?" },
+      "options": [
+        { "id": "a", "text": { "en": "Schemabinding lets the engine skip spool/validation work (Halloween protection considerations) and guarantee the referenced schema, enabling better plans" } },
+        { "id": "b", "text": { "en": "It makes the function run in parallel always" } },
+        { "id": "c", "text": { "en": "It is required for any TVF" } },
+        { "id": "d", "text": { "en": "It caches results between calls" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "SCHEMABINDING tells the optimizer the function cannot access changing schema or hidden side effects, removing defensive plan elements; it's a documented best practice for UDFs. It doesn't force parallelism (b), isn't mandatory (c), and doesn't cache (d)." },
+      "example": { "en": "Make deterministic, schemabound functions your default authoring style." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-function-transact-sql"]
+    },
+    {
+      "id": "d1-viewfn-0044",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-views-functions",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "To completely remove a function from the database:" },
+      "options": [
+        { "id": "a", "text": { "en": "DROP FUNCTION dbo.GetAge;" } },
+        { "id": "b", "text": { "en": "DELETE FUNCTION dbo.GetAge;" } },
+        { "id": "c", "text": { "en": "REMOVE dbo.GetAge;" } },
+        { "id": "d", "text": { "en": "TRUNCATE FUNCTION dbo.GetAge;" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "DDL removal is DROP. DELETE and TRUNCATE operate on data rows; REMOVE isn't T-SQL. (DROP FUNCTION IF EXISTS makes scripts idempotent.)" },
+      "example": { "en": "DROP FUNCTION IF EXISTS dbo.GetAge;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-function-transact-sql"]
+    },
+    {
+      "id": "d1-viewfn-0045",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-views-functions",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A view must combine current orders and archived orders (identical schemas, two tables) as one seamless dataset. Which construct?" },
+      "options": [
+        { "id": "a", "text": { "en": "CREATE VIEW vAllOrders AS SELECT ... FROM Orders UNION ALL SELECT ... FROM OrdersArchive" } },
+        { "id": "b", "text": { "en": "A scalar function returning both tables" } },
+        { "id": "c", "text": { "en": "CROSS JOIN of the two tables" } },
+        { "id": "d", "text": { "en": "A cursor iterating both tables" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "UNION ALL inside a view presents partitioned-by-era data as one set (with CHECK constraints on a partitioning column, this is the classic 'partitioned view'). Scalar functions can't return rowsets (b), CROSS JOIN multiplies rows (c), cursors are procedural and not view material (d)." },
+      "example": { "en": "UNION ALL (not UNION) avoids a needless duplicate-elimination sort when rows can't overlap." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-view-transact-sql"]
+    },
+    {
+      "id": "d1-viewfn-0046",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-views-functions",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Complete the call pattern for applying a TVF per customer row, keeping customers with no orders." },
+      "code": "SELECT c.Name, o.OrderId, o.Total\nFROM Sales.Customers AS c\n[BLANK1] Sales.GetCustomerOrders(c.CustomerId) AS o\nWHERE c.IsActive = 1\nORDER BY c.Name, o.Total [BLANK2];",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "OUTER APPLY" } },
+            { "id": "c2", "text": { "en": "CROSS APPLY" } },
+            { "id": "c3", "text": { "en": "LEFT JOIN" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "DESC" } },
+            { "id": "c2", "text": { "en": "DOWN" } },
+            { "id": "c3", "text": { "en": "REVERSE" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "Keeping empty-result outer rows requires OUTER APPLY (CROSS APPLY would drop orderless customers; LEFT JOIN cannot pass c.CustomerId as a function argument). Descending sort is DESC — DOWN/REVERSE don't exist." },
+      "example": { "en": "APPLY = JOIN for correlated rowset producers." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/from-transact-sql"]
+    },
+    {
+      "id": "d1-viewfn-0047",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-views-functions",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which indexed-view candidate is DISQUALIFIED by its definition?" },
+      "options": [
+        { "id": "a", "text": { "en": "SELECT CustomerId, MAX(Total) FROM Sales.Orders GROUP BY CustomerId (schemabound)" } },
+        { "id": "b", "text": { "en": "SELECT CustomerId, SUM(Total), COUNT_BIG(*) FROM Sales.Orders GROUP BY CustomerId (schemabound)" } },
+        { "id": "c", "text": { "en": "SELECT OrderId, Total FROM Sales.Orders WHERE Status = 1 (schemabound)" } },
+        { "id": "d", "text": { "en": "SELECT o.OrderId, c.Name FROM Sales.Orders o JOIN Sales.Customers c ON ... (schemabound, inner join)" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "MIN/MAX aggregates are not allowed in indexed views (they can't be incrementally maintained on deletes without re-scanning). SUM + COUNT_BIG (b), filtered selections (c) and inner joins (d) are all indexable shapes." },
+      "example": { "en": "Need materialized MAX? Maintain it via triggers or recompute via a filtered/top-1 pattern." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/views/create-indexed-views"]
+    },
+    {
+      "id": "d1-viewfn-0048",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-views-functions",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A function dbo.CleanPhone is used in a CHECK constraint and in queries. The team wants scalar UDF inlining for query performance. What's the conflict?" },
+      "options": [
+        { "id": "a", "text": { "en": "Functions referenced by check constraints (or computed columns) are not inlineable — refactor into two functions or inline the logic in queries" } },
+        { "id": "b", "text": { "en": "CHECK constraints make functions nondeterministic" } },
+        { "id": "c", "text": { "en": "Inlining would bypass the constraint" } },
+        { "id": "d", "text": { "en": "No conflict exists" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Being referenced in a CHECK constraint or computed column is a documented inlining blocker for the function everywhere. Determinism isn't altered by usage (b), constraints always enforce regardless (c), and the conflict is real (d)." },
+      "example": { "en": "Pattern: dbo.CleanPhone_Check (bound to constraint) + dbo.CleanPhone (inlineable for queries)." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/user-defined-functions/scalar-udf-inlining"]
+    },
+    {
+      "id": "d1-viewfn-0049",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-views-functions",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which object would you create to let Power BI / reporting tools consume a simplified, stable 'reporting schema' over complex normalized tables?" },
+      "options": [
+        { "id": "a", "text": { "en": "A set of views forming a semantic layer" } },
+        { "id": "b", "text": { "en": "A trigger per report" } },
+        { "id": "c", "text": { "en": "A cursor library" } },
+        { "id": "d", "text": { "en": "One giant denormalized table updated by hand" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Views are the classic semantic/reporting layer: friendly names, pre-joined entities, stable contracts while internals evolve. Triggers (b) react to DML, cursors (c) are procedural iteration, and hand-maintained denormalized copies (d) drift and rot." },
+      "example": { "en": "Report tools point at dbo.vSalesByRegion etc.; refactors change tables, not reports." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/views/views"]
+    },
+    {
+      "id": "d1-viewfn-0050",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-views-functions",
+      "type": "dragdrop-order", "difficulty": "medium",
+      "text": { "en": "Order the steps to deploy an indexed view safely to production." },
+      "items": [
+        { "id": "i1", "text": { "en": "Create the view WITH SCHEMABINDING (two-part names, COUNT_BIG if aggregating)" } },
+        { "id": "i2", "text": { "en": "Verify SET options (ANSI_NULLS, QUOTED_IDENTIFIER etc.) are correct" } },
+        { "id": "i3", "text": { "en": "Create the unique clustered index on the view" } },
+        { "id": "i4", "text": { "en": "Measure write-path impact and query plans" } }
+      ],
+      "answer": ["i2", "i1", "i3", "i4"],
+      "explanation": { "en": "Required SET options must be in effect when the view AND index are created (and when base tables are modified) — check them first. Then view, then its unique clustered index, then validate both the read win and the write cost." },
+      "example": { "en": "Wrong SET options surface as 'INSERT failed because the following SET options have incorrect settings' at runtime — much worse than failing at deploy." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/views/create-indexed-views"]
+    }
+  ]
+}

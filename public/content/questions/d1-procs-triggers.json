@@ -1,0 +1,856 @@
+{
+  "subtopic": "d1-procs-triggers",
+  "questions": [
+    {
+      "id": "d1-proc-0001",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-procs-triggers",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which object should implement 'place an order': insert the order, update stock, and write an audit row, all atomically?" },
+      "options": [
+        { "id": "a", "text": { "en": "A stored procedure with an explicit transaction" } },
+        { "id": "b", "text": { "en": "A scalar function" } },
+        { "id": "c", "text": { "en": "A view" } },
+        { "id": "d", "text": { "en": "An inline TVF" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Multi-statement data modification with transactional guarantees is exactly what procedures are for. Functions can't modify permanent data or control transactions (b, d), and views are stored queries (c)." },
+      "example": { "en": "BEGIN TRY BEGIN TRAN; INSERT...; UPDATE...; INSERT...; COMMIT; END TRY BEGIN CATCH IF XACT_STATE()<>0 ROLLBACK; THROW; END CATCH" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/stored-procedures/stored-procedures-database-engine"]
+    },
+    {
+      "id": "d1-proc-0002",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-procs-triggers",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "How many times does an AFTER INSERT trigger fire when one INSERT…SELECT statement adds 10,000 rows?" },
+      "options": [
+        { "id": "a", "text": { "en": "Once, with all 10,000 rows in the inserted table" } },
+        { "id": "b", "text": { "en": "10,000 times, once per row" } },
+        { "id": "c", "text": { "en": "Once per data page" } },
+        { "id": "d", "text": { "en": "Twice: before and after" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "SQL Server DML triggers are statement-level: one firing, inserted holds all affected rows. Per-row firing (b) is other-database behavior and the root of the classic single-row trigger bug. (c) and (d) are invented." },
+      "example": { "en": "That's why 'SELECT @id = Id FROM inserted' silently processes only one arbitrary row of the 10,000." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/triggers/dml-triggers"]
+    },
+    {
+      "id": "d1-proc-0003",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-procs-triggers",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "In an AFTER UPDATE trigger, how do you get each row's old and new value of the Total column?" },
+      "options": [
+        { "id": "a", "text": { "en": "JOIN deleted (old) to inserted (new) on the primary key" } },
+        { "id": "b", "text": { "en": "Read the table twice with NOLOCK" } },
+        { "id": "c", "text": { "en": "inserted holds both old and new in separate columns" } },
+        { "id": "d", "text": { "en": "Use the OLD and NEW row aliases" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "UPDATE populates both pseudo-tables: deleted = pre-image, inserted = post-image; joining them on the key pairs old/new per row. The base table already shows new values only (b). inserted has one set of columns (c). OLD/NEW aliases are MySQL/Oracle trigger syntax (d)." },
+      "example": { "en": "FROM inserted i JOIN deleted d ON d.OrderId = i.OrderId WHERE i.Total <> d.Total" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/triggers/use-the-inserted-and-deleted-tables"]
+    },
+    {
+      "id": "d1-proc-0004",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-procs-triggers",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Updates through a view joining Orders and Customers must write to both tables. Which mechanism makes this possible?" },
+      "options": [
+        { "id": "a", "text": { "en": "An INSTEAD OF UPDATE trigger on the view that splits the write into two table updates" } },
+        { "id": "b", "text": { "en": "WITH CHECK OPTION on the view" } },
+        { "id": "c", "text": { "en": "An AFTER trigger on the view" } },
+        { "id": "d", "text": { "en": "Marking the view SCHEMABINDING" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "INSTEAD OF triggers intercept the DML aimed at the view and perform the correct underlying writes — the documented route around the one-base-table rule. CHECK OPTION (b) only validates filter membership. Views support INSTEAD OF, not AFTER triggers (c). Schemabinding (d) protects schema, nothing more." },
+      "example": { "en": "CREATE TRIGGER trg ON vOrderCustomer INSTEAD OF UPDATE AS BEGIN UPDATE Orders ... ; UPDATE Customers ... ; END" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-trigger-transact-sql"]
+    },
+    {
+      "id": "d1-proc-0005",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-procs-triggers",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Complete the procedure so the caller receives the new id." },
+      "code": "CREATE PROCEDURE Sales.AddCustomer\n    @Name NVARCHAR(100),\n    @NewId INT [BLANK1]\nAS\nBEGIN\n    SET NOCOUNT ON;\n    INSERT INTO Sales.Customers (Name) VALUES (@Name);\n    SET @NewId = [BLANK2];\nEND;",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "OUTPUT" } },
+            { "id": "c2", "text": { "en": "RETURN" } },
+            { "id": "c3", "text": { "en": "REF" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "SCOPE_IDENTITY()" } },
+            { "id": "c2", "text": { "en": "@@ROWCOUNT" } },
+            { "id": "c3", "text": { "en": "IDENT_SEED('Sales.Customers')" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "OUTPUT marks a returnable parameter (REF is C#/other languages; RETURN is the status-code statement, not a parameter modifier). SCOPE_IDENTITY() returns the identity generated in this scope; @@ROWCOUNT counts rows and IDENT_SEED returns the seed definition, not a generated value." },
+      "example": { "en": "Caller: DECLARE @id INT; EXEC Sales.AddCustomer @Name=N'Acme', @NewId=@id OUTPUT;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/stored-procedures/return-data-from-a-stored-procedure"]
+    },
+    {
+      "id": "d1-proc-0006",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-procs-triggers",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A proc is fast for most @CustomerId values but crawls for a handful of huge customers, depending on who called it first after a restart. What is this phenomenon?" },
+      "options": [
+        { "id": "a", "text": { "en": "Parameter sniffing with skewed data — one cached plan fits only one data shape" } },
+        { "id": "b", "text": { "en": "Deadlocking" } },
+        { "id": "c", "text": { "en": "Lock escalation" } },
+        { "id": "d", "text": { "en": "TempDB contention" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The first execution's parameter shapes the cached plan; with skewed distributions, a seek plan compiled for a small customer devastates big-customer queries (or vice versa). Deadlocks (b) kill sessions with error 1205, escalation (c) and tempdb (d) have different signatures." },
+      "example": { "en": "Fixes: OPTION (RECOMPILE), OPTIMIZE FOR, or SQL Server 2022's Parameter Sensitive Plan optimization (multiple plans per proc)." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/performance/parameter-sensitive-plan-optimization"]
+    },
+    {
+      "id": "d1-proc-0007",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-procs-triggers",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What security benefit comes from exposing all data access through stored procedures?" },
+      "options": [
+        { "id": "a", "text": { "en": "Users need only EXECUTE permission; ownership chaining avoids granting any table permissions" } },
+        { "id": "b", "text": { "en": "Procedures encrypt all data automatically" } },
+        { "id": "c", "text": { "en": "SQL injection becomes impossible in the application" } },
+        { "id": "d", "text": { "en": "Procedures bypass auditing" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "GRANT EXECUTE on the procedure suffices (same-owner chaining skips table checks) — tables stay un-granted, the procedure is the narrow door. No automatic encryption exists (b). Parameterized procs *help* against injection but apps can still concatenate strings badly (c). Auditing still sees everything (d)." },
+      "example": { "en": "GRANT EXECUTE ON SCHEMA::Sales TO AppRole; -- the entire API surface in one grant" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/authentication-access/ownership-chains"]
+    },
+    {
+      "id": "d1-proc-0008",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-procs-triggers",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "For each statement about triggers, answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "A ROLLBACK inside an AFTER trigger undoes the triggering statement too." } },
+        { "id": "s2", "text": { "en": "A table can have multiple AFTER triggers for the same event." } },
+        { "id": "s3", "text": { "en": "A table can have multiple INSTEAD OF triggers for the same event." } },
+        { "id": "s4", "text": { "en": "Triggers can be disabled without dropping them." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "yes", "s3": "no", "s4": "yes" },
+      "explanation": { "en": "The trigger runs inside the statement's transaction, so ROLLBACK aborts everything. Multiple AFTER triggers per event are allowed (order partially controllable via sp_settriggerorder); INSTEAD OF is limited to ONE per event. DISABLE TRIGGER turns them off reversibly." },
+      "example": { "en": "DISABLE TRIGGER Sales.trg_Orders_Audit ON Sales.Orders; -- e.g. during bulk loads" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-trigger-transact-sql"]
+    },
+    {
+      "id": "d1-proc-0009",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-procs-triggers",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which trigger bug does this code contain?\n\nDECLARE @id INT; SELECT @id = OrderId FROM inserted; EXEC dbo.Process @id;" },
+      "options": [
+        { "id": "a", "text": { "en": "It assumes single-row DML — with a multi-row insert only one arbitrary row is processed" } },
+        { "id": "b", "text": { "en": "inserted cannot be read in triggers" } },
+        { "id": "c", "text": { "en": "Variables are not allowed in triggers" } },
+        { "id": "d", "text": { "en": "EXEC is forbidden in triggers" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Assigning a multi-row set to a scalar grabs one arbitrary row — the rest are silently ignored. The fix is set-based processing (JOIN inserted) or, if a per-row call is unavoidable, an explicit cursor with full awareness of cost. (b)–(d) are false: inserted, variables and EXEC are all legal." },
+      "example": { "en": "Set-based fix: INSERT INTO Queue(OrderId) SELECT OrderId FROM inserted;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/triggers/dml-triggers"]
+    },
+    {
+      "id": "d1-proc-0010",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-procs-triggers",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which statement prevents anyone from dropping tables in the database, with a custom message?" },
+      "options": [
+        { "id": "a", "text": { "en": "A DDL trigger ON DATABASE FOR DROP_TABLE that raises an error and rolls back" } },
+        { "id": "b", "text": { "en": "An AFTER DELETE trigger on each table" } },
+        { "id": "c", "text": { "en": "A CHECK constraint on sys.tables" } },
+        { "id": "d", "text": { "en": "Setting the database to single-user mode" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "DDL triggers intercept schema statements; rolling back inside cancels the DROP. AFTER DELETE (b) reacts to row deletions, not table drops. System views can't carry constraints (c). Single-user mode (d) blocks everyone from everything — not targeted protection." },
+      "example": { "en": "CREATE TRIGGER t ON DATABASE FOR DROP_TABLE AS BEGIN RAISERROR('Use the pipeline',16,1); ROLLBACK; END" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/triggers/ddl-triggers"]
+    },
+    {
+      "id": "d1-proc-0011",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-procs-triggers",
+      "type": "multiple", "difficulty": "medium", "selectCount": 3,
+      "text": { "en": "Which three are ways a stored procedure returns information to its caller? (Select 3)" },
+      "options": [
+        { "id": "a", "text": { "en": "Result sets from SELECT statements" } },
+        { "id": "b", "text": { "en": "OUTPUT parameters" } },
+        { "id": "c", "text": { "en": "The integer RETURN status code" } },
+        { "id": "d", "text": { "en": "Modifying the caller's local variables directly" } },
+        { "id": "e", "text": { "en": "Writing to the console" } }
+      ],
+      "answer": ["a", "b", "c"],
+      "explanation": { "en": "The three channels: result sets, OUTPUT parameters, RETURN code. Procedures cannot see or modify the caller's locals except through OUTPUT (d), and PRINT messages go to the client's message stream, not a 'console' return channel usable programmatically (e)." },
+      "example": { "en": "DECLARE @rc INT, @id INT; EXEC @rc = Sales.PlaceOrder @CustomerId=7, @Total=10, @OrderId=@id OUTPUT;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/stored-procedures/return-data-from-a-stored-procedure"]
+    },
+    {
+      "id": "d1-proc-0012",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-procs-triggers",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Why is SET NOCOUNT ON standard at the top of procedures?" },
+      "options": [
+        { "id": "a", "text": { "en": "It suppresses 'N rows affected' messages, reducing network chatter and avoiding confusing some clients" } },
+        { "id": "b", "text": { "en": "It disables @@ROWCOUNT" } },
+        { "id": "c", "text": { "en": "It makes the procedure read-only" } },
+        { "id": "d", "text": { "en": "It turns off transaction logging" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "DONE_IN_PROC messages per statement waste bandwidth and historically break some ORMs/drivers expecting result sets. @@ROWCOUNT still works (b). Writes remain possible (c) and logging is untouchable (d)." },
+      "example": { "en": "SET NOCOUNT ON; -- first line after BEGIN in virtually every production proc" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/set-nocount-transact-sql"]
+    },
+    {
+      "id": "d1-proc-0013",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-procs-triggers",
+      "type": "dragdrop-order", "difficulty": "medium",
+      "text": { "en": "Order the execution timeline when an UPDATE hits a table that has an INSTEAD OF UPDATE trigger." },
+      "items": [
+        { "id": "i1", "text": { "en": "The UPDATE statement is issued against the table/view" } },
+        { "id": "i2", "text": { "en": "The INSTEAD OF trigger fires — the original UPDATE is NOT performed" } },
+        { "id": "i3", "text": { "en": "Trigger code performs whatever writes it chooses (possibly the update itself)" } },
+        { "id": "i4", "text": { "en": "Constraints are checked for the writes the trigger performed" } }
+      ],
+      "answer": ["i1", "i2", "i3", "i4"],
+      "explanation": { "en": "INSTEAD OF replaces the DML: nothing happens to the target unless the trigger does it explicitly; constraint checking applies to the trigger's own writes. Contrast with AFTER: original DML → constraints → trigger." },
+      "example": { "en": "Forgetting step 3 (re-issuing the intended write) makes the table silently un-updatable — a sneaky bug." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/triggers/dml-triggers"]
+    },
+    {
+      "id": "d1-proc-0014",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-procs-triggers",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "The UPDATE() function inside a trigger tells you:" },
+      "options": [
+        { "id": "a", "text": { "en": "Whether a specific column was referenced in the SET/insert list of the triggering statement" } },
+        { "id": "b", "text": { "en": "Whether the value actually changed" } },
+        { "id": "c", "text": { "en": "How many rows were updated" } },
+        { "id": "d", "text": { "en": "Whether the statement was an UPDATE rather than INSERT" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "UPDATE(Col) is true when the column appears in the assignment list — even if assigned the same value. To detect real changes, compare inserted vs deleted (b is the trap). Row counts come from @@ROWCOUNT or counting inserted (c). Statement type is known from the trigger's event definition (d)." },
+      "example": { "en": "IF UPDATE(Total) ... -- ran even for SET Total = Total; add i.Total <> d.Total for true changes" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/update-trigger-functions-transact-sql"]
+    },
+    {
+      "id": "d1-proc-0015",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-procs-triggers",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "An audit requirement: capture old values of updated rows. The team debates an AFTER UPDATE trigger vs the OUTPUT clause vs temporal tables. Which statement is most accurate?" },
+      "options": [
+        { "id": "a", "text": { "en": "Temporal tables capture history automatically for all writers; OUTPUT works only where the statement includes it; triggers capture everything but add per-statement cost and hidden complexity" } },
+        { "id": "b", "text": { "en": "OUTPUT captures changes from every application automatically" } },
+        { "id": "c", "text": { "en": "Triggers are the only possible solution" } },
+        { "id": "d", "text": { "en": "Temporal tables require application changes for every write" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The trade-off triangle: temporal = automatic + queryable history (preferred for 'row history'); OUTPUT = explicit per-statement capture (misses writers that don't use it, so b is wrong); triggers = automatic but procedural cost. (c) and (d) are both false — temporal needs zero app changes." },
+      "example": { "en": "Modern default: temporal for history; triggers when custom logic must run in-transaction." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/tables/temporal-tables"]
+    },
+    {
+      "id": "d1-proc-0016",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-procs-triggers",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What does OPTION (RECOMPILE) on a statement inside a procedure do?" },
+      "options": [
+        { "id": "a", "text": { "en": "Compiles that statement fresh on every execution using current parameter values; the plan is not cached" } },
+        { "id": "b", "text": { "en": "Recompiles the whole procedure once" } },
+        { "id": "c", "text": { "en": "Clears the entire plan cache" } },
+        { "id": "d", "text": { "en": "Disables parallelism for the statement" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Statement-level RECOMPILE gives a value-optimal plan each run (and enables aggressive constant-folding of parameters) at CPU cost per execution. Whole-proc recompilation is WITH RECOMPILE (b). Cache clearing is DBCC FREEPROCCACHE (c — never casually). Parallelism is MAXDOP (d)." },
+      "example": { "en": "Great for 'kitchen-sink' optional-filter queries: WHERE (@from IS NULL OR Date >= @from) ... OPTION (RECOMPILE)" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/hints-transact-sql-query"]
+    },
+    {
+      "id": "d1-proc-0017",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-procs-triggers",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "For each statement about procedure plans, answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "Stored procedure plans can be reused across executions." } },
+        { "id": "s2", "text": { "en": "SQL Server 2022's PSP optimization can cache multiple plans for one parameterized query." } },
+        { "id": "s3", "text": { "en": "WITH RECOMPILE on a procedure stores an optimized plan in cache." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "yes", "s3": "no" },
+      "explanation": { "en": "Plan reuse is a core benefit of procedures. Parameter Sensitive Plan optimization (compat 160) keeps plan variants per predicate cardinality bucket — directly attacking sniffing. WITH RECOMPILE does the opposite of caching: a fresh, never-stored plan each call." },
+      "example": { "en": "PSP works automatically — no code change — one reason the exam loves 'upgrade to 2022/compat 160' answers." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/performance/parameter-sensitive-plan-optimization"]
+    },
+    {
+      "id": "d1-proc-0018",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-procs-triggers",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which statement executes a procedure and captures its return code?" },
+      "options": [
+        { "id": "a", "text": { "en": "DECLARE @rc INT; EXEC @rc = dbo.MyProc @p = 1;" } },
+        { "id": "b", "text": { "en": "SELECT @rc = dbo.MyProc(1);" } },
+        { "id": "c", "text": { "en": "SET @rc = CALL dbo.MyProc(1);" } },
+        { "id": "d", "text": { "en": "EXEC dbo.MyProc @p = 1 INTO @rc;" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "EXEC @var = proc captures RETURN's integer. Procedures can't be invoked like functions in SELECT (b). CALL is ODBC/other dialects (c), and INTO isn't EXEC syntax (d)." },
+      "example": { "en": "Convention: RETURN 0 for success, non-zero codes for business failures." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/language-elements/execute-transact-sql"]
+    },
+    {
+      "id": "d1-proc-0019",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-procs-triggers",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A trigger must queue each changed row for embedding regeneration (AI scenario). Which trigger body is correct?" },
+      "options": [
+        { "id": "a", "text": { "en": "INSERT INTO dbo.EmbedQueue (DocId) SELECT DocId FROM inserted;" } },
+        { "id": "b", "text": { "en": "DECLARE @id INT = (SELECT DocId FROM inserted); INSERT INTO dbo.EmbedQueue VALUES (@id);" } },
+        { "id": "c", "text": { "en": "EXEC sp_invoke_external_rest_endpoint synchronously per row inside the trigger" } },
+        { "id": "d", "text": { "en": "UPDATE inserted SET NeedsEmbedding = 1;" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Set-based queueing handles any row count and keeps the trigger fast — the documented embedding-maintenance pattern (trigger marks/queues; an async process generates embeddings). (b) breaks on multi-row DML. Calling external REST synchronously in a trigger (c) couples write latency to an external service — explicitly discouraged. inserted is read-only (d)." },
+      "example": { "en": "This trigger+queue pattern is one of the official 'embedding maintenance methods' in Domain 3." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/triggers/dml-triggers"]
+    },
+    {
+      "id": "d1-proc-0020",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-procs-triggers",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "sp_settriggerorder lets you control:" },
+      "options": [
+        { "id": "a", "text": { "en": "Which AFTER trigger fires first and last among multiple on the same event" } },
+        { "id": "b", "text": { "en": "The exact order of all triggers" } },
+        { "id": "c", "text": { "en": "Whether triggers run in parallel" } },
+        { "id": "d", "text": { "en": "The nesting depth limit" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Only First and Last are assignable per event; middle triggers run in undefined order (b overstates). Triggers never parallelize within a statement (c), and the 32-level nesting limit is fixed (d)." },
+      "example": { "en": "EXEC sp_settriggerorder @triggername='trg_Audit', @order='Last', @stmttype='UPDATE';" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-settriggerorder-transact-sql"]
+    },
+    {
+      "id": "d1-proc-0021",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-procs-triggers",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Complete the set-based audit trigger." },
+      "code": "CREATE TRIGGER Sales.trg_Price_Audit\nON Sales.Price\n[BLANK1] UPDATE\nAS\nBEGIN\n    SET NOCOUNT ON;\n    INSERT INTO Sales.PriceAudit (ProductId, OldPrice, NewPrice)\n    SELECT d.ProductId, d.ListPrice, i.ListPrice\n    FROM [BLANK2] AS i\n    JOIN deleted AS d ON d.ProductId = i.ProductId\n    WHERE i.ListPrice <> d.ListPrice;\nEND;",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "AFTER" } },
+            { "id": "c2", "text": { "en": "BEFORE" } },
+            { "id": "c3", "text": { "en": "ON" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "inserted" } },
+            { "id": "c2", "text": { "en": "updated" } },
+            { "id": "c3", "text": { "en": "modified" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "SQL Server has AFTER and INSTEAD OF triggers — no BEFORE (a classic cross-database trap; BEFORE exists in other engines). The pseudo-tables are exactly 'inserted' and 'deleted'; there is no 'updated' or 'modified' table — updates appear as deleted (old) + inserted (new)." },
+      "example": { "en": "Needing BEFORE semantics? INSTEAD OF is SQL Server's equivalent tool." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-trigger-transact-sql"]
+    },
+    {
+      "id": "d1-proc-0022",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-procs-triggers",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "TRY…CATCH around a transaction: what does IF XACT_STATE() = -1 indicate in the CATCH block?" },
+      "options": [
+        { "id": "a", "text": { "en": "The transaction is doomed — it can only be rolled back, not committed" } },
+        { "id": "b", "text": { "en": "No transaction is active" } },
+        { "id": "c", "text": { "en": "The transaction already committed" } },
+        { "id": "d", "text": { "en": "The transaction can still be committed normally" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "XACT_STATE(): 1 = active and committable, 0 = none, -1 = active but uncommittable (doomed) — only ROLLBACK is allowed. The three values map precisely; -1 means 'must roll back', making (b)-(d) wrong." },
+      "example": { "en": "IF XACT_STATE() = -1 ROLLBACK; ELSE IF XACT_STATE() = 1 COMMIT; -- careful CATCH pattern" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/xact-state-transact-sql"]
+    },
+    {
+      "id": "d1-proc-0023",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-procs-triggers",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "CREATE OR ALTER PROCEDURE is preferred in deployment scripts because:" },
+      "options": [
+        { "id": "a", "text": { "en": "It is idempotent — works whether or not the procedure already exists, preserving permissions on alter" } },
+        { "id": "b", "text": { "en": "It runs faster than CREATE" } },
+        { "id": "c", "text": { "en": "It skips compilation" } },
+        { "id": "d", "text": { "en": "It encrypts the procedure" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "One statement covers create-new and update-existing paths — no IF EXISTS boilerplate, no dropped permissions. Execution speed (b), compilation (c) and encryption (d) are unrelated." },
+      "example": { "en": "Available since SQL Server 2016 SP1 — standard in SQL Database Projects pre/post scripts too." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-procedure-transact-sql"]
+    },
+    {
+      "id": "d1-proc-0024",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-procs-triggers",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "Why should a trigger avoid calling sp_invoke_external_rest_endpoint synchronously?" },
+      "options": [
+        { "id": "a", "text": { "en": "The external call's latency and failures become part of every user transaction on that table" } },
+        { "id": "b", "text": { "en": "Triggers cannot execute stored procedures" } },
+        { "id": "c", "text": { "en": "REST calls are not allowed from SQL at all" } },
+        { "id": "d", "text": { "en": "It would fire the trigger recursively" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "A trigger runs inside the DML transaction: a 2-second model endpoint call makes every INSERT 2 seconds slower and an endpoint outage blocks writes. Queue-and-process-async is the pattern. Triggers can EXEC procs (b), REST calls are supported via the system proc (c), and recursion isn't the issue (d)." },
+      "example": { "en": "Trigger writes to EmbedQueue; an Azure Function / background job drains it and calls the model." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-invoke-external-rest-endpoint-transact-sql"]
+    },
+    {
+      "id": "d1-proc-0025",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-procs-triggers",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "THROW vs RAISERROR: which statement is correct?" },
+      "options": [
+        { "id": "a", "text": { "en": "THROW (no args) in CATCH re-raises the original error with its severity and state; RAISERROR builds a custom message and does not re-throw the original" } },
+        { "id": "b", "text": { "en": "RAISERROR re-throws originals; THROW cannot" } },
+        { "id": "c", "text": { "en": "They are aliases" } },
+        { "id": "d", "text": { "en": "THROW is deprecated" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Parameterless THROW re-raises exactly what was caught — the recommended CATCH pattern. RAISERROR composes new messages (with formatting/severity control) but loses the original error number/state unless you rebuild them. They differ meaningfully (c), and it's RAISERROR that Microsoft steers away from for new code (d reversed)." },
+      "example": { "en": "BEGIN CATCH IF XACT_STATE()<>0 ROLLBACK; THROW; END CATCH" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/language-elements/throw-transact-sql"]
+    },
+    {
+      "id": "d1-proc-0026",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-procs-triggers",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A logon trigger that errors out for everyone has locked all users out. What is the documented escape hatch?" },
+      "options": [
+        { "id": "a", "text": { "en": "Connect via the Dedicated Admin Connection (DAC) and disable the trigger" } },
+        { "id": "b", "text": { "en": "Reinstall SQL Server" } },
+        { "id": "c", "text": { "en": "Wait for the trigger to time out" } },
+        { "id": "d", "text": { "en": "Delete the master database" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The DAC bypasses logon triggers, letting an admin DISABLE TRIGGER ... ON ALL SERVER. No timeout rescues you (c), and (b)/(d) are catastrophic non-answers. This risk is why logon triggers demand careful testing." },
+      "example": { "en": "sqlcmd -S admin:MyServer -E then DISABLE TRIGGER trg_Logon ON ALL SERVER;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/triggers/logon-triggers"]
+    },
+    {
+      "id": "d1-proc-0027",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-procs-triggers",
+      "type": "dragdrop-match", "difficulty": "medium",
+      "text": { "en": "Match each requirement to the right trigger type (or alternative)." },
+      "items": [
+        { "id": "i1", "text": { "en": "Make a two-table join view updatable" } },
+        { "id": "i2", "text": { "en": "Audit who changed schema objects" } },
+        { "id": "i3", "text": { "en": "Restrict logins outside business hours" } },
+        { "id": "i4", "text": { "en": "Keep a denormalized total in sync on child-row changes" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "INSTEAD OF trigger on the view" } },
+        { "id": "t2", "text": { "en": "DDL trigger" } },
+        { "id": "t3", "text": { "en": "Logon trigger" } },
+        { "id": "t4", "text": { "en": "AFTER trigger on the child table" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "Four trigger flavors, four signature use cases: INSTEAD OF for view updatability, DDL for schema events, logon for session gatekeeping, AFTER DML for in-transaction derived-data maintenance." },
+      "example": { "en": "Each is the *only* trigger type that handles its scenario — distinguishing them is pure exam currency." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-trigger-transact-sql"]
+    },
+    {
+      "id": "d1-proc-0028",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-procs-triggers",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which option creates a procedure that runs as its owner regardless of the caller (e.g. for controlled elevation)?" },
+      "options": [
+        { "id": "a", "text": { "en": "WITH EXECUTE AS OWNER" } },
+        { "id": "b", "text": { "en": "WITH ELEVATION" } },
+        { "id": "c", "text": { "en": "AS SYSADMIN" } },
+        { "id": "d", "text": { "en": "GRANT IMPERSONATE TO PUBLIC" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "EXECUTE AS OWNER (or 'user_name'/SELF/CALLER) sets the module's execution context — the sanctioned way to let low-privilege callers perform specific privileged actions inside a controlled procedure. (b)/(c) don't exist, and impersonation grants to PUBLIC (d) is a security hole, not a pattern." },
+      "example": { "en": "CREATE PROCEDURE dbo.PurgeOld WITH EXECUTE AS OWNER AS DELETE FROM Audit WHERE ...;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/execute-as-clause-transact-sql"]
+    },
+    {
+      "id": "d1-proc-0029",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-procs-triggers",
+      "type": "yesno", "difficulty": "hard",
+      "text": { "en": "A procedure has @Status NVARCHAR(10) = 'open' as its only parameter. Answer Yes or No for each call." },
+      "statements": [
+        { "id": "s1", "text": { "en": "EXEC dbo.GetOrders; -- succeeds" } },
+        { "id": "s2", "text": { "en": "EXEC dbo.GetOrders 'closed'; -- succeeds" } },
+        { "id": "s3", "text": { "en": "EXEC dbo.GetOrders @Status = DEFAULT; -- succeeds" } },
+        { "id": "s4", "text": { "en": "SELECT * FROM dbo.GetOrders('open'); -- succeeds" } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "yes", "s3": "yes", "s4": "no" },
+      "explanation": { "en": "Defaulted parameters may be omitted, passed positionally, or passed as the keyword DEFAULT. Procedures can never be queried in FROM like TVFs — the eternal procedure/function boundary." },
+      "example": { "en": "Need FROM composition? Convert to an inline TVF or use INSERT ... EXEC into a temp table." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/language-elements/execute-transact-sql"]
+    },
+    {
+      "id": "d1-proc-0030",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-procs-triggers",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "After a bulk load, re-enabling business logic requires firing trigger logic for loaded rows. Triggers didn't fire during BULK INSERT. Why?" },
+      "options": [
+        { "id": "a", "text": { "en": "Bulk operations skip triggers by default; FIRE_TRIGGERS must be specified to run them" } },
+        { "id": "b", "text": { "en": "Triggers never fire for inserts" } },
+        { "id": "c", "text": { "en": "The triggers must be AFTER BULK triggers" } },
+        { "id": "d", "text": { "en": "BULK INSERT corrupted the triggers" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "BULK INSERT/BCP default to NOT executing triggers (performance); the FIRE_TRIGGERS option opts in. Insert triggers obviously exist (b), there's no BULK trigger type (c), and nothing corrupts (d)." },
+      "example": { "en": "BULK INSERT dbo.T FROM 'file.csv' WITH (FIRE_TRIGGERS, FORMAT='CSV');" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/bulk-insert-transact-sql"]
+    },
+    {
+      "id": "d1-proc-0031",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-procs-triggers",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which pseudo-table is available in an AFTER DELETE trigger?" },
+      "options": [
+        { "id": "a", "text": { "en": "deleted (the removed rows); inserted is empty" } },
+        { "id": "b", "text": { "en": "inserted (the removed rows)" } },
+        { "id": "c", "text": { "en": "both populated with the removed rows" } },
+        { "id": "d", "text": { "en": "neither exists for DELETE" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "DELETE fills deleted only; INSERT fills inserted only; UPDATE fills both. Memorize the matrix — dropdown questions quiz exactly this." },
+      "example": { "en": "INSERT INTO Archive SELECT * FROM deleted; -- classic soft-archive on delete" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/triggers/use-the-inserted-and-deleted-tables"]
+    },
+    {
+      "id": "d1-proc-0032",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-procs-triggers",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Table-valued parameters (TVPs) let a caller:" },
+      "options": [
+        { "id": "a", "text": { "en": "Pass a set of rows into a procedure in one call, via a user-defined table type (READONLY parameter)" } },
+        { "id": "b", "text": { "en": "Return multiple tables from a procedure" } },
+        { "id": "c", "text": { "en": "Modify the parameter's rows inside the procedure" } },
+        { "id": "d", "text": { "en": "Avoid declaring any types" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "TVPs (CREATE TYPE ... AS TABLE; parameter declared READONLY) carry rowsets into procedures — the clean alternative to CSV strings or many round trips. They are inputs, not outputs (b), immutable inside (c — READONLY is mandatory), and require the table type to exist (d)." },
+      "example": { "en": "CREATE TYPE dbo.OrderLineTvp AS TABLE (Sku VARCHAR(20), Qty INT); CREATE PROC ... @Lines dbo.OrderLineTvp READONLY ..." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/tables/use-table-valued-parameters-database-engine"]
+    },
+    {
+      "id": "d1-proc-0033",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-procs-triggers",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A recursive AFTER trigger scenario: trigger on T updates T itself. By default (RECURSIVE_TRIGGERS OFF), what happens?" },
+      "options": [
+        { "id": "a", "text": { "en": "The trigger's own update does NOT re-fire the same trigger (no direct recursion)" } },
+        { "id": "b", "text": { "en": "Infinite recursion crashes the server" } },
+        { "id": "c", "text": { "en": "The update inside the trigger fails" } },
+        { "id": "d", "text": { "en": "The trigger fires exactly twice always" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Direct recursion requires the database option RECURSIVE_TRIGGERS ON; off (default) suppresses self-re-firing. Even when on, the 32-level nesting cap prevents infinity (b). The inner update itself succeeds (c), and 'exactly twice' (d) describes nothing." },
+      "example": { "en": "Indirect recursion (T1's trigger updates T2 whose trigger updates T1) is instead governed by the 'nested triggers' server option." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/triggers/create-nested-triggers"]
+    },
+    {
+      "id": "d1-proc-0034",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-procs-triggers",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Complete the robust transactional procedure skeleton." },
+      "code": "CREATE OR ALTER PROCEDURE dbo.TransferFunds\n    @From INT, @To INT, @Amount DECIMAL(12,2)\nAS\nBEGIN\n    SET NOCOUNT ON;\n    BEGIN [BLANK1]\n        BEGIN TRANSACTION;\n        UPDATE dbo.Accounts SET Balance -= @Amount WHERE Id = @From;\n        UPDATE dbo.Accounts SET Balance += @Amount WHERE Id = @To;\n        COMMIT;\n    END TRY\n    BEGIN CATCH\n        IF XACT_STATE() <> 0 ROLLBACK;\n        [BLANK2];\n    END CATCH;\nEND;",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "TRY" } },
+            { "id": "c2", "text": { "en": "ATOMIC" } },
+            { "id": "c3", "text": { "en": "SAFE" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "THROW" } },
+            { "id": "c2", "text": { "en": "CONTINUE" } },
+            { "id": "c3", "text": { "en": "PRINT 'error'" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "BEGIN TRY pairs with the shown END TRY (ATOMIC blocks belong to natively compiled procs; SAFE isn't T-SQL). Re-raising with THROW preserves the error for the caller; CONTINUE isn't valid there and PRINT swallows the failure — the worst habit in error handling." },
+      "example": { "en": "Swallowed errors mean callers believe transfers succeeded. Always re-throw or handle explicitly." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/language-elements/try-catch-transact-sql"]
+    },
+    {
+      "id": "d1-proc-0035",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-procs-triggers",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "INSERT ... EXEC dbo.GetReport is used to capture a procedure's result set into a temp table. Which limitation applies?" },
+      "options": [
+        { "id": "a", "text": { "en": "INSERT ... EXEC cannot be nested (a proc already called via INSERT...EXEC can't itself INSERT...EXEC)" } },
+        { "id": "b", "text": { "en": "It only works with table variables" } },
+        { "id": "c", "text": { "en": "The procedure must return exactly one row" } },
+        { "id": "d", "text": { "en": "It requires sysadmin" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "'An INSERT EXEC statement cannot be nested' is the notorious runtime error in layered reporting procs. Temp tables and table variables both work as targets (b), any row count flows (c), and ordinary permissions suffice (d)." },
+      "example": { "en": "INSERT INTO #r EXEC dbo.GetReport @year = 2026; SELECT * FROM #r WHERE ..." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/language-elements/execute-transact-sql"]
+    },
+    {
+      "id": "d1-proc-0036",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-procs-triggers",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Why do heavy triggers make performance problems hard to diagnose for application teams?" },
+      "options": [
+        { "id": "a", "text": { "en": "The cost is invisible in the application's statement — a simple INSERT secretly runs the trigger's workload inside the same duration" } },
+        { "id": "b", "text": { "en": "Triggers don't appear in execution plans or traces at all" } },
+        { "id": "c", "text": { "en": "Triggers run on a different server" } },
+        { "id": "d", "text": { "en": "Triggers disable Query Store" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The app sees 'INSERT took 900 ms' with no hint that 850 ms was trigger logic. Tools DO show trigger activity if you look (plans include trigger branches; Query Store tracks them) — so (b) and (d) overstate; (c) is fantasy. The lesson: triggers hide cost from the caller's mental model, not from the engine." },
+      "example": { "en": "Check sys.dm_exec_trigger_stats for cumulative trigger cost." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-views/sys-dm-exec-trigger-stats-transact-sql"]
+    },
+    {
+      "id": "d1-proc-0037",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-procs-triggers",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which statement removes a DML trigger named trg_Audit from table Sales.Orders?" },
+      "options": [
+        { "id": "a", "text": { "en": "DROP TRIGGER Sales.trg_Audit;" } },
+        { "id": "b", "text": { "en": "DROP TRIGGER trg_Audit ON Sales.Orders;" } },
+        { "id": "c", "text": { "en": "ALTER TABLE Sales.Orders DROP trg_Audit;" } },
+        { "id": "d", "text": { "en": "DELETE TRIGGER trg_Audit;" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "DML triggers are schema-scoped objects: DROP TRIGGER schema.name (no ON clause — that's for DDL/server triggers). ALTER TABLE doesn't drop triggers (c), DELETE operates on rows (d)." },
+      "example": { "en": "DDL trigger removal differs: DROP TRIGGER trg_BlockDrops ON DATABASE;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-trigger-transact-sql"]
+    },
+    {
+      "id": "d1-proc-0038",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-procs-triggers",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A procedure processes orders in a WHILE loop row by row and is slow. The set-based rewrite principle says:" },
+      "options": [
+        { "id": "a", "text": { "en": "Express the whole operation as single set-based statements (UPDATE...FROM, window functions, MERGE) and let the engine optimize" } },
+        { "id": "b", "text": { "en": "Add more indexes to speed up the loop" } },
+        { "id": "c", "text": { "en": "Convert the loop to a cursor for correctness" } },
+        { "id": "d", "text": { "en": "Run the loop in parallel sessions" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Row-by-row (RBAR) processing wastes the optimizer entirely; one set statement is routinely 10–1000× faster. Indexes (b) merely make each slow iteration slightly faster. Cursors (c) are the same anti-pattern explicitly. Parallel sessions (d) add contention and complexity for a problem the engine solves natively." },
+      "example": { "en": "WHILE + fetch + UPDATE one row → single UPDATE o SET ... FROM Orders o JOIN ... WHERE ..." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/stored-procedures/stored-procedures-database-engine"]
+    },
+    {
+      "id": "d1-proc-0039",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-procs-triggers",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "Which pseudo-table(s) are populated? Answer Yes if 'inserted' has rows in each case." },
+      "statements": [
+        { "id": "s1", "text": { "en": "AFTER INSERT trigger" } },
+        { "id": "s2", "text": { "en": "AFTER UPDATE trigger" } },
+        { "id": "s3", "text": { "en": "AFTER DELETE trigger" } },
+        { "id": "s4", "text": { "en": "INSTEAD OF INSERT trigger" } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "yes", "s3": "no", "s4": "yes" },
+      "explanation": { "en": "inserted carries new/after images: present for INSERT and UPDATE (and INSTEAD OF INSERT, where it holds the rows that WOULD be inserted). DELETE populates only deleted." },
+      "example": { "en": "Matrix: INSERT→inserted; DELETE→deleted; UPDATE→both; INSTEAD OF sees the proposed rows." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/triggers/use-the-inserted-and-deleted-tables"]
+    },
+    {
+      "id": "d1-proc-0040",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-procs-triggers",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Dynamic SQL inside a procedure must include a user-supplied table name. Which practice is correct?" },
+      "options": [
+        { "id": "a", "text": { "en": "Validate against sys.tables and build with QUOTENAME(); pass data values via sp_executesql parameters" } },
+        { "id": "b", "text": { "en": "Concatenate the raw input into the string" } },
+        { "id": "c", "text": { "en": "Use EXEC(@sql) with the raw input but add a comment" } },
+        { "id": "d", "text": { "en": "Dynamic SQL cannot reference table names" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Identifiers can't be parameterized, so whitelist-validate and QUOTENAME them; everything that CAN be a parameter goes through sp_executesql — the two-layer defense against SQL injection. Raw concatenation (b, c) is the injection vulnerability itself. (d) is false; identifiers just need this discipline." },
+      "example": { "en": "SET @sql = N'SELECT * FROM ' + QUOTENAME(@schema) + N'.' + QUOTENAME(@table) + N' WHERE Id = @id'; EXEC sp_executesql @sql, N'@id INT', @id;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-executesql-transact-sql"]
+    },
+    {
+      "id": "d1-proc-0041",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-procs-triggers",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "sys.dm_exec_procedure_stats shows a proc with cached_time yesterday, execution_count 2M, and max_elapsed_time 400× the avg. What does this pattern suggest?" },
+      "options": [
+        { "id": "a", "text": { "en": "Occasional executions hit a pathological case (parameter sniffing victim, blocking, or data skew) while most are fine" } },
+        { "id": "b", "text": { "en": "The procedure always runs slowly" } },
+        { "id": "c", "text": { "en": "The plan cache is disabled" } },
+        { "id": "d", "text": { "en": "The DMV data is corrupt" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "A huge max/avg divergence with high execution counts is the fingerprint of intermittent pathology — sniffing on outlier parameters, periodic blocking, or skewed keys. 'Always slow' (b) would raise the average itself. The cached_time proves caching works (c). DMVs aren't corrupt (d); they're telling the story." },
+      "example": { "en": "Next step: Query Store → find the regressed plan/variants for that query_id, check PSP eligibility." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-views/sys-dm-exec-procedure-stats-transact-sql"]
+    },
+    {
+      "id": "d1-proc-0042",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-procs-triggers",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which keyword marks the parameter in BOTH the procedure definition and the call so a value flows back to the caller?" },
+      "options": [
+        { "id": "a", "text": { "en": "OUTPUT" } },
+        { "id": "b", "text": { "en": "RETURNING" } },
+        { "id": "c", "text": { "en": "OUT only in the call" } },
+        { "id": "d", "text": { "en": "BYREF" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "OUTPUT (or OUT) must appear in the declaration AND at the call site — omitting it at the call silently passes by value and the caller sees no change, a classic debugging mystery. RETURNING is PostgreSQL/Oracle; BYREF is VB." },
+      "example": { "en": "EXEC dbo.P @x = @local OUTPUT; -- forget OUTPUT here and @local stays NULL" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/stored-procedures/return-data-from-a-stored-procedure"]
+    },
+    {
+      "id": "d1-proc-0043",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-procs-triggers",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Natively compiled stored procedures require which three elements in their header?" },
+      "options": [
+        { "id": "a", "text": { "en": "WITH NATIVE_COMPILATION, SCHEMABINDING and a BEGIN ATOMIC block" } },
+        { "id": "b", "text": { "en": "WITH RECOMPILE, ENCRYPTION and TRY/CATCH" } },
+        { "id": "c", "text": { "en": "EXECUTE AS OWNER, NOCOUNT and XACT_ABORT" } },
+        { "id": "d", "text": { "en": "Nothing special — any procedure can be native" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The native-compilation trio: NATIVE_COMPILATION + SCHEMABINDING + BEGIN ATOMIC WITH (TRANSACTION ISOLATION LEVEL = ..., LANGUAGE = ...). The other combinations are ordinary (and partly unrelated) options; native procs also only touch memory-optimized objects." },
+      "example": { "en": "CREATE PROCEDURE p WITH NATIVE_COMPILATION, SCHEMABINDING AS BEGIN ATOMIC WITH (TRANSACTION ISOLATION LEVEL=SNAPSHOT, LANGUAGE=N'English') ... END" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/in-memory-oltp/natively-compiled-stored-procedures"]
+    },
+    {
+      "id": "d1-proc-0044",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-procs-triggers",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "SET XACT_ABORT ON inside a procedure changes error behavior how?" },
+      "options": [
+        { "id": "a", "text": { "en": "Most runtime errors automatically roll back the entire transaction instead of possibly continuing" } },
+        { "id": "b", "text": { "en": "Errors are suppressed" } },
+        { "id": "c", "text": { "en": "Only syntax errors abort" } },
+        { "id": "d", "text": { "en": "It disables TRY/CATCH" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "XACT_ABORT ON makes statement-terminating errors doom and roll back the transaction — closing the gap where some errors (like lock timeouts) would otherwise leave a half-done transaction open. It never suppresses (b), isn't about syntax errors (c — those fail at compile), and TRY/CATCH still catches (d), with XACT_STATE() = -1." },
+      "example": { "en": "Best practice for transactional procs: SET NOCOUNT ON; SET XACT_ABORT ON;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/set-xact-abort-transact-sql"]
+    },
+    {
+      "id": "d1-proc-0045",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-procs-triggers",
+      "type": "dragdrop-order", "difficulty": "medium",
+      "text": { "en": "Order what happens when an INSERT runs against a table with a CHECK constraint and an AFTER INSERT trigger." },
+      "items": [
+        { "id": "i1", "text": { "en": "The INSERT statement executes and rows are placed" } },
+        { "id": "i2", "text": { "en": "Constraints (CHECK/FK) are validated" } },
+        { "id": "i3", "text": { "en": "The AFTER trigger fires with inserted populated" } },
+        { "id": "i4", "text": { "en": "The statement's transaction completes (if nothing rolled back)" } }
+      ],
+      "answer": ["i2", "i1", "i3", "i4"],
+      "explanation": { "en": "Constraint validation happens as part of performing the DML and BEFORE after-triggers: if a CHECK fails, the trigger never fires. Then the AFTER trigger runs inside the same transaction, and only afterwards does the statement complete. (INSTEAD OF triggers would replace step 1-2 entirely.)" },
+      "example": { "en": "Consequence: AFTER triggers can rely on constraint-valid data; validation logic in triggers duplicates what constraints do earlier and cheaper." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/triggers/dml-triggers"]
+    },
+    {
+      "id": "d1-proc-0046",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-procs-triggers",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "To verify which triggers exist on Sales.Orders and whether they're disabled, query:" },
+      "options": [
+        { "id": "a", "text": { "en": "sys.triggers (is_disabled column) filtered by parent_id = OBJECT_ID('Sales.Orders')" } },
+        { "id": "b", "text": { "en": "sys.dm_os_schedulers" } },
+        { "id": "c", "text": { "en": "INFORMATION_SCHEMA.TRIGGERS" } },
+        { "id": "d", "text": { "en": "sys.trigger_events only" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "sys.triggers lists DML/DDL triggers with is_disabled, is_instead_of_trigger, etc. INFORMATION_SCHEMA has no TRIGGERS view in SQL Server (c — unlike MySQL). sys.trigger_events (d) maps triggers to events but lacks status. Schedulers (b) are CPU internals." },
+      "example": { "en": "SELECT name, is_disabled, is_instead_of_trigger FROM sys.triggers WHERE parent_id = OBJECT_ID('Sales.Orders');" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-triggers-transact-sql"]
+    },
+    {
+      "id": "d1-proc-0047",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-procs-triggers",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A proc builds a temp table, and its callers complain about recompiles. Which temp-object choice reduces recompilations at the cost of weaker statistics?" },
+      "options": [
+        { "id": "a", "text": { "en": "Switching from #temp tables to @table variables" } },
+        { "id": "b", "text": { "en": "Switching from @table variables to #temp tables" } },
+        { "id": "c", "text": { "en": "Using global ##temp tables" } },
+        { "id": "d", "text": { "en": "Using a permanent staging table per session" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Table variables don't trigger stats-based recompiles (they historically carry minimal statistics — improved by deferred compilation in 2019+ but still coarser), while #temp tables have real statistics that cause recompilations when data changes significantly. (b) reverses the trade. Global temps (c) add sharing hazards; permanent per-session staging (d) adds cleanup/concurrency complexity." },
+      "example": { "en": "Rule of thumb: big rowsets + complex joins → #temp (stats matter); small control sets → @table." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/performance/intelligent-query-processing-details"]
+    },
+    {
+      "id": "d1-proc-0048",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-procs-triggers",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which requirement makes an INSTEAD OF trigger mandatory rather than optional?" },
+      "options": [
+        { "id": "a", "text": { "en": "Allowing INSERTs against a view containing a UNION ALL over two tables" } },
+        { "id": "b", "text": { "en": "Auditing successful updates" } },
+        { "id": "c", "text": { "en": "Enforcing a value range" } },
+        { "id": "d", "text": { "en": "Logging schema changes" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Non-updatable view shapes (UNION ALL, aggregates, DISTINCT…) accept DML only through INSTEAD OF triggers that route rows manually. Auditing (b) suits AFTER triggers/temporal, ranges (c) are CHECK constraints, schema logging (d) is DDL triggers." },
+      "example": { "en": "The trigger decides: new row's PartitionKey < 100 → insert into TableA, else TableB." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-trigger-transact-sql"]
+    },
+    {
+      "id": "d1-proc-0049",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-procs-triggers",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Grant the Reporting role the ability to run every procedure in the Sales schema with ONE statement:" },
+      "options": [
+        { "id": "a", "text": { "en": "GRANT EXECUTE ON SCHEMA::Sales TO Reporting;" } },
+        { "id": "b", "text": { "en": "GRANT EXECUTE ON Sales.* TO Reporting;" } },
+        { "id": "c", "text": { "en": "GRANT ALL TO Reporting;" } },
+        { "id": "d", "text": { "en": "GRANT RUN ON SCHEMA Sales TO Reporting;" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Schema-scoped grants (SCHEMA::name) cover all current AND future procedures in it. Sales.* (b) is MySQL wildcard syntax. GRANT ALL (c) is deprecated, over-broad and doesn't target the schema. RUN (d) isn't a permission." },
+      "example": { "en": "Schema-level grants are the maintainable pattern — no per-proc grant scripts after each deployment." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/grant-schema-permissions-transact-sql"]
+    },
+    {
+      "id": "d1-proc-0050",
+      "domain": "design-develop", "topic": "t-programmability", "subtopic": "d1-procs-triggers",
+      "type": "dragdrop-match", "difficulty": "hard",
+      "text": { "en": "Match the error-handling tool to its role." },
+      "items": [
+        { "id": "i1", "text": { "en": "Re-raise the caught error unchanged" } },
+        { "id": "i2", "text": { "en": "Report whether the transaction is doomed" } },
+        { "id": "i3", "text": { "en": "Force runtime errors to abort the transaction" } },
+        { "id": "i4", "text": { "en": "Read the failing line number in CATCH" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "THROW (no arguments)" } },
+        { "id": "t2", "text": { "en": "XACT_STATE()" } },
+        { "id": "t3", "text": { "en": "SET XACT_ABORT ON" } },
+        { "id": "t4", "text": { "en": "ERROR_LINE()" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "The four pillars of robust T-SQL error handling: parameterless THROW re-raises; XACT_STATE() classifies the transaction (1/0/-1); XACT_ABORT ON hardens abort semantics; ERROR_LINE/NUMBER/MESSAGE/etc. provide diagnostics inside CATCH." },
+      "example": { "en": "Together they form the canonical template every transactional procedure should follow." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/language-elements/try-catch-transact-sql"]
+    }
+  ]
+}

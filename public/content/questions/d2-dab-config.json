@@ -1,0 +1,872 @@
+{
+  "subtopic": "d2-dab-config",
+  "cases": [
+    {
+      "id": "case-dab-books",
+      "title": { "en": "Contoso Books catalog API" },
+      "scenario": {
+        "en": "Contoso Books exposes its Azure SQL Database catalog through **Data API builder 2.0**, hosted on Azure Container Apps with **three replicas**.\n- Anonymous visitors browse about 200,000 books; prices and stock change once per night in a batch job.\n- Staff edit books from a .NET admin app (Entra ID sign-in) that reuses one C# `Book` class (including `Id`) for every request.\n- A mobile app asks for 500 books per page but always receives 100.\n- Product wants keyword search over the long `Description` column, which already has a full-text index."
+      }
+    }
+  ],
+  "questions": [
+    {
+      "id": "d2-dab-0001",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-dab-config",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "What are the three top-level sections of a Data API builder configuration file (dab-config.json), besides `$schema`?" },
+      "options": [
+        { "id": "a", "text": { "en": "data-source, runtime, entities" } },
+        { "id": "b", "text": { "en": "connection, controllers, models" } },
+        { "id": "c", "text": { "en": "server, database, tables" } },
+        { "id": "d", "text": { "en": "inputs, outputs, triggers" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "data-source holds the database type and connection string, runtime holds global REST/GraphQL/host/cache/pagination settings, and entities lists each exposed object with its permissions. The other names describe MVC apps, servers or Functions bindings, not DAB." },
+      "example": { "en": "{ \"$schema\": \"…dab.draft.schema.json\", \"data-source\": {…}, \"runtime\": {…}, \"entities\": {…} }" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/configuration/"]
+    },
+    {
+      "id": "d2-dab-0002",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-dab-config",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "You're starting a new Data API builder project for Azure SQL Database. Which CLI command creates the initial configuration file?" },
+      "options": [
+        { "id": "a", "text": { "en": "dab init --database-type mssql --connection-string \"@env('SQL_CONN')\"" } },
+        { "id": "b", "text": { "en": "dab start --new" } },
+        { "id": "c", "text": { "en": "dab add --init" } },
+        { "id": "d", "text": { "en": "dotnet new webapi" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "dab init writes dab-config.json with the data source and runtime defaults. dab start runs the engine using an existing file, dab add adds entities to an existing file, and dotnet new webapi scaffolds a hand-written API, which DAB is meant to replace." },
+      "example": { "en": "dab init --database-type mssql --connection-string \"@env('SQL_CONN')\" --host-mode development" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/command-line/dab-init"]
+    },
+    {
+      "id": "d2-dab-0003",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-dab-config",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "The configuration file already exists. Which command exposes the table dbo.Authors as a new entity named Author with anonymous read access?" },
+      "options": [
+        { "id": "a", "text": { "en": "dab add Author --source dbo.Authors --permissions \"anonymous:read\"" } },
+        { "id": "b", "text": { "en": "dab init Author --source dbo.Authors" } },
+        { "id": "c", "text": { "en": "dab configure --entity Author" } },
+        { "id": "d", "text": { "en": "dab validate --add Author" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "dab add creates a new entity with its source and permissions. dab init creates the file, dab configure changes runtime and data-source settings (not entities), and dab validate only checks the file." },
+      "example": { "en": "dab add Author --source dbo.Authors --permissions \"anonymous:read\"" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/command-line/dab-add"]
+    },
+    {
+      "id": "d2-dab-0004",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-dab-config",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "dab-config.json is committed to Git. How should it reference the database connection string so no secret is stored in the file?" },
+      "options": [
+        { "id": "a", "text": { "en": "\"connection-string\": \"@env('SQL_CONN')\" and set SQL_CONN as an environment variable or app setting at runtime" } },
+        { "id": "b", "text": { "en": "Base64-encode the connection string in the file" } },
+        { "id": "c", "text": { "en": "Put the connection string in the entity's description" } },
+        { "id": "d", "text": { "en": "Leave connection-string empty; DAB discovers the database automatically" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The @env('NAME') syntax makes DAB read the value from an environment variable (or a .env file locally), keeping secrets out of source control. Base64 is encoding, not protection; descriptions are documentation; DAB can't discover databases on its own." },
+      "example": { "en": "In Azure Container Apps, store SQL_CONN as a secret-backed environment variable, ideally with Authentication=Active Directory Managed Identity (no password)." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/configuration/data-source"]
+    },
+    {
+      "id": "d2-dab-0005",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-dab-config",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "With default runtime settings, at which URL does Data API builder serve the REST endpoint for an entity named Book?" },
+      "options": [
+        { "id": "a", "text": { "en": "https://{host}/api/Book" } },
+        { "id": "b", "text": { "en": "https://{host}/rest/Book" } },
+        { "id": "c", "text": { "en": "https://{host}/odata/Book" } },
+        { "id": "d", "text": { "en": "https://{host}/graphql/Book" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "runtime.rest.path defaults to /api, and the entity path defaults to the entity name (case sensitive). /graphql is the GraphQL endpoint and doesn't use per-entity paths; /rest and /odata aren't DAB defaults." },
+      "example": { "en": "GET https://localhost:5001/api/Book" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/concept/rest/overview"]
+    },
+    {
+      "id": "d2-dab-0006",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-dab-config",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "What is the default path of the GraphQL endpoint in Data API builder?" },
+      "options": [
+        { "id": "a", "text": { "en": "/graphql" } },
+        { "id": "b", "text": { "en": "/api/graphql" } },
+        { "id": "c", "text": { "en": "/gql" } },
+        { "id": "d", "text": { "en": "/query" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "runtime.graphql.path defaults to /graphql, and every GraphQL request is a POST to that single endpoint. The other paths aren't defaults (you could configure a custom path if needed)." },
+      "example": { "en": "POST https://localhost:5001/graphql with body { \"query\": \"{ books { items { id title } } }\" }" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/concept/graphql/overview"]
+    },
+    {
+      "id": "d2-dab-0007",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-dab-config",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A client calls GET /api/Book without any paging parameter. The table has 5,000 rows and pagination settings are at their defaults. How many items does the response contain?" },
+      "options": [
+        { "id": "a", "text": { "en": "100, plus a nextLink to the next page" } },
+        { "id": "b", "text": { "en": "All 5,000" } },
+        { "id": "c", "text": { "en": "1,000" } },
+        { "id": "d", "text": { "en": "50" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "runtime.pagination.default-page-size is 100, so DAB returns the first 100 items and a nextLink containing an $after continuation token. It never returns an unbounded result by default; 1,000 and 50 aren't defaults." },
+      "example": { "en": "{ \"value\": [ …100 items… ], \"nextLink\": \"https://…/api/Book?$after=WyJ…\" }" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/configuration/runtime"]
+    },
+    {
+      "id": "d2-dab-0008",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-dab-config",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which runtime setting caps how many items a client can request in one page with $first (REST) or first (GraphQL)?" },
+      "options": [
+        { "id": "a", "text": { "en": "runtime.pagination.max-page-size" } },
+        { "id": "b", "text": { "en": "runtime.pagination.default-page-size" } },
+        { "id": "c", "text": { "en": "runtime.host.max-response-size-mb" } },
+        { "id": "d", "text": { "en": "runtime.graphql.depth-limit" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "max-page-size (default 100,000) is the upper bound a client can request. default-page-size applies only when the client doesn't ask for a size. max-response-size-mb limits payload size, and depth-limit limits GraphQL nesting, not item counts." },
+      "example": { "en": "\"pagination\": { \"default-page-size\": 50, \"max-page-size\": 1000 }" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/configuration/runtime"]
+    },
+    {
+      "id": "d2-dab-0009",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-dab-config",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "You added `\"cache\": { \"enabled\": true }` to the Book entity, but responses are never cached. The runtime section has no cache settings. What's wrong?" },
+      "options": [
+        { "id": "a", "text": { "en": "Caching is disabled globally by default; you must also set runtime.cache.enabled to true" } },
+        { "id": "b", "text": { "en": "ttl-seconds must be at least 3600" } },
+        { "id": "c", "text": { "en": "Caching only works for stored procedures" } },
+        { "id": "d", "text": { "en": "The entity needs a level-2 Redis cache before any caching works" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Caching needs both switches: runtime.cache.enabled (default false) and the entity's cache.enabled. When the global switch is off, entity settings are ignored. There's no minimum TTL (the global default is 5 seconds); caching targets entity reads, not just procedures; and level 2 is optional (L1 works alone)." },
+      "example": { "en": "\"runtime\": { \"cache\": { \"enabled\": true, \"ttl-seconds\": 30 } }" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/concept/cache/level-1"]
+    },
+    {
+      "id": "d2-dab-0010",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-dab-config",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "For each statement about Data API builder response caching, answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "An entity that omits cache.ttl-seconds inherits the global runtime.cache.ttl-seconds value." } },
+        { "id": "s2", "text": { "en": "The built-in cache applies to GraphQL queries as well as REST requests." } },
+        { "id": "s3", "text": { "en": "If runtime.cache.enabled is false, an entity with cache.enabled true is still cached." } },
+        { "id": "s4", "text": { "en": "Caching is best suited to read-heavy data that changes infrequently." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "no", "s3": "no", "s4": "yes" },
+      "explanation": { "en": "Entity TTL falls back to the global TTL. The documented cache behavior applies only to REST endpoints. The global switch must be on for entity caching to work. Because cached results can be stale until the TTL expires, the cache suits read-heavy, low-volatility data." },
+      "example": { "en": "Cache a product catalog for 60 seconds; don't cache account balances." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/concept/cache/level-1"]
+    },
+    {
+      "id": "d2-dab-0011",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-dab-config",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "You expose the view dbo.vOrderSummary as an entity in DAB 2.0. Single-item reads by key fail because DAB has no key for the view. What's the recommended fix?" },
+      "options": [
+        { "id": "a", "text": { "en": "Add a fields entry for the key column with \"primary-key\": true" } },
+        { "id": "b", "text": { "en": "Add a PRIMARY KEY constraint to the view" } },
+        { "id": "c", "text": { "en": "Change source.type to table" } },
+        { "id": "d", "text": { "en": "Enable caching on the entity" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Views have no primary key metadata, so you must declare one. In DAB 2.0 the fields array with primary-key: true replaces the deprecated source.key-fields. Views can't have PRIMARY KEY constraints, declaring a view as a table misdescribes it, and caching doesn't supply a key." },
+      "example": { "en": "\"fields\": [ { \"name\": \"OrderId\", \"primary-key\": true } ]" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/configuration/entities"]
+    },
+    {
+      "id": "d2-dab-0012",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-dab-config",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "The column sku_title should appear as title in the API. In DAB 2.0, which configuration is preferred?" },
+      "options": [
+        { "id": "a", "text": { "en": "\"fields\": [ { \"name\": \"sku_title\", \"alias\": \"title\" } ]" } },
+        { "id": "b", "text": { "en": "\"mappings\": { \"sku_title\": \"title\" }, the only supported option" } },
+        { "id": "c", "text": { "en": "\"rest\": { \"path\": \"title\" }" } },
+        { "id": "d", "text": { "en": "\"graphql\": { \"type\": \"title\" }" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "DAB 2.0 deprecates mappings in favor of fields[].alias (mappings still loads but is on its way out, and it can't coexist with fields on one entity). rest.path renames the entity route, and graphql.type renames the GraphQL type, not a column." },
+      "example": { "en": "GET /api/Book?$select=id,title returns the aliased name." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/configuration/entities"]
+    },
+    {
+      "id": "d2-dab-0013",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-dab-config",
+      "type": "dragdrop-order", "difficulty": "easy",
+      "text": { "en": "Put the Data API builder CLI steps in the order you'd run them for a new project." },
+      "items": [
+        { "id": "i1", "text": { "en": "dab init (create dab-config.json with the data source)" } },
+        { "id": "i2", "text": { "en": "dab add (add each entity with permissions)" } },
+        { "id": "i3", "text": { "en": "dab update (add relationships, mappings or extra permissions)" } },
+        { "id": "i4", "text": { "en": "dab validate (check the configuration against the database)" } },
+        { "id": "i5", "text": { "en": "dab start (run the API locally)" } }
+      ],
+      "answer": ["i1", "i2", "i3", "i4", "i5"],
+      "explanation": { "en": "You need a file before adding entities, entities before updating them, and a valid file before starting the engine. Validating before start catches schema, permission and metadata errors early." },
+      "example": { "en": "dab init … && dab add Book … && dab update Book --relationship … && dab validate && dab start" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/command-line/"]
+    },
+    {
+      "id": "d2-dab-0014",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-dab-config",
+      "type": "dragdrop-match", "difficulty": "medium",
+      "text": { "en": "Match each runtime setting to what it controls." },
+      "items": [
+        { "id": "i1", "text": { "en": "rest.request-body-strict" } },
+        { "id": "i2", "text": { "en": "graphql.allow-introspection" } },
+        { "id": "i3", "text": { "en": "graphql.depth-limit" } },
+        { "id": "i4", "text": { "en": "host.max-response-size-mb" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "Reject request bodies that contain unknown or disallowed fields" } },
+        { "id": "t2", "text": { "en": "Let clients and tools query the GraphQL schema" } },
+        { "id": "t3", "text": { "en": "Limit how deeply GraphQL queries may nest" } },
+        { "id": "t4", "text": { "en": "Limit the size of a single database response" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "request-body-strict (default true) returns 400 for extra fields; allow-introspection (default true) exposes the schema; depth-limit protects against costly nested queries; max-response-size-mb caps result size." },
+      "example": { "en": "Production hardening: allow-introspection false, depth-limit 6." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/configuration/runtime"]
+    },
+    {
+      "id": "d2-dab-0015",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-dab-config",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "dbo.SearchBooks is a read-only stored procedure. Anonymous clients must call it with HTTP GET, and it must appear under Query (not Mutation) in the GraphQL schema. Complete the entity." },
+      "code": "\"SearchBooks\": {\n  \"source\": { \"object\": \"dbo.SearchBooks\", \"type\": \"[BLANK1]\" },\n  \"rest\": { \"methods\": [ \"[BLANK2]\" ] },\n  \"graphql\": { \"operation\": \"[BLANK3]\" },\n  \"permissions\": [ { \"role\": \"anonymous\", \"actions\": [ \"[BLANK4]\" ] } ]\n}",
+      "codeLang": "json",
+      "blanks": [
+        { "id": "b1", "label": { "en": "BLANK1" }, "choices": [
+          { "id": "c1", "text": { "en": "stored-procedure" } },
+          { "id": "c2", "text": { "en": "view" } },
+          { "id": "c3", "text": { "en": "function" } }
+        ] },
+        { "id": "b2", "label": { "en": "BLANK2" }, "choices": [
+          { "id": "c1", "text": { "en": "post" } },
+          { "id": "c2", "text": { "en": "get" } },
+          { "id": "c3", "text": { "en": "delete" } }
+        ] },
+        { "id": "b3", "label": { "en": "BLANK3" }, "choices": [
+          { "id": "c1", "text": { "en": "mutation" } },
+          { "id": "c2", "text": { "en": "subscription" } },
+          { "id": "c3", "text": { "en": "query" } }
+        ] },
+        { "id": "b4", "label": { "en": "BLANK4" }, "choices": [
+          { "id": "c1", "text": { "en": "read" } },
+          { "id": "c2", "text": { "en": "execute" } },
+          { "id": "c3", "text": { "en": "create" } }
+        ] }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c2", "b3": "c3", "b4": "c2" },
+      "explanation": { "en": "Procedures use type stored-procedure (function isn't a source type). Their REST method defaults to POST, so list get explicitly. Their GraphQL operation defaults to mutation, so set query. Procedures are invoked through the execute action; read/create apply to tables and views." },
+      "example": { "en": "GET /api/SearchBooks?q=sql   |   { executeSearchBooks(q: \"sql\") { title } }" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/configuration/entities"]
+    },
+    {
+      "id": "d2-dab-0016",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-dab-config",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A stored-procedure entity doesn't set graphql.operation. Where does it appear in the GraphQL schema?" },
+      "options": [
+        { "id": "a", "text": { "en": "Under Mutation, as executeEntityName" } },
+        { "id": "b", "text": { "en": "Under Query, as entityName_by_pk" } },
+        { "id": "c", "text": { "en": "Under Subscription" } },
+        { "id": "d", "text": { "en": "It isn't exposed in GraphQL until operation is set" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "For stored procedures, graphql.operation defaults to mutation, and DAB names the field execute{EntityName}. _by_pk queries belong to tables and views, DAB doesn't generate subscriptions, and the procedure is exposed even when operation is omitted." },
+      "example": { "en": "mutation { executeArchiveOrders(beforeDate: \"2024-01-01\") { archived } }" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/configuration/entities"]
+    },
+    {
+      "id": "d2-dab-0017",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-dab-config",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A stored-procedure entity doesn't list rest.methods. A client calls it with GET and fails. Which HTTP method does DAB allow by default for procedures?" },
+      "options": [
+        { "id": "a", "text": { "en": "POST" } },
+        { "id": "b", "text": { "en": "GET" } },
+        { "id": "c", "text": { "en": "PUT" } },
+        { "id": "d", "text": { "en": "All methods" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "rest.methods applies only to stored procedures and defaults to POST. Add \"get\" (or replace the list) to allow GET calls with parameters in the query string. PUT and all methods aren't the default." },
+      "example": { "en": "\"rest\": { \"methods\": [ \"get\", \"post\" ] }" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/configuration/entities"]
+    },
+    {
+      "id": "d2-dab-0018",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-dab-config",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A permission grants the actions [\"*\"] to a role on a stored-procedure entity. Which action does that grant?" },
+      "options": [
+        { "id": "a", "text": { "en": "execute only" } },
+        { "id": "b", "text": { "en": "create, read, update and delete" } },
+        { "id": "c", "text": { "en": "read and execute" } },
+        { "id": "d", "text": { "en": "Nothing; wildcards aren't allowed on procedures" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The wildcard expands to execute for stored procedures, and to create, read, update and delete for tables and views. Wildcards are valid on procedures." },
+      "example": { "en": "dab add GetBookById --source dbo.get_book_by_id --source.type stored-procedure --permissions \"anonymous:*\"" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/configuration/entities"]
+    },
+    {
+      "id": "d2-dab-0019",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-dab-config",
+      "type": "multiple", "difficulty": "easy", "selectCount": 3,
+      "text": { "en": "Which three values are valid for an entity's source.type? (Select 3)" },
+      "options": [
+        { "id": "a", "text": { "en": "table" } },
+        { "id": "b", "text": { "en": "view" } },
+        { "id": "c", "text": { "en": "stored-procedure" } },
+        { "id": "d", "text": { "en": "synonym" } },
+        { "id": "e", "text": { "en": "sequence" } }
+      ],
+      "answer": ["a", "b", "c"],
+      "explanation": { "en": "DAB exposes tables, views and stored procedures. Synonyms and sequences aren't entity source types; wrap logic you need in a view or procedure instead." },
+      "example": { "en": "\"source\": { \"object\": \"dbo.vTopSellers\", \"type\": \"view\" }" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/configuration/entities"]
+    },
+    {
+      "id": "d2-dab-0020",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-dab-config",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "What does `\"graphql\": { \"type\": { \"singular\": \"Person\", \"plural\": \"People\" } }` change for an entity?" },
+      "options": [
+        { "id": "a", "text": { "en": "The GraphQL type and query names, so clients query people and person_by_pk instead of default names" } },
+        { "id": "b", "text": { "en": "The REST URL of the entity" } },
+        { "id": "c", "text": { "en": "The database table name" } },
+        { "id": "d", "text": { "en": "Which roles may read the entity" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "graphql.type sets the GraphQL naming (singular for the type and _by_pk query, plural for the list query). REST paths come from rest.path, the table name from source.object, and access from permissions." },
+      "example": { "en": "{ people(first: 10) { items { id name } } }" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/configuration/entities"]
+    },
+    {
+      "id": "d2-dab-0021",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-dab-config",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which REST request returns books that cost less than 20?" },
+      "options": [
+        { "id": "a", "text": { "en": "GET /api/Book?$filter=price lt 20" } },
+        { "id": "b", "text": { "en": "GET /api/Book?filter=price<20" } },
+        { "id": "c", "text": { "en": "GET /api/Book?$where=price lt 20" } },
+        { "id": "d", "text": { "en": "GET /api/Book?$filter=price < 20" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "DAB REST uses OData-style $filter with operators such as eq, ne, gt, ge, lt and le. Parameters are case sensitive and need the $ prefix; $where doesn't exist; symbolic operators like < aren't OData syntax." },
+      "example": { "en": "GET /api/Book?$filter=price lt 20 and year ge 2020" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/keywords/filter-rest"]
+    },
+    {
+      "id": "d2-dab-0022",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-dab-config",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which GraphQL query returns books whose title contains \"SQL\"?" },
+      "options": [
+        { "id": "a", "text": { "en": "{ books(filter: { title: { contains: \"SQL\" } }) { items { id title } } }" } },
+        { "id": "b", "text": { "en": "{ books(where: \"title LIKE '%SQL%'\") { items { id title } } }" } },
+        { "id": "c", "text": { "en": "{ books(filter: \"title eq 'SQL'\") { items { id title } } }" } },
+        { "id": "d", "text": { "en": "{ books(search: \"SQL\") { id title } }" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "DAB GraphQL takes a filter input object per field, with operators like eq, neq, gt, lt, contains, startsWith and isNull. There's no where/search argument, the string filter is REST syntax, and list results are wrapped in items." },
+      "example": { "en": "{ books(filter: { and: [ { year: { gte: 2020 } }, { title: { contains: \"SQL\" } } ] }) { items { title } } }" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/keywords/filter-graphql"]
+    },
+    {
+      "id": "d2-dab-0023",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-dab-config",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A REST response contains a nextLink property. How does the client get the next page?" },
+      "options": [
+        { "id": "a", "text": { "en": "Call the nextLink URL, which carries an $after continuation token" } },
+        { "id": "b", "text": { "en": "Add $page=2 to the original URL" } },
+        { "id": "c", "text": { "en": "Add $skip=100 to the original URL" } },
+        { "id": "d", "text": { "en": "Repeat the same request; DAB remembers the position per client" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "DAB uses keyset (cursor) pagination: nextLink includes $after with an opaque token marking where the last page ended. DAB doesn't support $page or $skip, and the server keeps no per-client state." },
+      "example": { "en": "GET /api/Book?$first=50&$after=WyJCb29rNTAiXQ==" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/keywords/after-rest"]
+    },
+    {
+      "id": "d2-dab-0024",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-dab-config",
+      "type": "multiple", "difficulty": "medium", "selectCount": 2,
+      "text": { "en": "A GraphQL client pages through books. Which two fields should it request to know whether another page exists and where to resume? (Select 2)" },
+      "options": [
+        { "id": "a", "text": { "en": "hasNextPage" } },
+        { "id": "b", "text": { "en": "endCursor" } },
+        { "id": "c", "text": { "en": "totalCount" } },
+        { "id": "d", "text": { "en": "nextLink" } },
+        { "id": "e", "text": { "en": "pageNumber" } }
+      ],
+      "answer": ["a", "b"],
+      "explanation": { "en": "DAB connection results expose items, hasNextPage and endCursor; pass endCursor to the after argument on the next call. nextLink is the REST equivalent, and totalCount/pageNumber aren't part of the DAB connection type." },
+      "example": { "en": "{ books(first: 20, after: \"eyJpZCI6MjB9\") { items { id } hasNextPage endCursor } }" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/concept/graphql/overview"]
+    },
+    {
+      "id": "d2-dab-0025",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-dab-config",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A reporting tool sends GET /api/Sale?$first=-1. What does DAB return?" },
+      "options": [
+        { "id": "a", "text": { "en": "Up to the configured maximum page size of items" } },
+        { "id": "b", "text": { "en": "An error, because page size can't be negative" } },
+        { "id": "c", "text": { "en": "Only the last item" } },
+        { "id": "d", "text": { "en": "Every row, ignoring all pagination limits" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "In DAB, $first=-1 (or first: -1 in GraphQL) asks for the configured maximum page size. It isn't an error, it doesn't mean 'last item', and it never bypasses max-page-size." },
+      "example": { "en": "Keep max-page-size reasonable so -1 can't pull huge result sets." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/keywords/first-rest"]
+    },
+    {
+      "id": "d2-dab-0026",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-dab-config",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Developers want Swagger UI for REST and a GraphQL IDE while working locally, without enabling them in production. Which setting should differ between the environments?" },
+      "options": [
+        { "id": "a", "text": { "en": "runtime.host.mode: development locally, production in Azure" } },
+        { "id": "b", "text": { "en": "runtime.rest.request-body-strict" } },
+        { "id": "c", "text": { "en": "data-source.database-type" } },
+        { "id": "d", "text": { "en": "runtime.cache.enabled" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Development mode turns on Swagger UI and the Nitro GraphQL IDE (plus more detailed logging); production is the default and hides them. The other settings control body validation, the database provider and caching." },
+      "example": { "en": "dab init … --host-mode development (local config) and a production config for deployment." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/configuration/runtime"]
+    },
+    {
+      "id": "d2-dab-0027",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-dab-config",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Caching is enabled for the Product entity. An admin screen sends a REST request with the header Cache-Control: no-cache. What does DAB do?" },
+      "options": [
+        { "id": "a", "text": { "en": "Skips the cache, reads fresh data from the database, and refreshes the cache with the result" } },
+        { "id": "b", "text": { "en": "Returns the cached value even if it's stale" } },
+        { "id": "c", "text": { "en": "Returns 504 if the item isn't cached" } },
+        { "id": "d", "text": { "en": "Disables caching for the entity permanently" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "no-cache forces a database read and updates the cache. Returning stale data would ignore the directive, a 504 describes only-if-cached semantics, and request headers never change configuration." },
+      "example": { "en": "GET /api/Product/id/42 with Cache-Control: no-cache" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/concept/cache/http-headers"]
+    },
+    {
+      "id": "d2-dab-0028",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-dab-config",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "With caching enabled, a client sends Cache-Control: no-store on a REST read. How does DAB handle it?" },
+      "options": [
+        { "id": "a", "text": { "en": "It uses a cached value if one exists; otherwise it queries the database without storing the new result" } },
+        { "id": "b", "text": { "en": "It always queries the database and then caches the result" } },
+        { "id": "c", "text": { "en": "It deletes the entity's cache" } },
+        { "id": "d", "text": { "en": "It rejects the request with 400" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "In DAB, no-store means 'don't write this response to the cache'; an existing entry can still be served. Option B describes no-cache. Neither directive purges the cache or causes an error." },
+      "example": { "en": "Use no-store for one-off exports you don't want filling the cache." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/concept/cache/http-headers"]
+    },
+    {
+      "id": "d2-dab-0029",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-dab-config",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "DAB runs as several scaled-out instances and each keeps its own in-memory cache, so hit rates are low. What improves this?" },
+      "options": [
+        { "id": "a", "text": { "en": "Configure the level-2 (Redis) distributed cache and use cache level L1L2" } },
+        { "id": "b", "text": { "en": "Set cache level to L1 on every entity" } },
+        { "id": "c", "text": { "en": "Raise default-page-size" } },
+        { "id": "d", "text": { "en": "Disable request-body-strict" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "L1L2 combines each instance's memory cache with a shared Redis cache, so a result cached by one instance helps all of them. L1 is memory only, per instance. Page size and body validation don't affect caching." },
+      "example": { "en": "runtime.cache.level-2 with a Redis connection string; entity cache.level: L1L2 (the default level)." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/concept/cache/level-2"]
+    },
+    {
+      "id": "d2-dab-0030",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-dab-config",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "For each statement about runtime.rest.request-body-strict, answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "It's true by default." } },
+        { "id": "s2", "text": { "en": "When true, a body containing a field that isn't in the entity returns 400 Bad Request." } },
+        { "id": "s3", "text": { "en": "Setting it to false lets a .NET client reuse one model class (including the key) for POST and PATCH." } },
+        { "id": "s4", "text": { "en": "It controls whether GraphQL introspection is allowed." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "yes", "s3": "yes", "s4": "no" },
+      "explanation": { "en": "Strict mode is on by default and rejects unknown fields and fields that belong in the URL (like the key on PATCH). Turning it off ignores them, so one C# type can serve all operations. Introspection is a separate GraphQL setting." },
+      "example": { "en": "\"rest\": { \"request-body-strict\": false }" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/concept/rest/overview"]
+    },
+    {
+      "id": "d2-dab-0031",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-dab-config",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Security review: production clients shouldn't be able to download the full GraphQL schema. Which setting addresses this?" },
+      "options": [
+        { "id": "a", "text": { "en": "runtime.graphql.allow-introspection: false" } },
+        { "id": "b", "text": { "en": "runtime.graphql.enabled: false" } },
+        { "id": "c", "text": { "en": "runtime.host.cors.allow-credentials: false" } },
+        { "id": "d", "text": { "en": "runtime.pagination.max-page-size: 10" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Turning off introspection blocks schema queries while GraphQL keeps working. Disabling GraphQL removes the endpoint entirely, which goes further than asked. CORS credentials and page size don't affect the schema." },
+      "example": { "en": "\"graphql\": { \"allow-introspection\": false }" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/configuration/runtime"]
+    },
+    {
+      "id": "d2-dab-0032",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-dab-config",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Load tests show clients can send GraphQL queries that nest relationships ten levels deep and overload the database. Which setting limits this?" },
+      "options": [
+        { "id": "a", "text": { "en": "runtime.graphql.depth-limit" } },
+        { "id": "b", "text": { "en": "runtime.cache.ttl-seconds" } },
+        { "id": "c", "text": { "en": "runtime.rest.path" } },
+        { "id": "d", "text": { "en": "entities.{name}.graphql.operation" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "depth-limit rejects queries that nest deeper than the configured value (no limit by default). Cache TTL, REST path and procedure operation type don't restrict query shape." },
+      "example": { "en": "\"graphql\": { \"depth-limit\": 4 }" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/configuration/runtime"]
+    },
+    {
+      "id": "d2-dab-0033",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-dab-config",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "Row-level security predicates in Azure SQL read SESSION_CONTEXT(N'oid'). What must you configure so requests through DAB populate it?" },
+      "options": [
+        { "id": "a", "text": { "en": "data-source.options.set-session-context: true, so DAB sends the caller's token claims to SESSION_CONTEXT" } },
+        { "id": "b", "text": { "en": "runtime.host.mode: development" } },
+        { "id": "c", "text": { "en": "A database policy with @claims on the create action" } },
+        { "id": "d", "text": { "en": "Nothing; SQL always receives the JWT" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "With set-session-context enabled (SQL Server family), DAB calls sp_set_session_context with the authenticated user's claims before running queries, so RLS predicates can use them. Host mode doesn't do this, database policies don't support create, and SQL never sees the JWT by itself." },
+      "example": { "en": "CREATE FUNCTION Security.fn_owner(@OwnerId NVARCHAR(100)) … WHERE @OwnerId = CAST(SESSION_CONTEXT(N'oid') AS NVARCHAR(100));" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/concept/security/row-level-security"]
+    },
+    {
+      "id": "d2-dab-0034",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-dab-config",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which data-source.database-type value do you use for Azure SQL Database, SQL Server, Azure SQL Managed Instance and SQL database in Fabric?" },
+      "options": [
+        { "id": "a", "text": { "en": "mssql" } },
+        { "id": "b", "text": { "en": "azuresql" } },
+        { "id": "c", "text": { "en": "dwsql" } },
+        { "id": "d", "text": { "en": "cosmosdb_nosql" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "mssql covers the SQL Server engine family. dwsql targets Azure Synapse/Fabric Warehouse SQL endpoints, cosmosdb_nosql is Azure Cosmos DB, and azuresql isn't a valid value." },
+      "example": { "en": "\"data-source\": { \"database-type\": \"mssql\", \"connection-string\": \"@env('SQL_CONN')\" }" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/configuration/data-source"]
+    },
+    {
+      "id": "d2-dab-0035",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-dab-config",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A browser SPA at https://shop.contoso.com calls DAB on a different domain, and the browser blocks the calls. Which setting fixes it?" },
+      "options": [
+        { "id": "a", "text": { "en": "runtime.host.cors.origins: [\"https://shop.contoso.com\"]" } },
+        { "id": "b", "text": { "en": "runtime.rest.path: \"/shop\"" } },
+        { "id": "c", "text": { "en": "data-source.options.set-session-context: true" } },
+        { "id": "d", "text": { "en": "runtime.graphql.allow-introspection: true" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Cross-origin browser calls need the SPA's origin in the CORS allow-list (empty by default). The path, session context and introspection settings don't change CORS headers." },
+      "example": { "en": "dab init … --cors-origin \"https://shop.contoso.com\"" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/configuration/runtime"]
+    },
+    {
+      "id": "d2-dab-0036",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-dab-config",
+      "type": "multiple", "difficulty": "hard", "selectCount": 2,
+      "text": { "en": "The 'support' role may read Customer rows only for its own region and must never see the TaxId column. Which two permission settings achieve this? (Select 2)" },
+      "options": [
+        { "id": "a", "text": { "en": "fields.exclude: [\"TaxId\"] on the read action" } },
+        { "id": "b", "text": { "en": "policy.database: \"@item.Region eq @claims.region\" on the read action" } },
+        { "id": "c", "text": { "en": "runtime.pagination.default-page-size: 10" } },
+        { "id": "d", "text": { "en": "cache.enabled: false on the entity" } },
+        { "id": "e", "text": { "en": "graphql.allow-introspection: false" } }
+      ],
+      "answer": ["a", "b"],
+      "explanation": { "en": "Field include/exclude limits columns per role and action; a database policy adds a row predicate built from item fields and token claims (supported for read, update and delete). Page size, caching and introspection don't restrict which rows or columns a role can see." },
+      "example": { "en": "{ \"action\": \"read\", \"fields\": { \"include\": [\"*\"], \"exclude\": [\"TaxId\"] }, \"policy\": { \"database\": \"@item.Region eq @claims.region\" } }" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/configuration/entities"]
+    },
+    {
+      "id": "d2-dab-0037",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-dab-config",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Return the 10 newest books from 2020 onwards, returning only id and title. Complete the REST request." },
+      "code": "GET /api/Book?[BLANK1]=year ge 2020&[BLANK2]=year desc&[BLANK3]=id,title&$first=10",
+      "codeLang": "text",
+      "blanks": [
+        { "id": "b1", "label": { "en": "BLANK1" }, "choices": [
+          { "id": "c1", "text": { "en": "$filter" } },
+          { "id": "c2", "text": { "en": "$where" } },
+          { "id": "c3", "text": { "en": "filter" } }
+        ] },
+        { "id": "b2", "label": { "en": "BLANK2" }, "choices": [
+          { "id": "c1", "text": { "en": "$sort" } },
+          { "id": "c2", "text": { "en": "$orderby" } },
+          { "id": "c3", "text": { "en": "$orderBy" } }
+        ] },
+        { "id": "b3", "label": { "en": "BLANK3" }, "choices": [
+          { "id": "c1", "text": { "en": "$fields" } },
+          { "id": "c2", "text": { "en": "$project" } },
+          { "id": "c3", "text": { "en": "$select" } }
+        ] }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c2", "b3": "c3" },
+      "explanation": { "en": "DAB REST keywords are $filter, $orderby (all lowercase), $select, $first and $after, and query parameters are case sensitive, so $orderBy doesn't work. $where, $sort, $fields and $project don't exist." },
+      "example": { "en": "GET /api/Book?$filter=year ge 2020&$orderby=year desc&$select=id,title&$first=10" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/concept/rest/overview"]
+    },
+    {
+      "id": "d2-dab-0038",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-dab-config",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "The entity is named BookEntity, but the API URL should be /api/books. What do you configure?" },
+      "options": [
+        { "id": "a", "text": { "en": "\"rest\": { \"path\": \"books\" } on the entity" } },
+        { "id": "b", "text": { "en": "runtime.rest.path: \"/api/books\"" } },
+        { "id": "c", "text": { "en": "\"graphql\": { \"type\": \"books\" }" } },
+        { "id": "d", "text": { "en": "Rename the database table to books" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The entity's rest.path overrides the default route (the entity name). runtime.rest.path changes the base path for every entity, graphql.type affects only GraphQL names, and renaming tables is unnecessary." },
+      "example": { "en": "dab update BookEntity --rest \"books\"" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/configuration/entities"]
+    },
+    {
+      "id": "d2-dab-0039",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-dab-config",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "The AuditLog entity should be available through GraphQL only, never through REST. Other entities keep REST. What do you set?" },
+      "options": [
+        { "id": "a", "text": { "en": "\"rest\": { \"enabled\": false } on the AuditLog entity" } },
+        { "id": "b", "text": { "en": "runtime.rest.enabled: false" } },
+        { "id": "c", "text": { "en": "Remove AuditLog's read permission" } },
+        { "id": "d", "text": { "en": "\"graphql\": { \"operation\": \"query\" } on AuditLog" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The entity-level rest.enabled switch removes only that entity's REST endpoint. The runtime switch would disable REST for every entity, removing read permission blocks GraphQL too, and operation only applies to stored procedures." },
+      "example": { "en": "dab update AuditLog --rest false" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/configuration/entities"]
+    },
+    {
+      "id": "d2-dab-0040",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-dab-config",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "runtime.rest.enabled is false, but the Book entity has \"rest\": { \"enabled\": true }. What happens when a client calls GET /api/Book?" },
+      "options": [
+        { "id": "a", "text": { "en": "No REST endpoint exists; the global switch turns off REST for all entities" } },
+        { "id": "b", "text": { "en": "The entity setting wins and the call succeeds" } },
+        { "id": "c", "text": { "en": "DAB fails to start because the settings conflict" } },
+        { "id": "d", "text": { "en": "The call is redirected to GraphQL" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The runtime REST switch is global: when it's off, no entity is reachable over REST, whatever the entity says. Entity-level settings can only narrow what the runtime allows. DAB still starts and doesn't redirect to GraphQL." },
+      "example": { "en": "Use runtime.rest.enabled false for a GraphQL-only API." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/configuration/runtime"]
+    },
+    {
+      "id": "d2-dab-0041",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-dab-config",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "Users need ranked keyword search across long product descriptions (full-text CONTAINSTABLE), which $filter with contains can't express. How do you expose it through DAB?" },
+      "options": [
+        { "id": "a", "text": { "en": "Write a stored procedure that runs the full-text query and expose it as a stored-procedure entity with the execute action" } },
+        { "id": "b", "text": { "en": "Enable caching on the Product entity" } },
+        { "id": "c", "text": { "en": "Raise max-page-size and filter on the client" } },
+        { "id": "d", "text": { "en": "Use $orderby=rank" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "DAB's built-in filters are simple predicates. For full-text, vector or other custom search logic, put the query in a stored procedure (or a view) and expose it as an entity. Caching, client-side filtering and ordering by a column that doesn't exist don't add ranked search." },
+      "example": { "en": "GET /api/SearchProducts?q=waterproof%20jacket (procedure using CONTAINSTABLE ORDER BY RANK DESC)" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/concept/rest/stored-procedures"]
+    },
+    {
+      "id": "d2-dab-0042",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-dab-config",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "In a CI pipeline, which command checks dab-config.json (schema, entities, permissions and database metadata) without starting the API?" },
+      "options": [
+        { "id": "a", "text": { "en": "dab validate" } },
+        { "id": "b", "text": { "en": "dab start --dry-run" } },
+        { "id": "c", "text": { "en": "dab export" } },
+        { "id": "d", "text": { "en": "dab init --check" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "dab validate runs the configuration checks and fails the build on errors. dab start runs the engine, dab export generates artifacts such as the GraphQL schema, and init has no check option." },
+      "example": { "en": "- run: dab validate -c dab-config.json" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/command-line/dab-validate"]
+    },
+    {
+      "id": "d2-dab-0043",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-dab-config",
+      "type": "dragdrop-match", "difficulty": "medium",
+      "text": { "en": "Match each change to the CLI command that makes it." },
+      "items": [
+        { "id": "i1", "text": { "en": "Change the GraphQL path and authentication provider" } },
+        { "id": "i2", "text": { "en": "Add a relationship between Book and Author" } },
+        { "id": "i3", "text": { "en": "Expose a new table" } },
+        { "id": "i4", "text": { "en": "Create the configuration file" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "dab configure" } },
+        { "id": "t2", "text": { "en": "dab update" } },
+        { "id": "t3", "text": { "en": "dab add" } },
+        { "id": "t4", "text": { "en": "dab init" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "dab configure edits runtime and data-source settings, dab update edits an existing entity (permissions, relationships, mappings), dab add creates an entity, and dab init creates the file." },
+      "example": { "en": "dab update Book --relationship authors --target.entity Author --cardinality many …" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/command-line/"]
+    },
+    {
+      "id": "d2-dab-0044",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-dab-config",
+      "type": "single", "difficulty": "medium",
+      "caseId": "case-dab-books",
+      "text": { "en": "Contoso wants catalog reads served from cache, with all three replicas sharing cached results. Prices may be up to a few minutes stale. What should you configure?" },
+      "options": [
+        { "id": "a", "text": { "en": "Enable runtime.cache with a Redis level-2 cache, and enable caching on the Book entity with level L1L2 and a TTL of a few minutes" } },
+        { "id": "b", "text": { "en": "Enable caching on the Book entity only, with level L1" } },
+        { "id": "c", "text": { "en": "Set default-page-size to 100,000 so clients cache locally" } },
+        { "id": "d", "text": { "en": "Turn on GraphQL introspection" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Caching needs the global and entity switches; level-2 Redis plus L1L2 lets replicas share entries, and a TTL of minutes matches the tolerated staleness. Entity-only settings do nothing while the global switch is off, and L1 isn't shared. Huge pages and introspection don't provide server caching." },
+      "example": { "en": "\"cache\": { \"enabled\": true, \"ttl-seconds\": 300, \"level\": \"L1L2\" }" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/concept/cache/level-2"]
+    },
+    {
+      "id": "d2-dab-0045",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-dab-config",
+      "type": "single", "difficulty": "medium",
+      "caseId": "case-dab-books",
+      "text": { "en": "Why does the mobile app receive 100 books per page, and what's the right fix?" },
+      "options": [
+        { "id": "a", "text": { "en": "DAB applies default-page-size (100) when no size is requested; the app should send $first=500 (allowed while max-page-size ≥ 500)" } },
+        { "id": "b", "text": { "en": "Azure Container Apps truncates responses; raise the ingress limit" } },
+        { "id": "c", "text": { "en": "The cache stores only 100 items; disable caching" } },
+        { "id": "d", "text": { "en": "Anonymous users are limited to 100 rows; make users sign in" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Without $first, DAB returns default-page-size items (100) plus a nextLink. Requesting $first=500 works because it's below max-page-size (100,000 by default). Container Apps doesn't truncate, caching doesn't cap counts, and roles don't set page sizes." },
+      "example": { "en": "GET /api/Book?$first=500" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/keywords/first-rest"]
+    },
+    {
+      "id": "d2-dab-0046",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-dab-config",
+      "type": "single", "difficulty": "hard",
+      "caseId": "case-dab-books",
+      "text": { "en": "The admin app's PATCH /api/Book/Id/42 calls fail with 400 Bad Request because the body includes Id. The team wants to keep its single Book class. What should you change?" },
+      "options": [
+        { "id": "a", "text": { "en": "Set runtime.rest.request-body-strict to false" } },
+        { "id": "b", "text": { "en": "Grant the staff role the * action" } },
+        { "id": "c", "text": { "en": "Switch PATCH calls to GraphQL introspection" } },
+        { "id": "d", "text": { "en": "Disable caching on Book" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Strict mode rejects fields that belong in the URL, like the primary key on PATCH. Setting it to false makes DAB ignore those fields, so one class works for all operations (the alternative is separate DTOs). Permissions, introspection and caching aren't the cause of a 400 for extra fields." },
+      "example": { "en": "\"rest\": { \"request-body-strict\": false }" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/concept/rest/overview"]
+    },
+    {
+      "id": "d2-dab-0047",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-dab-config",
+      "type": "single", "difficulty": "medium",
+      "caseId": "case-dab-books",
+      "text": { "en": "How should Contoso deliver ranked keyword search over Description through the API?" },
+      "options": [
+        { "id": "a", "text": { "en": "Create dbo.SearchBooks using CONTAINSTABLE, expose it as a stored-procedure entity with rest.methods [\"get\"], graphql.operation \"query\" and anonymous execute" } },
+        { "id": "b", "text": { "en": "Tell clients to use $filter=contains(Description,'word')" } },
+        { "id": "c", "text": { "en": "Expose the full-text catalog as an entity" } },
+        { "id": "d", "text": { "en": "Enable allow-introspection so clients discover the full-text index" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Ranked full-text search needs T-SQL (CONTAINSTABLE/FREETEXTTABLE), so wrap it in a procedure. Because it only reads, GET and a GraphQL query fit, with execute permission for anonymous. DAB's filters don't use the full-text index or ranking, full-text catalogs aren't entity sources, and introspection only describes the schema." },
+      "example": { "en": "GET /api/SearchBooks?q=database%20design" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/concept/rest/stored-procedures", "https://learn.microsoft.com/en-us/sql/relational-databases/system-functions/containstable-transact-sql"]
+    },
+    {
+      "id": "d2-dab-0048",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-dab-config",
+      "type": "multiple", "difficulty": "medium", "selectCount": 2,
+      "text": { "en": "Which two values are valid for an entity's cache.level in DAB 2.0? (Select 2)" },
+      "options": [
+        { "id": "a", "text": { "en": "L1" } },
+        { "id": "b", "text": { "en": "L1L2" } },
+        { "id": "c", "text": { "en": "L2" } },
+        { "id": "d", "text": { "en": "Redis" } },
+        { "id": "e", "text": { "en": "Disk" } }
+      ],
+      "answer": ["a", "b"],
+      "explanation": { "en": "L1 is in-memory only; L1L2 (the default) adds the distributed level-2 cache. There's no L2-only, Redis or Disk level; Redis is configured as the level-2 provider under runtime.cache." },
+      "example": { "en": "\"cache\": { \"enabled\": true, \"level\": \"L1\" } for data that's fine to cache per instance." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/configuration/entities"]
+    },
+    {
+      "id": "d2-dab-0049",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-dab-config",
+      "type": "dragdrop-match", "difficulty": "easy",
+      "text": { "en": "Match each REST query keyword to its GraphQL equivalent." },
+      "items": [
+        { "id": "i1", "text": { "en": "$filter" } },
+        { "id": "i2", "text": { "en": "$orderby" } },
+        { "id": "i3", "text": { "en": "$first" } },
+        { "id": "i4", "text": { "en": "$after" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "filter:" } },
+        { "id": "t2", "text": { "en": "orderBy:" } },
+        { "id": "t3", "text": { "en": "first:" } },
+        { "id": "t4", "text": { "en": "after:" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "Both APIs support filtering, sorting, page size and continuation. REST uses $-prefixed query parameters; GraphQL uses arguments on the list query. Projection is $select in REST and the selection set (items { … }) in GraphQL." },
+      "example": { "en": "books(filter: {...}, orderBy: { title: ASC }, first: 10, after: \"…\")" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/concept/graphql/overview"]
+    },
+    {
+      "id": "d2-dab-0050",
+      "domain": "secure-optimize-deploy", "topic": "t-azure-integration", "subtopic": "d2-dab-config",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "While migrating to DAB 2.0, a developer adds a fields array to an entity that still has a mappings section. What happens?" },
+      "options": [
+        { "id": "a", "text": { "en": "The configuration fails schema validation; fields can't coexist with mappings (or key-fields) on the same entity" } },
+        { "id": "b", "text": { "en": "mappings silently wins" } },
+        { "id": "c", "text": { "en": "fields silently wins" } },
+        { "id": "d", "text": { "en": "DAB merges them" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The DAB 2.0 schema forbids mixing the new fields array with the deprecated mappings or source.key-fields on one entity. Migrate the aliases to fields[].alias and keys to fields[].primary-key, then remove the old properties; nothing is merged or chosen silently." },
+      "example": { "en": "Replace \"mappings\": { \"sku_title\": \"title\" } with \"fields\": [ { \"name\": \"sku_title\", \"alias\": \"title\" } ]" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/configuration/entities"]
+    }
+  ]
+}

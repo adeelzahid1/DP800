@@ -1,0 +1,263 @@
+<div class="study-layout">
+  <div class="study-main">
+    @if (loading()) {
+      <p class="card">{{ locale.t('common.loading') }}</p>
+    } @else if (ref(); as r) {
+      <!-- breadcrumbs -->
+      <p class="crumbs">
+        <span>{{ locale.lt(r.domain.title) }}</span> ›
+        <span>{{ locale.lt(r.topic.title) }}</span>
+      </p>
+
+      <!-- ===== Lesson ===== -->
+      @if (lesson(); as l) {
+        <article class="lesson card">
+          <h1>{{ locale.lt(l.title) }}</h1>
+
+          @if (l.prerequisiteRecap && l.prerequisiteRecap.length > 0) {
+            <details class="prereq">
+              <summary>{{ locale.t('study.prereqRecap') }}</summary>
+              @for (sec of l.prerequisiteRecap; track $index) {
+                <h3>{{ locale.lt(sec.heading) }}</h3>
+                <app-rich-text [text]="sec.body" />
+                @if (sec.code) {
+                  <app-code-block [code]="sec.code" [lang]="sec.codeLang ?? 'sql'" />
+                }
+              }
+            </details>
+          }
+
+          @for (sec of l.sections; track $index) {
+            <section class="lesson-sec">
+              <h2>{{ locale.lt(sec.heading) }}</h2>
+              <app-rich-text [text]="sec.body" />
+              @if (sec.code) {
+                <app-code-block [code]="sec.code" [lang]="sec.codeLang ?? 'sql'" />
+              }
+            </section>
+          }
+
+          @if (l.examTips.length > 0) {
+            <section class="tips">
+              <h2>{{ locale.t('study.examTips') }}</h2>
+              <ul>
+                @for (tip of l.examTips; track $index) {
+                  <li><app-rich-text [text]="tip" /></li>
+                }
+              </ul>
+            </section>
+          }
+
+          @if (l.sources.length > 0) {
+            <section class="lesson-sources">
+              <h2>{{ locale.t('q.sources') }}</h2>
+              <ul>
+                @for (s of l.sources; track s) {
+                  <li><a [href]="s" target="_blank" rel="noopener">{{ s }}</a></li>
+                }
+              </ul>
+            </section>
+          }
+        </article>
+      }
+
+      <!-- ===== Practice controls ===== -->
+      @if (bank() && (bank()!.questions.length > 0)) {
+        <section class="controls card" aria-labelledby="practice-h">
+          <h2 id="practice-h">{{ locale.t('study.practice') }} ({{ filteredQuestions().length }}/{{ bank()!.questions.length }})</h2>
+
+          <div class="control-row">
+            <fieldset>
+              <legend>{{ locale.t('filter.difficulty') }}</legend>
+              @for (d of allDiffs; track d) {
+                <label class="check">
+                  <input type="checkbox" [checked]="fDifficulty().has(d)" (change)="toggleDiff(d)" />
+                  {{ locale.t('diff.' + d) }}
+                </label>
+              }
+            </fieldset>
+
+            <fieldset>
+              <legend>{{ locale.t('filter.type') }}</legend>
+              @for (t of allTypes; track t) {
+                <label class="check">
+                  <input type="checkbox" [checked]="fTypes().has(t)" (change)="toggleType(t)" />
+                  {{ locale.t('type.' + t) }}
+                </label>
+              }
+            </fieldset>
+          </div>
+
+          <div class="control-row selects">
+            <label>
+              {{ locale.t('filter.read') }}
+              <select [value]="fRead()" (change)="setTri('read', $event)">
+                <option value="any">{{ locale.t('filter.any') }}</option>
+                <option value="yes">{{ locale.t('filter.readYes') }}</option>
+                <option value="no">{{ locale.t('filter.readNo') }}</option>
+              </select>
+            </label>
+            <label>
+              {{ locale.t('filter.attempted') }}
+              <select [value]="fAttempted()" (change)="setTri('attempted', $event)">
+                <option value="any">{{ locale.t('filter.any') }}</option>
+                <option value="yes">{{ locale.t('filter.attemptedYes') }}</option>
+                <option value="no">{{ locale.t('filter.attemptedNo') }}</option>
+              </select>
+            </label>
+            <label>
+              {{ locale.t('filter.result') }}
+              <select [value]="fCorrect()" (change)="setTri('correct', $event)">
+                <option value="any">{{ locale.t('filter.any') }}</option>
+                <option value="yes">{{ locale.t('filter.correctYes') }}</option>
+                <option value="no">{{ locale.t('filter.correctNo') }}</option>
+              </select>
+            </label>
+            <label class="check">
+              <input type="checkbox" [checked]="fBookmarked()" (change)="fBookmarked.set(!fBookmarked()); session.set(null)" />
+              {{ locale.t('filter.bookmarked') }}
+            </label>
+            @if (filtersActive()) {
+              <button type="button" class="btn btn-sm" (click)="clearFilters()">{{ locale.t('filter.clear') }}</button>
+            }
+          </div>
+
+          <div class="control-row session-row">
+            <label>
+              {{ locale.t('session.count') }}
+              <select [value]="countChoice()" (change)="onCountChoice($event)">
+                <option value="10">10</option>
+                <option value="20">20</option>
+                <option value="50">50</option>
+                <option value="all">{{ locale.t('session.all') }}</option>
+                <option value="custom">{{ locale.t('session.custom') }}</option>
+              </select>
+            </label>
+            @if (countChoice() === 'custom') {
+              <label>
+                {{ locale.t('session.customN') }}
+                <input type="number" min="1" [value]="customCount()" (input)="onCustomCount($event)" class="count-input" />
+              </label>
+            }
+            <label class="check">
+              <input type="checkbox" [checked]="sessionRandom()" (change)="sessionRandom.set(!sessionRandom())" />
+              {{ locale.t('session.random') }}
+            </label>
+            <label class="check">
+              <input type="checkbox" [checked]="sessionShuffleOptions()" (change)="sessionShuffleOptions.set(!sessionShuffleOptions())" />
+              {{ locale.t('session.shuffleOptions') }}
+            </label>
+            @if (session() === null) {
+              <button type="button" class="btn btn-primary" (click)="startSession()">{{ locale.t('session.start') }}</button>
+            } @else {
+              <button type="button" class="btn" (click)="endSession()">{{ locale.t('session.end') }} ({{ session()!.length }})</button>
+            }
+          </div>
+
+          <div class="control-row global-toggles">
+            <label class="check">
+              <input type="checkbox" [checked]="progress.settings().showAnswers" (change)="toggleGlobalAnswers()" />
+              {{ locale.t('study.showAllAnswers') }}
+            </label>
+            <label class="check">
+              <input type="checkbox" [checked]="progress.settings().showExamples" (change)="toggleGlobalExamples()" />
+              {{ locale.t('study.showAllExamples') }}
+            </label>
+            <label class="check">
+              <input type="checkbox" [checked]="progress.settings().autoMarkRead" (change)="toggleAutoRead()" />
+              {{ locale.t('study.autoMarkRead') }}
+            </label>
+            <span class="spacer"></span>
+            <button type="button" class="btn btn-sm btn-danger" (click)="resetTopicProgress()">
+              {{ locale.t('study.resetTopic') }}
+            </button>
+            <button type="button" class="btn btn-sm" (click)="helpOpen.set(true)" [attr.aria-label]="locale.t('help.title')">
+              ⌨ {{ locale.t('help.shortcuts') }}
+            </button>
+          </div>
+        </section>
+
+        <!-- ===== Questions ===== -->
+        <section class="questions" aria-label="Questions">
+          @for (q of visibleQuestions(); track q.id; let i = $index) {
+            <app-question-card
+              [q]="q"
+              [index]="i"
+              [caseStudy]="caseFor(q)"
+              [globalShowAnswer]="progress.settings().showAnswers"
+              [globalShowExample]="progress.settings().showExamples"
+              [current]="currentIndex() === i"
+              (answeredChange)="onCardAnswered(i)"
+            />
+          } @empty {
+            <p class="card">{{ locale.t('study.noMatches') }}</p>
+          }
+        </section>
+
+        <!-- question prev/next -->
+        @if (visibleQuestions().length > 1) {
+          <div class="qnav">
+            <button type="button" class="btn" [disabled]="currentIndex() === 0" (click)="goTo(currentIndex() - 1)">
+              ← {{ locale.t('nav.prevQuestion') }}
+            </button>
+            <span class="qnav-pos">{{ currentIndex() + 1 }} / {{ visibleQuestions().length }}</span>
+            <button type="button" class="btn" [disabled]="currentIndex() >= visibleQuestions().length - 1" (click)="goTo(currentIndex() + 1)">
+              {{ locale.t('nav.nextQuestion') }} →
+            </button>
+          </div>
+        }
+      }
+
+      <!-- subtopic prev/next -->
+      <nav class="subnav" [attr.aria-label]="locale.t('nav.subtopics')">
+        @if (prevRef(); as prev) {
+          <a class="btn" [routerLink]="['/study', prev.subtopic.id]">← {{ locale.lt(prev.subtopic.title) }}</a>
+        } @else {
+          <span></span>
+        }
+        @if (nextRef(); as next) {
+          <a class="btn" [routerLink]="['/study', next.subtopic.id]">{{ locale.lt(next.subtopic.title) }} →</a>
+        }
+      </nav>
+    }
+  </div>
+
+  <!-- ===== Right panel: topic tree ===== -->
+  <aside class="tree-panel" [class.open]="drawerOpen()">
+    <div class="tree-head">
+      <h2>{{ locale.t('tree.title') }}</h2>
+      <button type="button" class="btn btn-sm tree-close" (click)="drawerOpen.set(false)">✕</button>
+    </div>
+    <app-topic-tree [activeId]="subtopicId() ?? null" (navigated)="drawerOpen.set(false)" />
+  </aside>
+  @if (drawerOpen()) {
+    <div class="backdrop" (click)="drawerOpen.set(false)" aria-hidden="true"></div>
+  }
+</div>
+
+<button type="button" class="btn btn-primary drawer-fab" (click)="drawerOpen.set(true)">
+  ☰ {{ locale.t('tree.title') }}
+</button>
+
+<!-- ===== Shortcut help dialog ===== -->
+@if (helpOpen()) {
+  <div class="dialog-backdrop" (click)="helpOpen.set(false)">
+    <div class="dialog card" role="dialog" aria-modal="true" [attr.aria-label]="locale.t('help.title')" (click)="$event.stopPropagation()">
+      <h2>{{ locale.t('help.title') }}</h2>
+      <table class="help-table">
+        <tbody>
+          <tr><td><kbd>←</kbd> / <kbd>→</kbd></td><td>{{ locale.t('help.navQuestion') }}</td></tr>
+          <tr><td><kbd>1</kbd>–<kbd>9</kbd> / <kbd>A</kbd>–<kbd>F</kbd></td><td>{{ locale.t('help.selectOption') }}</td></tr>
+          <tr><td><kbd>Enter</kbd></td><td>{{ locale.t('help.submit') }}</td></tr>
+          <tr><td><kbd>H</kbd></td><td>{{ locale.t('help.toggleAnswer') }}</td></tr>
+          <tr><td><kbd>X</kbd></td><td>{{ locale.t('help.toggleExample') }}</td></tr>
+          <tr><td><kbd>M</kbd></td><td>{{ locale.t('help.bookmark') }}</td></tr>
+          <tr><td><kbd>P</kbd> / <kbd>N</kbd></td><td>{{ locale.t('help.navSubtopic') }}</td></tr>
+          <tr><td><kbd>?</kbd></td><td>{{ locale.t('help.openHelp') }}</td></tr>
+          <tr><td><kbd>Esc</kbd></td><td>{{ locale.t('help.close') }}</td></tr>
+        </tbody>
+      </table>
+      <button type="button" class="btn btn-primary" (click)="helpOpen.set(false)">{{ locale.t('common.close') }}</button>
+    </div>
+  </div>
+}

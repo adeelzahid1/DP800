@@ -1,0 +1,848 @@
+{
+  "subtopic": "d3-embedding-design",
+  "cases": [
+    {
+      "id": "case-ed-legal",
+      "title": { "en": "Contoso Legal clause search" },
+      "scenario": {
+        "en": "Contoso Legal stores contracts in Azure SQL Database: `dbo.Contracts(ContractId, ClientId, Jurisdiction, SignedDate, Title, Body NVARCHAR(MAX))`. Contracts are 30–80 pages, organized in numbered sections and clauses.\n- Lawyers ask questions like \"termination for convenience clauses in German contracts signed after 2024\".\n- Answers must cite the exact section that matched.\n- Embeddings come from an Azure OpenAI model with 1,536 dimensions."
+      }
+    }
+  ],
+  "questions": [
+    {
+      "id": "d3-ed-0001",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-design",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "dbo.Products has ProductId, Sku, Price, Name, Description and CreatedDate. Which columns should feed the product embedding for semantic search?" },
+      "options": [
+        { "id": "a", "text": { "en": "Name and Description" } },
+        { "id": "b", "text": { "en": "ProductId and Sku" } },
+        { "id": "c", "text": { "en": "Price and CreatedDate" } },
+        { "id": "d", "text": { "en": "All six columns concatenated" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Embeddings work best on text with semantic meaning. IDs, SKUs, prices and dates add tokens without meaning; keep them as columns for exact filters and sorting." },
+      "example": { "en": "CONCAT_WS(N' | ', N'Title: ' + Name, Description)" },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-models-embeddings-with-sql/04-design-embeddings-sql-database-workloads"]
+    },
+    {
+      "id": "d3-ed-0002",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-design",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Users search \"red waterproof jacket under $100\". How should price be handled?" },
+      "options": [
+        { "id": "a", "text": { "en": "Keep Price as a relational column and filter with WHERE Price < 100 alongside the vector search on descriptive text" } },
+        { "id": "b", "text": { "en": "Add the price to the embedded text so the vector captures it" } },
+        { "id": "c", "text": { "en": "Create a separate embedding of the price" } },
+        { "id": "d", "text": { "en": "Ignore price; vectors understand budgets" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Numeric constraints are exact and best expressed as predicates; vectors capture meaning, not reliable numeric comparisons. Latest vector indexes apply WHERE filters during the search (iterative filtering)." },
+      "example": { "en": "SELECT TOP (10) WITH APPROXIMATE … FROM VECTOR_SEARCH(…) AS r WHERE p.Price < 100 ORDER BY r.distance;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-search-transact-sql"]
+    },
+    {
+      "id": "d3-ed-0003",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-design",
+      "type": "multiple", "difficulty": "easy", "selectCount": 3,
+      "text": { "en": "Which three columns are good candidates to embed? (Select 3)" },
+      "options": [
+        { "id": "a", "text": { "en": "Customer review text" } },
+        { "id": "b", "text": { "en": "Support ticket body" } },
+        { "id": "c", "text": { "en": "Knowledge-base article title" } },
+        { "id": "d", "text": { "en": "OrderId" } },
+        { "id": "e", "text": { "en": "ModifiedDate" } }
+      ],
+      "answer": ["a", "b", "c"],
+      "explanation": { "en": "Free-form text with meaning makes useful embeddings. Identifiers and timestamps belong in filters, joins and sorting." },
+      "example": { "en": "Embed the ticket body; filter on ModifiedDate in WHERE." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-models-embeddings-with-sql/04-design-embeddings-sql-database-workloads"]
+    },
+    {
+      "id": "d3-ed-0004",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-design",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Title, category name and description all help describe a product. What's a good way to build the embedding input?" },
+      "options": [
+        { "id": "a", "text": { "en": "Concatenate them into one labeled text, e.g. 'Title: … | Category: … | Description: …'" } },
+        { "id": "b", "text": { "en": "Embed only the category name" } },
+        { "id": "c", "text": { "en": "Add the three vectors together element by element" } },
+        { "id": "d", "text": { "en": "Embed the CategoryId instead of its name" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "A composed, labeled text gives the model full context in one embedding. Category alone is too thin, vector addition isn't supported on the vector type, and IDs carry no meaning." },
+      "example": { "en": "CONCAT_WS(N' | ', N'Title: ' + p.Name, N'Category: ' + c.Name, N'Description: ' + p.Description)" },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-models-embeddings-with-sql/04-design-embeddings-sql-database-workloads", "https://learn.microsoft.com/en-us/sql/t-sql/data-types/vector-data-type"]
+    },
+    {
+      "id": "d3-ed-0005",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-design",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A CaseNotes column often contains customer phone numbers and national ID numbers. What's the best embedding design choice?" },
+      "options": [
+        { "id": "a", "text": { "en": "Redact or exclude the sensitive values before embedding, because the text is sent to the model endpoint" } },
+        { "id": "b", "text": { "en": "Embed it as is; embeddings can't be reversed, so it's always safe" } },
+        { "id": "c", "text": { "en": "Embed only the phone numbers" } },
+        { "id": "d", "text": { "en": "Apply dynamic data masking; it masks text sent to models" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Generating embeddings sends the source text to the model provider, so minimize sensitive content. Phone and ID numbers add no semantic value, and dynamic data masking only affects query results for unprivileged users, not what your embedding job sends." },
+      "example": { "en": "REGEXP_REPLACE(CaseNotes, '\\d{3}-\\d{3}-\\d{4}', '[PHONE]')" },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-models-embeddings-with-sql/04-design-embeddings-sql-database-workloads"]
+    },
+    {
+      "id": "d3-ed-0006",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-design",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Why does Microsoft Learn suggest storing vectors in a separate embeddings table rather than in the source table?" },
+      "options": [
+        { "id": "a", "text": { "en": "It makes it easier to track the space vectors use and to rebuild embeddings without affecting the source data" } },
+        { "id": "b", "text": { "en": "Vector columns can't exist in tables that have text columns" } },
+        { "id": "c", "text": { "en": "It's required for VECTOR_DISTANCE to work" } },
+        { "id": "d", "text": { "en": "It encrypts the vectors automatically" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "A dedicated table isolates storage and regeneration work (and supports one-to-many chunks). Vectors can sit next to text, VECTOR_DISTANCE works anywhere, and separation doesn't encrypt anything." },
+      "example": { "en": "dbo.ProductEmbeddings(ProductId FK, Embedding VECTOR(1536), ModelVersion)" },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-models-embeddings-with-sql/04-design-embeddings-sql-database-workloads"]
+    },
+    {
+      "id": "d3-ed-0007",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-design",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which isn't a reason to chunk long documents before embedding?" },
+      "options": [
+        { "id": "a", "text": { "en": "Chunking makes vectors exact rather than approximate" } },
+        { "id": "b", "text": { "en": "Embedding models have input token limits" } },
+        { "id": "c", "text": { "en": "Smaller, focused passages match questions more precisely" } },
+        { "id": "d", "text": { "en": "RAG prompts can include only the relevant chunks, saving tokens" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Chunking addresses input limits, precision and prompt size. Whether a search is exact or approximate depends on kNN vs ANN, not on chunking." },
+      "example": { "en": "A 60-page manual becomes ~150 focused chunks." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-models-embeddings-with-sql/04-design-embeddings-sql-database-workloads"]
+    },
+    {
+      "id": "d3-ed-0008",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-design",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "In AI_GENERATE_CHUNKS with CHUNK_TYPE = FIXED, what unit is CHUNK_SIZE measured in?" },
+      "options": [
+        { "id": "a", "text": { "en": "Characters" } },
+        { "id": "b", "text": { "en": "Tokens" } },
+        { "id": "c", "text": { "en": "Words" } },
+        { "id": "d", "text": { "en": "Bytes" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "CHUNK_SIZE sets the character count of each chunk. Models count tokens, so leave headroom when sizing chunks against a token limit." },
+      "example": { "en": "CHUNK_SIZE = 1500 → up to 1,500 characters per chunk." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/ai-generate-chunks-transact-sql"]
+    },
+    {
+      "id": "d3-ed-0009",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-design",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What does OVERLAP = 10 mean in AI_GENERATE_CHUNKS(…, CHUNK_SIZE = 500, OVERLAP = 10)?" },
+      "options": [
+        { "id": "a", "text": { "en": "Each chunk includes preceding text equal to 10% of the chunk size (50 characters)" } },
+        { "id": "b", "text": { "en": "Ten characters overlap between chunks" } },
+        { "id": "c", "text": { "en": "Ten chunks are returned" } },
+        { "id": "d", "text": { "en": "Chunks overlap by ten words" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "OVERLAP is a percentage (0–50, default 0) applied to CHUNK_SIZE to compute how many characters of the previous text are repeated." },
+      "example": { "en": "Overlap helps when a key sentence falls on a chunk boundary." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/ai-generate-chunks-transact-sql"]
+    },
+    {
+      "id": "d3-ed-0010",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-design",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which CHUNK_TYPE value does AI_GENERATE_CHUNKS accept?" },
+      "options": [
+        { "id": "a", "text": { "en": "FIXED" } },
+        { "id": "b", "text": { "en": "SEMANTIC" } },
+        { "id": "c", "text": { "en": "SENTENCE" } },
+        { "id": "d", "text": { "en": "PARAGRAPH" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "FIXED is the documented accepted value; it can't be NULL or come from a column. Sentence or paragraph-aware splitting has to be done another way (for example REGEXP_SPLIT_TO_TABLE or application code)." },
+      "example": { "en": "CHUNK_TYPE = FIXED" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/ai-generate-chunks-transact-sql"]
+    },
+    {
+      "id": "d3-ed-0011",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-design",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "On a database at compatibility level 160, a query using AI_GENERATE_CHUNKS fails because the function can't be found. What's the fix?" },
+      "options": [
+        { "id": "a", "text": { "en": "Raise the database compatibility level to 170 or higher" } },
+        { "id": "b", "text": { "en": "Enable 'clr enabled'" } },
+        { "id": "c", "text": { "en": "Create an external model first" } },
+        { "id": "d", "text": { "en": "Install Machine Learning Services" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "AI_GENERATE_CHUNKS requires compatibility level 170; below that, the engine doesn't find it. It doesn't use CLR, an external model or ML Services (it only splits text)." },
+      "example": { "en": "ALTER DATABASE CURRENT SET COMPATIBILITY_LEVEL = 170;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/ai-generate-chunks-transact-sql"]
+    },
+    {
+      "id": "d3-ed-0012",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-design",
+      "type": "multiple", "difficulty": "medium", "selectCount": 4,
+      "text": { "en": "Which four columns does AI_GENERATE_CHUNKS always return? (Select 4)" },
+      "options": [
+        { "id": "a", "text": { "en": "chunk" } },
+        { "id": "b", "text": { "en": "chunk_order" } },
+        { "id": "c", "text": { "en": "chunk_offset" } },
+        { "id": "d", "text": { "en": "chunk_length" } },
+        { "id": "e", "text": { "en": "chunk_embedding" } },
+        { "id": "f", "text": { "en": "token_count" } }
+      ],
+      "answer": ["a", "b", "c", "d"],
+      "explanation": { "en": "The function returns the chunk text, its order, its offset and its length; chunk_set_id is optional (ENABLE_CHUNK_SET_ID = 1). It doesn't generate embeddings or count tokens." },
+      "example": { "en": "SELECT c.chunk_order, c.chunk_length, c.chunk FROM … CROSS APPLY AI_GENERATE_CHUNKS(…) AS c;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/ai-generate-chunks-transact-sql"]
+    },
+    {
+      "id": "d3-ed-0013",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-design",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What does ENABLE_CHUNK_SET_ID = 1 add?" },
+      "options": [
+        { "id": "a", "text": { "en": "A chunk_set_id column that groups all chunks produced from the same source value or row" } },
+        { "id": "b", "text": { "en": "A primary key on the output" } },
+        { "id": "c", "text": { "en": "The source table's primary key" } },
+        { "id": "d", "text": { "en": "An embedding for each chunk" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "chunk_set_id numbers each source's set of chunks; chunk_order and chunk_offset restart per set. It isn't your table's key, so still select the source key (e.g., d.DocumentId) alongside the chunks." },
+      "example": { "en": "SELECT d.DocumentId, c.chunk_set_id, c.chunk_order FROM dbo.Documents d CROSS APPLY AI_GENERATE_CHUNKS(…, ENABLE_CHUNK_SET_ID = 1) c;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/ai-generate-chunks-transact-sql"]
+    },
+    {
+      "id": "d3-ed-0014",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-design",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Split each document body into 1,000-character chunks with 10% overlap, keeping the document key." },
+      "code": "SELECT d.DocumentId, c.chunk_order, c.chunk\nFROM dbo.Documents AS d\n[BLANK1] AI_GENERATE_CHUNKS(\n    SOURCE = d.Body,\n    CHUNK_TYPE = [BLANK2],\n    CHUNK_SIZE = 1000,\n    [BLANK3] = 10\n) AS c;",
+      "blanks": [
+        { "id": "b1", "label": { "en": "BLANK1" }, "choices": [
+          { "id": "c1", "text": { "en": "CROSS APPLY" } },
+          { "id": "c2", "text": { "en": "INNER JOIN" } },
+          { "id": "c3", "text": { "en": "UNION ALL" } }
+        ] },
+        { "id": "b2", "label": { "en": "BLANK2" }, "choices": [
+          { "id": "c1", "text": { "en": "'paragraph'" } },
+          { "id": "c2", "text": { "en": "FIXED" } },
+          { "id": "c3", "text": { "en": "d.ChunkType" } }
+        ] },
+        { "id": "b3", "label": { "en": "BLANK3" }, "choices": [
+          { "id": "c1", "text": { "en": "OVERLAP" } },
+          { "id": "c2", "text": { "en": "STRIDE" } },
+          { "id": "c3", "text": { "en": "PADDING" } }
+        ] }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c2", "b3": "c1" },
+      "explanation": { "en": "A table-valued function that takes a column from the outer row needs CROSS APPLY. CHUNK_TYPE must be the literal FIXED (not a column value), and the overlap parameter is OVERLAP." },
+      "example": { "en": "Add AI_GENERATE_EMBEDDINGS(c.chunk USE MODEL m) to the select list to embed in the same pass." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/ai-generate-chunks-transact-sql"]
+    },
+    {
+      "id": "d3-ed-0015",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-design",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A 320-character text is chunked with CHUNK_TYPE = FIXED, CHUNK_SIZE = 100 and no overlap. How many chunks are returned, and how long is the last one?" },
+      "options": [
+        { "id": "a", "text": { "en": "4 chunks; the last is 20 characters" } },
+        { "id": "b", "text": { "en": "3 chunks; the last is 120 characters" } },
+        { "id": "c", "text": { "en": "4 chunks of 80 characters each" } },
+        { "id": "d", "text": { "en": "1 chunk, because the text is under 1,000 characters" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Fixed chunking cuts every 100 characters: 100 + 100 + 100 + 20. The final chunk is shorter (chunk_length shows 20); sizes aren't rebalanced or merged." },
+      "example": { "en": "The docs' 319-character example with CHUNK_SIZE = 50 returns 7 chunks, the last 19 characters long." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/ai-generate-chunks-transact-sql"]
+    },
+    {
+      "id": "d3-ed-0016",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-design",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A developer sets OVERLAP = 60 to maximize context. What happens?" },
+      "options": [
+        { "id": "a", "text": { "en": "An error: OVERLAP must be a whole number from 0 to 50" } },
+        { "id": "b", "text": { "en": "Each chunk repeats 60% of the previous text" } },
+        { "id": "c", "text": { "en": "OVERLAP is silently capped at 50" } },
+        { "id": "d", "text": { "en": "OVERLAP is treated as 60 characters" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "OVERLAP is a percentage constrained to 0–50 and can't be NULL or negative; out-of-range values are invalid rather than capped or reinterpreted." },
+      "example": { "en": "Typical choices: 0–20% depending on how often ideas span boundaries." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/ai-generate-chunks-transact-sql"]
+    },
+    {
+      "id": "d3-ed-0017",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-design",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which CHUNK_SIZE value is invalid for CHUNK_TYPE = FIXED?" },
+      "options": [
+        { "id": "a", "text": { "en": "0" } },
+        { "id": "b", "text": { "en": "50" } },
+        { "id": "c", "text": { "en": "2000" } },
+        { "id": "d", "text": { "en": "A variable @size of type int holding 800" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "CHUNK_SIZE is required for FIXED and can't be NULL, negative or zero. Literals, variables or scalar integer expressions are allowed." },
+      "example": { "en": "DECLARE @size INT = 800; … CHUNK_SIZE = @size …" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/ai-generate-chunks-transact-sql"]
+    },
+    {
+      "id": "d3-ed-0018",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-design",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What's the main risk of making chunks very large (for example 20,000 characters)?" },
+      "options": [
+        { "id": "a", "text": { "en": "Each vector blends many topics, so matches are less precise, inputs may exceed token limits, and RAG prompts carry irrelevant text" } },
+        { "id": "b", "text": { "en": "Vectors get more dimensions" } },
+        { "id": "c", "text": { "en": "Vector indexes can't be created" } },
+        { "id": "d", "text": { "en": "Chunks lose all context" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Oversized chunks dilute semantic focus and waste prompt tokens. Dimension count is fixed by the model, vector indexes don't care about chunk size, and losing context is the risk of chunks that are too small." },
+      "example": { "en": "Retrieving one 20,000-character chunk for a one-line answer inflates LLM cost." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-models-embeddings-with-sql/04-design-embeddings-sql-database-workloads"]
+    },
+    {
+      "id": "d3-ed-0019",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-design",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Retrieved chunks like \"It must be renewed every 12 months.\" don't say what must be renewed. What's the likely cause and fix?" },
+      "options": [
+        { "id": "a", "text": { "en": "Chunks are too small or cut at bad boundaries; use larger or overlapping chunks, or prefix each chunk with its document/section title" } },
+        { "id": "b", "text": { "en": "The model has too few dimensions" } },
+        { "id": "c", "text": { "en": "The vector index uses the wrong metric" } },
+        { "id": "d", "text": { "en": "The text must be normalized with VECTOR_NORMALIZE" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Missing context is a chunking problem. Adding overlap, structure-aware boundaries or a title prefix keeps the subject in each chunk. Dimensions, metrics and normalization don't restore missing words." },
+      "example": { "en": "AI_GENERATE_EMBEDDINGS(CONCAT(d.Title, N' - ', c.chunk) USE MODEL m)" },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-models-embeddings-with-sql/04-design-embeddings-sql-database-workloads"]
+    },
+    {
+      "id": "d3-ed-0020",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-design",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Why add overlap between fixed-size chunks?" },
+      "options": [
+        { "id": "a", "text": { "en": "So an idea that straddles a chunk boundary still appears whole in at least one chunk" } },
+        { "id": "b", "text": { "en": "To reduce the number of chunks" } },
+        { "id": "c", "text": { "en": "To compress the text" } },
+        { "id": "d", "text": { "en": "To make chunks exact duplicates for redundancy" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Overlap repeats some preceding text so boundary-spanning sentences remain retrievable. It slightly increases chunk count and storage rather than reducing them, and doesn't compress or duplicate whole chunks." },
+      "example": { "en": "OVERLAP = 15 with CHUNK_SIZE = 1000 repeats 150 characters." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/ai-generate-chunks-transact-sql"]
+    },
+    {
+      "id": "d3-ed-0021",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-design",
+      "type": "dragdrop-order", "difficulty": "medium",
+      "text": { "en": "Order the steps of a typical embedding design pipeline in SQL." },
+      "items": [
+        { "id": "i1", "text": { "en": "Select the meaningful text columns and clean them" } },
+        { "id": "i2", "text": { "en": "Compose the input text (labels, title prefix)" } },
+        { "id": "i3", "text": { "en": "Split long text with AI_GENERATE_CHUNKS" } },
+        { "id": "i4", "text": { "en": "Generate vectors with AI_GENERATE_EMBEDDINGS" } },
+        { "id": "i5", "text": { "en": "Insert into the chunk table with the source key, then create the vector index" } }
+      ],
+      "answer": ["i1", "i2", "i3", "i4", "i5"],
+      "explanation": { "en": "Decide what text matters, shape it, cut it to size, embed each piece, then store with keys and index for search." },
+      "example": { "en": "One INSERT … SELECT … CROSS APPLY can perform steps 2–5." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/ai-generate-embeddings-transact-sql"]
+    },
+    {
+      "id": "d3-ed-0022",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-design",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which table design best supports chunked documents for search and RAG citations?" },
+      "options": [
+        { "id": "a", "text": { "en": "A child table with one row per chunk: key, DocumentId (FK), ChunkOrder, ChunkText and the vector" } },
+        { "id": "b", "text": { "en": "One vector column on dbo.Documents holding the average of all chunk vectors" } },
+        { "id": "c", "text": { "en": "One JSON column on dbo.Documents containing all chunk texts, without vectors" } },
+        { "id": "d", "text": { "en": "A separate table per document" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "A one-to-many chunk table lets you search chunks, return their text for prompts, cite their order, and join back to the document. Averaging loses precision, JSON blobs can't be vector-searched, and per-document tables don't scale." },
+      "example": { "en": "SELECT d.Title, ch.ChunkOrder, ch.ChunkText FROM … JOIN dbo.Documents d ON d.DocumentId = ch.DocumentId" },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-models-embeddings-with-sql/04-design-embeddings-sql-database-workloads"]
+    },
+    {
+      "id": "d3-ed-0023",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-design",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "You want paragraph-based chunks (split on blank lines) inside the database. AI_GENERATE_CHUNKS only offers FIXED. What can you use?" },
+      "options": [
+        { "id": "a", "text": { "en": "REGEXP_SPLIT_TO_TABLE with a blank-line pattern, then embed each paragraph (optionally re-chunking long paragraphs)" } },
+        { "id": "b", "text": { "en": "VECTOR_NORMALIZE" } },
+        { "id": "c", "text": { "en": "STRING_AGG" } },
+        { "id": "d", "text": { "en": "It isn't possible in T-SQL" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "REGEXP_SPLIT_TO_TABLE splits a string into rows by a regular expression, enabling structure-aware chunking. VECTOR_NORMALIZE works on vectors, and STRING_AGG concatenates rather than splits." },
+      "example": { "en": "SELECT value FROM REGEXP_SPLIT_TO_TABLE(@body, '\\r?\\n\\s*\\r?\\n');" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/regexp-split-to-table-transact-sql"]
+    },
+    {
+      "id": "d3-ed-0024",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-design",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A vector search over DocumentChunks returns three chunks from the same document in the top 5. The UI should list each document once. What should the query do?" },
+      "options": [
+        { "id": "a", "text": { "en": "Run the vector search in a subquery, then group by DocumentId (keeping the best distance) and join to Documents" } },
+        { "id": "b", "text": { "en": "Store only one chunk per document" } },
+        { "id": "c", "text": { "en": "Add DISTINCT directly to SELECT TOP (5) WITH APPROXIMATE" } },
+        { "id": "d", "text": { "en": "Sort by DocumentId DESC inside VECTOR_SEARCH" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Aggregation and DISTINCT require the subquery pattern with TOP … WITH APPROXIMATE; then group by document and keep MIN(distance). Storing one chunk loses content, and VECTOR_SEARCH only orders by distance ascending." },
+      "example": { "en": "SELECT DocumentId, MIN(distance) AS best FROM (SELECT TOP (50) WITH APPROXIMATE …) v GROUP BY DocumentId" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-search-transact-sql"]
+    },
+    {
+      "id": "d3-ed-0025",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-design",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "For each statement about AI_GENERATE_CHUNKS, answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "FIXED chunking can split a word across two chunks." } },
+        { "id": "s2", "text": { "en": "Using overlap increases total stored text and embedding calls." } },
+        { "id": "s3", "text": { "en": "chunk_order restarts at 1 for each source row." } },
+        { "id": "s4", "text": { "en": "AI_GENERATE_CHUNKS calls the embedding model for each chunk." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "yes", "s3": "yes", "s4": "no" },
+      "explanation": { "en": "Fixed cuts are by character count, so words can be split (the docs show 'stee' / 'p hills'). Overlap repeats text, adding chunks/storage. Ordering restarts per source. The function only splits text; embeddings are a separate call." },
+      "example": { "en": "Combine with AI_GENERATE_EMBEDDINGS in the same SELECT to embed." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/ai-generate-chunks-transact-sql"]
+    },
+    {
+      "id": "d3-ed-0026",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-design",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What does chunk_offset report?" },
+      "options": [
+        { "id": "a", "text": { "en": "The position where the chunk starts within the source text" } },
+        { "id": "b", "text": { "en": "The number of tokens in the chunk" } },
+        { "id": "c", "text": { "en": "The distance from the query vector" } },
+        { "id": "d", "text": { "en": "The overlap percentage" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "chunk_offset is the chunk's position relative to the start of the source (1, 51, 101… in the docs' 50-character example). Token counts, distances and overlap aren't reported." },
+      "example": { "en": "Store ChunkOffset to highlight the matched passage in the original document." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/ai-generate-chunks-transact-sql"]
+    },
+    {
+      "id": "d3-ed-0027",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-design",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What's an advantage of defining chunking rules in T-SQL near the source tables?" },
+      "options": [
+        { "id": "a", "text": { "en": "You can change chunk size or splitting behavior by adjusting a query instead of changing application code" } },
+        { "id": "b", "text": { "en": "It removes the need to re-embed after changing rules" } },
+        { "id": "c", "text": { "en": "It makes embeddings smaller" } },
+        { "id": "d", "text": { "en": "It eliminates token limits" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Keeping chunking in SQL centralizes the rules next to the data. You still have to regenerate chunks and embeddings when rules change, vector size is set by the model, and token limits still apply." },
+      "example": { "en": "Parameterize CHUNK_SIZE in a stored procedure used by the embedding job." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-models-embeddings-with-sql/04-design-embeddings-sql-database-workloads"]
+    },
+    {
+      "id": "d3-ed-0028",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-design",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Wikipedia-style articles are searched both by title (\"find the article about X\") and by content (\"which article explains Y\"). What embedding design fits?" },
+      "options": [
+        { "id": "a", "text": { "en": "Two vector columns, such as title_vector and content_vector, queried depending on the search type" } },
+        { "id": "b", "text": { "en": "One vector of the article ID" } },
+        { "id": "c", "text": { "en": "Only a title vector" } },
+        { "id": "d", "text": { "en": "One vector of title and content multiplied together" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Separate embeddings per field let each search use the most relevant representation (the Microsoft sample uses title_vector and content_vector). IDs carry no meaning, title-only misses content questions, and vectors can't be multiplied with the vector type." },
+      "example": { "en": "VECTOR_SEARCH(TABLE = dbo.wikipedia_articles AS t, COLUMN = content_vector, …)" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-distance-transact-sql"]
+    },
+    {
+      "id": "d3-ed-0029",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-design",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Agents often search for exact part numbers like \"PX-4410-B\". What's the best approach for those lookups?" },
+      "options": [
+        { "id": "a", "text": { "en": "Equality or full-text search on the code column; use embeddings for descriptive questions" } },
+        { "id": "b", "text": { "en": "Embed the part number alone and use cosine distance" } },
+        { "id": "c", "text": { "en": "Increase the embedding dimensions" } },
+        { "id": "d", "text": { "en": "Chunk the part number into characters" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Embeddings capture meaning and can blur near-identical codes; exact identifiers are better matched exactly or with full-text. More dimensions or character chunks don't make vectors exact." },
+      "example": { "en": "WHERE PartNumber = @code — or hybrid search combining full-text and vectors." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-models-embeddings-with-sql/04-design-embeddings-sql-database-workloads"]
+    },
+    {
+      "id": "d3-ed-0030",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-design",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Why prefix each chunk with its document title before embedding?" },
+      "options": [
+        { "id": "a", "text": { "en": "So each chunk's vector carries the document's subject even when the chunk text doesn't mention it" } },
+        { "id": "b", "text": { "en": "To make chunks shorter" } },
+        { "id": "c", "text": { "en": "Because AI_GENERATE_EMBEDDINGS requires a title" } },
+        { "id": "d", "text": { "en": "To avoid needing a DocumentId" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "A short context prefix grounds chunks that use pronouns or omit the topic. It slightly lengthens input, isn't required by the function, and you still need the key to join back." },
+      "example": { "en": "CONCAT(N'Employee Handbook > Leave policy: ', c.chunk)" },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-models-embeddings-with-sql/04-design-embeddings-sql-database-workloads"]
+    },
+    {
+      "id": "d3-ed-0031",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-design",
+      "type": "multiple", "difficulty": "medium", "selectCount": 2,
+      "text": { "en": "Which two symptoms suggest your chunks are too large? (Select 2)" },
+      "options": [
+        { "id": "a", "text": { "en": "Embedding requests fail with input-too-long errors" } },
+        { "id": "b", "text": { "en": "Retrieved chunks contain the answer buried among unrelated topics" } },
+        { "id": "c", "text": { "en": "Retrieved chunks lack the subject they refer to" } },
+        { "id": "d", "text": { "en": "Vectors have the wrong number of dimensions" } },
+        { "id": "e", "text": { "en": "The chunk table has millions of tiny rows" } }
+      ],
+      "answer": ["a", "b"],
+      "explanation": { "en": "Token-limit failures and noisy, multi-topic matches point to oversized chunks. Missing context and huge numbers of tiny rows indicate chunks that are too small; dimension errors come from the model or column definition." },
+      "example": { "en": "Reduce CHUNK_SIZE or split on section headings." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-models-embeddings-with-sql/04-design-embeddings-sql-database-workloads"]
+    },
+    {
+      "id": "d3-ed-0032",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-design",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "You size chunks for a model limit of 8,192 tokens, but CHUNK_SIZE counts characters. What's a sensible approach?" },
+      "options": [
+        { "id": "a", "text": { "en": "Choose a character size well below the limit (English averages roughly 4 characters per token) and test with real text, leaving room for prefixes" } },
+        { "id": "b", "text": { "en": "Set CHUNK_SIZE = 8192 because characters equal tokens" } },
+        { "id": "c", "text": { "en": "Set CHUNK_SIZE = 8192 × 10 to be safe" } },
+        { "id": "d", "text": { "en": "Token limits don't apply to embeddings" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Characters and tokens differ (and vary by language), so size with headroom and verify. For retrieval quality you'll usually choose chunks far smaller than the model maximum anyway. Larger sizes would exceed the limit." },
+      "example": { "en": "CHUNK_SIZE = 2000 characters ≈ 500 tokens for typical English prose." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/foundry/openai/how-to/embeddings"]
+    },
+    {
+      "id": "d3-ed-0033",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-design",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Many products have a NULL or empty Description. What should the embedding job do?" },
+      "options": [
+        { "id": "a", "text": { "en": "Filter them out (or embed a fallback such as the name) instead of sending empty text" } },
+        { "id": "b", "text": { "en": "Send empty strings; the model returns a meaningful default" } },
+        { "id": "c", "text": { "en": "Embed the ProductId instead" } },
+        { "id": "d", "text": { "en": "Store a zero vector for every such row" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Empty input wastes calls and produces useless vectors. Zero vectors break cosine similarity and pollute results; IDs carry no meaning." },
+      "example": { "en": "WHERE LEN(TRIM(ISNULL(Description, N''))) > 0" },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-models-embeddings-with-sql/04-design-embeddings-sql-database-workloads"]
+    },
+    {
+      "id": "d3-ed-0034",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-design",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Product descriptions are stored as HTML with tags and inline styles. What should you do before embedding?" },
+      "options": [
+        { "id": "a", "text": { "en": "Strip markup and boilerplate (for example with REGEXP_REPLACE) so tokens are spent on meaningful text" } },
+        { "id": "b", "text": { "en": "Embed the raw HTML; tags improve meaning" } },
+        { "id": "c", "text": { "en": "Convert the HTML to varbinary" } },
+        { "id": "d", "text": { "en": "Embed only the CSS" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Markup adds tokens and noise that pull vectors toward formatting rather than meaning. Binary or CSS-only input makes no sense for text embeddings." },
+      "example": { "en": "REGEXP_REPLACE(DescriptionHtml, '<[^>]+>', ' ')" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/regexp-replace-transact-sql"]
+    },
+    {
+      "id": "d3-ed-0035",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-design",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Build a labeled embedding input that skips NULL parts automatically." },
+      "code": "SELECT p.ProductId,\n       [BLANK1](N' | ',\n                 N'Title: ' + p.Name,\n                 N'Brand: ' + b.Name,\n                 N'Description: ' + p.Description) AS embed_text\nFROM dbo.Products AS p\nJOIN dbo.Brands AS b ON b.BrandId = p.BrandId\nWHERE p.Description [BLANK2];",
+      "blanks": [
+        { "id": "b1", "label": { "en": "BLANK1" }, "choices": [
+          { "id": "c1", "text": { "en": "CONCAT_WS" } },
+          { "id": "c2", "text": { "en": "STRING_AGG" } },
+          { "id": "c3", "text": { "en": "JSON_ARRAY" } }
+        ] },
+        { "id": "b2", "label": { "en": "BLANK2" }, "choices": [
+          { "id": "c1", "text": { "en": "IS NOT NULL" } },
+          { "id": "c2", "text": { "en": "= NULL" } },
+          { "id": "c3", "text": { "en": "IS NULL" } }
+        ] }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "CONCAT_WS joins values with a separator and skips NULLs (N'Brand: ' + NULL is NULL, so that part disappears). STRING_AGG aggregates rows and JSON_ARRAY builds JSON. Use IS NOT NULL — '= NULL' never matches." },
+      "example": { "en": "Title: Trail Runner | Brand: Contoso | Description: Lightweight shoe…" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/concat-ws-transact-sql"]
+    },
+    {
+      "id": "d3-ed-0036",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-design",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "You change CHUNK_SIZE from 2,000 to 800 characters. What must happen to existing chunks?" },
+      "options": [
+        { "id": "a", "text": { "en": "Delete and regenerate the chunks and their embeddings so all rows follow the new rule" } },
+        { "id": "b", "text": { "en": "Nothing; old and new chunks mix without issues" } },
+        { "id": "c", "text": { "en": "Only the vector index must be rebuilt" } },
+        { "id": "d", "text": { "en": "Run VECTOR_NORMALIZE on old chunks" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Mixed chunking rules make results inconsistent (large old chunks compete with small new ones). Regenerate chunks and embeddings; rebuilding an index or normalizing doesn't change the chunk text." },
+      "example": { "en": "DELETE FROM dbo.DocumentChunks WHERE DocumentId = @id; INSERT … CROSS APPLY AI_GENERATE_CHUNKS(…, CHUNK_SIZE = 800) …" },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-models-embeddings-with-sql/05-generate-maintain-embeddings-sql-database-workloads"]
+    },
+    {
+      "id": "d3-ed-0037",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-design",
+      "type": "dragdrop-match", "difficulty": "medium",
+      "text": { "en": "Match each data element to its best treatment in an embedding design." },
+      "items": [
+        { "id": "i1", "text": { "en": "Long product description" } },
+        { "id": "i2", "text": { "en": "Unit price" } },
+        { "id": "i3", "text": { "en": "Brand name" } },
+        { "id": "i4", "text": { "en": "Internal notes containing customer phone numbers" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "Chunk and embed" } },
+        { "id": "t2", "text": { "en": "Keep as a filter column (WHERE / ORDER BY)" } },
+        { "id": "t3", "text": { "en": "Include as a labeled prefix in the composed text" } },
+        { "id": "t4", "text": { "en": "Exclude or redact before embedding" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "Rich text is embedded (chunked if long), numeric values are filters, short meaningful attributes add context to the input, and sensitive data stays out of model requests." },
+      "example": { "en": "Brand is also kept as a column if users filter by brand." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-models-embeddings-with-sql/04-design-embeddings-sql-database-workloads"]
+    },
+    {
+      "id": "d3-ed-0038",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-design",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Each product has dozens of customer reviews. Users ask \"which shoes do reviewers say run small?\" How should reviews be embedded?" },
+      "options": [
+        { "id": "a", "text": { "en": "Embed each review separately in a reviews table linked to the product" } },
+        { "id": "b", "text": { "en": "Concatenate all reviews into one giant text per product" } },
+        { "id": "c", "text": { "en": "Embed only the average star rating" } },
+        { "id": "d", "text": { "en": "Don't embed reviews" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "One vector per review keeps opinions focused and searchable; one giant blob dilutes them and may exceed limits. Ratings are numbers best used as filters." },
+      "example": { "en": "dbo.ReviewEmbeddings(ReviewId, ProductId, Embedding)" },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-models-embeddings-with-sql/04-design-embeddings-sql-database-workloads"]
+    },
+    {
+      "id": "d3-ed-0039",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-design",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "You'll store 100,000 documents averaging 5 chunks each as VECTOR(1536) float32. Roughly how much space do the vector values need?" },
+      "options": [
+        { "id": "a", "text": { "en": "About 3 GB (500,000 × 1,536 × 4 bytes)" } },
+        { "id": "b", "text": { "en": "About 300 MB" } },
+        { "id": "c", "text": { "en": "About 30 GB" } },
+        { "id": "d", "text": { "en": "About 3 MB" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "500,000 vectors × 6,144 bytes ≈ 3.07 GB, before chunk text and indexes. Chunk count multiplies storage, which is why chunk size and dimensions are design decisions." },
+      "example": { "en": "Halve it with float16, or reduce dimensions if quality allows." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/data-types/vector-data-type"]
+    },
+    {
+      "id": "d3-ed-0040",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-design",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Thousands of product rows share an identical boilerplate description. What should you do before creating a vector index?" },
+      "options": [
+        { "id": "a", "text": { "en": "Deduplicate or enrich the text; many duplicate embeddings hurt result quality and waste resources" } },
+        { "id": "b", "text": { "en": "Nothing; duplicates improve recall" } },
+        { "id": "c", "text": { "en": "Use the dot metric to ignore duplicates" } },
+        { "id": "d", "text": { "en": "Store duplicates as float16" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Microsoft advises against indexing datasets with a high proportion of duplicate vectors: they crowd out better matches and add cost. Metrics and precision don't fix duplication." },
+      "example": { "en": "Embed name + key features so each product's text is distinct." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-vector-index-transact-sql"]
+    },
+    {
+      "id": "d3-ed-0041",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-design",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "In a RAG solution, why do well-sized chunks matter beyond retrieval accuracy?" },
+      "options": [
+        { "id": "a", "text": { "en": "Retrieved chunks become the prompt context, so focused chunks reduce LLM tokens, cost and distraction" } },
+        { "id": "b", "text": { "en": "Chunk size changes the LLM's model version" } },
+        { "id": "c", "text": { "en": "Chunks are cached by the LLM permanently" } },
+        { "id": "d", "text": { "en": "Smaller chunks make embeddings exact" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The chunks you retrieve are sent to the model, so their size directly drives prompt size and answer quality. Chunk size doesn't change models, isn't cached permanently by the LLM, and doesn't make search exact." },
+      "example": { "en": "Top 5 chunks × 400 tokens = 2,000 prompt tokens of context." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-models-embeddings-with-sql/02-understand-evaluate-models-sql-database-workloads"]
+    },
+    {
+      "id": "d3-ed-0042",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-design",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Where is AI_GENERATE_CHUNKS available?" },
+      "options": [
+        { "id": "a", "text": { "en": "SQL Server 2025, Azure SQL Database, Azure SQL Managed Instance (SQL Server 2025 or Always-up-to-date policy) and SQL database in Fabric" } },
+        { "id": "b", "text": { "en": "SQL Server 2019 and later" } },
+        { "id": "c", "text": { "en": "Only Azure Synapse dedicated pools" } },
+        { "id": "d", "text": { "en": "Only through Azure AI Search" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The function belongs to the SQL Server 2025 generation of AI features across the SQL Database Engine family. Older SQL Server versions and Synapse dedicated pools don't have it." },
+      "example": { "en": "Check the MI update policy before relying on it." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/ai-generate-chunks-transact-sql"]
+    },
+    {
+      "id": "d3-ed-0043",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-design",
+      "type": "single", "difficulty": "medium",
+      "caseId": "case-ed-legal",
+      "text": { "en": "What should Contoso Legal embed?" },
+      "options": [
+        { "id": "a", "text": { "en": "Section/clause text chunks from Body; keep ClientId, Jurisdiction and SignedDate as filter columns" } },
+        { "id": "b", "text": { "en": "One embedding of the entire Body per contract" } },
+        { "id": "c", "text": { "en": "Embeddings of Jurisdiction and SignedDate" } },
+        { "id": "d", "text": { "en": "Only the contract Title" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Clause-level chunks match clause-level questions and allow citations. Whole-contract vectors blur dozens of topics (and exceed limits), metadata belongs in WHERE filters, and titles alone miss clause content." },
+      "example": { "en": "WHERE c.Jurisdiction = 'DE' AND c.SignedDate >= '2025-01-01'" },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-models-embeddings-with-sql/04-design-embeddings-sql-database-workloads"]
+    },
+    {
+      "id": "d3-ed-0044",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-design",
+      "type": "single", "difficulty": "hard",
+      "caseId": "case-ed-legal",
+      "text": { "en": "Which chunking strategy fits contracts with numbered sections best?" },
+      "options": [
+        { "id": "a", "text": { "en": "Split on section boundaries (e.g., REGEXP_SPLIT_TO_TABLE on section numbers), cap long sections with FIXED chunks and modest overlap, and prefix each chunk with contract title and section heading" } },
+        { "id": "b", "text": { "en": "FIXED chunks of 50 characters with no overlap" } },
+        { "id": "c", "text": { "en": "One chunk per page regardless of structure" } },
+        { "id": "d", "text": { "en": "No chunking; rely on the model to find clauses" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Structure-aware chunks align with how lawyers ask and cite; a size cap with overlap handles long sections, and the prefix preserves context. Tiny fixed chunks lose meaning, pages cut clauses arbitrarily, and unchunked contracts exceed model limits." },
+      "example": { "en": "Prefix: 'Master Services Agreement – §12 Termination: …'" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/ai-generate-chunks-transact-sql", "https://learn.microsoft.com/en-us/sql/t-sql/functions/regexp-split-to-table-transact-sql"]
+    },
+    {
+      "id": "d3-ed-0045",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-design",
+      "type": "single", "difficulty": "medium",
+      "caseId": "case-ed-legal",
+      "text": { "en": "Which table supports citing the exact matched section?" },
+      "options": [
+        { "id": "a", "text": { "en": "dbo.ContractChunks(ChunkId PK, ContractId FK, SectionNo, ChunkOrder, ChunkText, Embedding VECTOR(1536))" } },
+        { "id": "b", "text": { "en": "A vector column added to dbo.Contracts" } },
+        { "id": "c", "text": { "en": "dbo.ContractVectors(ContractId, Embedding) without text" } },
+        { "id": "d", "text": { "en": "A JSON column listing section numbers" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Keeping section number, order and text per chunk lets the app cite and show the passage, and the FK reaches contract metadata. One vector per contract or vectors without text can't cite sections." },
+      "example": { "en": "Return: Contract title, SectionNo, ChunkText, distance." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-models-embeddings-with-sql/04-design-embeddings-sql-database-workloads"]
+    },
+    {
+      "id": "d3-ed-0046",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-design",
+      "type": "single", "difficulty": "hard",
+      "caseId": "case-ed-legal",
+      "text": { "en": "How should the query for \"termination for convenience clauses in German contracts signed after 2024\" be built?" },
+      "options": [
+        { "id": "a", "text": { "en": "Embed the question, run VECTOR_SEARCH on ContractChunks joined to Contracts, and filter Jurisdiction = 'DE' AND SignedDate >= '2025-01-01' in WHERE" } },
+        { "id": "b", "text": { "en": "Embed \"German 2025\" and rely on distance only" } },
+        { "id": "c", "text": { "en": "Filter with LIKE '%convenience%' only" } },
+        { "id": "d", "text": { "en": "Search Contracts.Title with VECTOR_DISTANCE" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Semantic matching handles the clause meaning while exact metadata filters handle jurisdiction and dates (applied during the search with latest vector indexes). Embedding metadata is unreliable, LIKE misses paraphrases, and titles don't contain clauses." },
+      "example": { "en": "SELECT TOP (10) WITH APPROXIMATE … INNER JOIN VECTOR_SEARCH(TABLE = dbo.ContractChunks AS ch, …) … WHERE c.Jurisdiction = 'DE' … ORDER BY vs.distance;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-search-transact-sql"]
+    },
+    {
+      "id": "d3-ed-0047",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-design",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "For each statement about choosing what to embed, answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "Embedding fewer, meaningful columns reduces token usage." } },
+        { "id": "s2", "text": { "en": "Dates should be embedded so 'last month' queries work." } },
+        { "id": "s3", "text": { "en": "Embedding text sends that text to the model endpoint." } },
+        { "id": "s4", "text": { "en": "You can combine vector search with WHERE filters on metadata columns." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "no", "s3": "yes", "s4": "yes" },
+      "explanation": { "en": "Limiting input to meaningful text saves tokens and improves similarity. Time filters belong in WHERE (compute the date range in T-SQL). The endpoint receives the text you embed. Vector search combines naturally with relational predicates." },
+      "example": { "en": "WHERE OrderDate >= DATEADD(month, -1, SYSUTCDATETIME())" },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-models-embeddings-with-sql/04-design-embeddings-sql-database-workloads"]
+    },
+    {
+      "id": "d3-ed-0048",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-design",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Fixed-size chunks sometimes split words and sentences, hurting matches. Which mitigation is most appropriate?" },
+      "options": [
+        { "id": "a", "text": { "en": "Add overlap and/or split on sentence or paragraph boundaries before applying a size cap" } },
+        { "id": "b", "text": { "en": "Use the euclidean metric" } },
+        { "id": "c", "text": { "en": "Store vectors as float16" } },
+        { "id": "d", "text": { "en": "Increase max-page-size" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Boundary problems are solved at chunking time with overlap or structure-aware splitting. Metrics, precision and paging don't change chunk boundaries." },
+      "example": { "en": "Paragraphs via REGEXP_SPLIT_TO_TABLE, then AI_GENERATE_CHUNKS with OVERLAP = 10 for long paragraphs." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/ai-generate-chunks-transact-sql"]
+    },
+    {
+      "id": "d3-ed-0049",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-design",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Why store a ModelVersion (or similar) column with each chunk's embedding?" },
+      "options": [
+        { "id": "a", "text": { "en": "To know which model produced each vector, so you can re-embed progressively and avoid mixing vector spaces" } },
+        { "id": "b", "text": { "en": "Because the vector type requires it" } },
+        { "id": "c", "text": { "en": "To set the vector index metric" } },
+        { "id": "d", "text": { "en": "To compress vectors" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Tracking the model lets you migrate and query consistently (filter on the current version during migration). It's not required by the type and doesn't affect metric or compression." },
+      "example": { "en": "WHERE ModelVersion = 'text-embedding-3-small' during a re-embedding rollout" },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-models-embeddings-with-sql/05-generate-maintain-embeddings-sql-database-workloads"]
+    },
+    {
+      "id": "d3-ed-0050",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-design",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "What does AI_GENERATE_CHUNKS do?" },
+      "options": [
+        { "id": "a", "text": { "en": "Splits text into fragments (rows) based on a chunk type, size and optional overlap" } },
+        { "id": "b", "text": { "en": "Generates embeddings for text" } },
+        { "id": "c", "text": { "en": "Summarizes text with an LLM" } },
+        { "id": "d", "text": { "en": "Creates a vector index" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "It's a table-valued function that returns chunks. Embeddings come from AI_GENERATE_EMBEDDINGS, summaries need a chat model, and indexes come from CREATE VECTOR INDEX." },
+      "example": { "en": "SELECT * FROM AI_GENERATE_CHUNKS(SOURCE = @text, CHUNK_TYPE = FIXED, CHUNK_SIZE = 500);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/ai-generate-chunks-transact-sql"]
+    }
+  ]
+}

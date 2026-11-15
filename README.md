@@ -1,59 +1,134 @@
-# Dp800
+# DP-800 Study & Practice Portal
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 20.3.43.
+A mobile-responsive, frontend-only study portal for Microsoft **Exam DP-800:
+Developing AI-Enabled Database Solutions** (Microsoft Certified: SQL AI
+Developer Associate).
 
-## Development server
+- **Stack:** Angular 20 (standalone components, signals, zoneless), no backend.
+- **Content:** JSON files under `public/content/`, lazily loaded per subtopic.
+- **Progress:** stored in `localStorage` (export/import as JSON from the Dashboard).
+- **Modes:** Study (lessons + filtered practice with instant feedback) and Mock
+  exam (120-minute timed exam mirroring the official structure, scored on the
+  100–1000 scale with 700 to pass — an estimate of the official scaled score).
 
-To start a local development server, run:
-
-```bash
-ng serve
-```
-
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
-
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+## Run it
 
 ```bash
-ng generate component component-name
+npm install
+npm start          # dev server on http://localhost:4200
+npm run build      # production build into dist/dp800/browser
+npm run validate:content   # validate the question banks
+npm run serve:dist  # serve the production build on http://localhost:4300
 ```
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+The production output in `dist/dp800/browser` is a static site — host it on any
+static host (GitHub Pages, Azure Static Web Apps…). The router uses hash URLs,
+so no rewrite rules are needed.
 
-```bash
-ng generate --help
+## Content structure
+
+```
+public/content/
+  manifest.json        # topic tree: Domain → Topic → Subtopic (+ counts, weights)
+  i18n/en.json         # all UI strings (one file per locale)
+  lessons/<id>.json    # one lesson per subtopic
+  questions/<id>.json  # one question bank per subtopic (≥ 50 questions)
 ```
 
-## Building
+The tree mirrors the official DP-800 study guide (skills measured as of
+March 12, 2026): three domains weighted 35–40% / 35–40% / 25–30%, plus a
+lessons-only "Foundations" section that the mock exam never samples.
 
-To build the project run:
+### Adding a new subtopic
 
-```bash
-ng build
+1. Add it to `manifest.json` under the right topic, with `lessonFile` and
+   `questionFile` paths and `questionCount: 0`.
+2. Create `lessons/<id>.json` (shape: see `src/app/core/models/content.models.ts`,
+   `Lesson` interface).
+3. Create `questions/<id>.json` with at least 50 questions (shape: `QuestionBank`).
+4. Run `npm run validate:content -- --fix-counts` — it checks every rule and
+   writes the real question counts back into the manifest.
+
+### Question format
+
+```jsonc
+{
+  "id": "d3-vector-data-0012",      // stable unique id (progress tracking)
+  "domain": "ai-capabilities",
+  "topic": "t-intelligent-search",
+  "subtopic": "d3-vector-data",
+  "type": "single",                  // single | multiple | dragdrop-order |
+                                     // dragdrop-match | yesno | dropdown
+  "difficulty": "medium",            // easy | medium | hard
+  "text": { "en": "…" },
+  "code": "SELECT …",                // optional, highlighted as T-SQL
+  "options": [{ "id": "a", "text": { "en": "…" } }],
+  "answer": ["a"],
+  "explanation": { "en": "Why right is right and each wrong is wrong." },
+  "example": { "en": "Short related example." },
+  "exampleCode": "SELECT …",
+  "sources": ["https://learn.microsoft.com/…"]
+}
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+Answer shapes per type:
 
-## Running unit tests
+| Type | Key fields |
+| --- | --- |
+| `single` | `options`, `answer: ["a"]` |
+| `multiple` | `options`, `answer: ["a","c"]`, optional `selectCount` |
+| `dragdrop-order` | `items`, `answer`: all item ids in correct order |
+| `dragdrop-match` | `items`, `targets`, `answerMap: { itemId: targetId }` |
+| `yesno` | `statements`, `answerMap: { stmtId: "yes" \| "no" }` |
+| `dropdown` | `blanks[{id,label,choices}]`, `answerMap: { blankId: choiceId }` |
 
-To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
+Case studies: add a `cases` array to the bank and set `caseId` on member
+questions; the scenario renders above each one and the mock exam keeps the
+group together.
 
-```bash
-ng test
-```
+## Adding a new language (e.g. Roman English)
 
-## Running end-to-end tests
+The portal is localization-ready; English is the fallback everywhere.
 
-For end-to-end (e2e) testing, run:
+1. Copy `public/content/i18n/en.json` to `roman.json` and translate the values.
+2. In `manifest.json`, set `"enabled": true` on the `roman` locale entry.
+3. Add `"roman": "…"` next to any `"en": "…"` field in lessons/questions you
+   have translated — untranslated fields automatically fall back to English.
+4. Keep code snippets and technical terms in English.
 
-```bash
-ng e2e
-```
+No code changes are required.
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+## Keyboard shortcuts (study mode)
 
-## Additional Resources
+`←/→` prev/next question · `1–9`/`A–F` select option · `Enter` check ·
+`H` show/hide answer · `X` show/hide example · `M` bookmark ·
+`P/N` prev/next subtopic · `?` help · `Esc` close.
 
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+## Verification & sources
+
+Questions are original, written against official Microsoft documentation
+(Microsoft Learn study guide, SQL Server 2025 / Azure SQL / Fabric docs);
+every question and lesson carries source links. No real-exam or "braindump"
+content is used. Scores are estimates: Microsoft does not publish the exact
+scaling or question count.
+
+## Content coverage
+
+| Domain | Subtopics | Questions |
+| --- | --- | --- |
+| Foundations (lessons only, not in mock exams) | 3 | 0 |
+| Design and develop database solutions | 13 | 650 |
+| Secure, optimize, and deploy database solutions | 13 | 650 |
+| Implement AI capabilities in database solutions | 9 | 450 |
+| **Total** | **38** | **1,750** |
+
+Question types: 1,323 single choice, 73 multiple choice, 129 yes/no sets,
+88 dropdown (complete the code), 78 drag-and-drop match, 59 drag-and-drop
+order; 11 case studies grouping 45 questions. Difficulty: 285 easy, 1,174
+medium, 291 hard.
+
+Facts were checked against Microsoft Learn in November 2026. Several features
+covered by the exam are new or in preview (vector indexes and `VECTOR_SEARCH`
+in SQL Server 2025, change event streaming, Data API builder 2.0), so where
+behavior differs between versions the lessons say which version they describe
+(for example, latest vs earlier vector index versions).

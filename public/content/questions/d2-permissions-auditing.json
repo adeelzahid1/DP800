@@ -1,0 +1,859 @@
+{
+  "subtopic": "d2-permissions-auditing",
+  "questions": [
+    {
+      "id": "d2-perm-0001",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-permissions-auditing",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "A user is granted SELECT on a table through one role and denied SELECT on the same table through another role. What is the effective permission?" },
+      "options": [
+        { "id": "a", "text": { "en": "Denied — DENY takes precedence over GRANT" } },
+        { "id": "b", "text": { "en": "Granted — GRANT takes precedence" } },
+        { "id": "c", "text": { "en": "Whichever role was created first wins" } },
+        { "id": "d", "text": { "en": "An error is raised at login" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "An explicit DENY from any path overrides GRANTs. Role creation order is irrelevant, and conflicting permissions don't cause login errors." },
+      "example": { "en": "GRANT SELECT ON SCHEMA::Sales TO Analysts; DENY SELECT ON Sales.Payroll TO Contractors; — a user in both can't read Payroll." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/permissions-hierarchy-database-engine"]
+    },
+    {
+      "id": "d2-perm-0002",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-permissions-auditing",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "What does REVOKE do?" },
+      "options": [
+        { "id": "a", "text": { "en": "Removes a previously granted or denied permission entry" } },
+        { "id": "b", "text": { "en": "Denies the permission permanently" } },
+        { "id": "c", "text": { "en": "Drops the user" } },
+        { "id": "d", "text": { "en": "Grants the permission to everyone" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "REVOKE deletes an existing GRANT or DENY. Afterwards the principal may still have the permission via another path (e.g. a role). It's not equivalent to DENY (b)." },
+      "example": { "en": "REVOKE SELECT ON dbo.Orders FROM Bob; — Bob can still read if his role has SELECT." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/revoke-transact-sql"]
+    },
+    {
+      "id": "d2-perm-0003",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-permissions-auditing",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "An App Service needs to connect to Azure SQL Database without any password or secret. What is the recommended approach?" },
+      "options": [
+        { "id": "a", "text": { "en": "Enable a managed identity on the App Service and create a database user FROM EXTERNAL PROVIDER for it" } },
+        { "id": "b", "text": { "en": "Store a SQL login password in app settings" } },
+        { "id": "c", "text": { "en": "Use the server admin login" } },
+        { "id": "d", "text": { "en": "Embed the password in the source code" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Managed identity lets the platform obtain Entra tokens; the database maps the identity to a contained user. No secrets to store or rotate. Options b–d all rely on passwords, and c also violates least privilege." },
+      "example": { "en": "CREATE USER [orders-app] FROM EXTERNAL PROVIDER; ALTER ROLE db_datareader ADD MEMBER [orders-app];" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-sql/database/authentication-aad-overview"]
+    },
+    {
+      "id": "d2-perm-0004",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-permissions-auditing",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Complete the statements creating a passwordless database user for an app's managed identity." },
+      "code": "CREATE USER [inventory-api] FROM [BLANK1];\nGRANT [BLANK2] ON SCHEMA::Api TO [inventory-api];",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "EXTERNAL PROVIDER" } },
+            { "id": "c2", "text": { "en": "LOGIN" } },
+            { "id": "c3", "text": { "en": "CERTIFICATE" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "EXECUTE" } },
+            { "id": "c2", "text": { "en": "CONTROL" } },
+            { "id": "c3", "text": { "en": "ALTER" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "FROM EXTERNAL PROVIDER creates a contained user mapped to an Entra identity. EXECUTE on the API schema follows least privilege — the app calls procedures. CONTROL/ALTER would let it change or take over objects." },
+      "example": { "en": "Connection string: Authentication=Active Directory Managed Identity;" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-sql/database/authentication-aad-configure"]
+    },
+    {
+      "id": "d2-perm-0005",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-permissions-auditing",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A procedure dbo.GetOrders (owner dbo) reads dbo.Orders (owner dbo). A user has EXECUTE on the procedure but no SELECT on the table. What happens when they run it?" },
+      "options": [
+        { "id": "a", "text": { "en": "It succeeds — ownership chaining skips the permission check on dbo.Orders" } },
+        { "id": "b", "text": { "en": "It fails with SELECT permission denied" } },
+        { "id": "c", "text": { "en": "It returns zero rows" } },
+        { "id": "d", "text": { "en": "It prompts for a password" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Unbroken ownership chains mean only EXECUTE on the procedure is checked. This is the classic pattern for exposing data only through procedures." },
+      "example": { "en": "GRANT EXECUTE ON dbo.GetOrders TO AppRole; — no table grants needed." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/authentication-access/ownership-chains"]
+    },
+    {
+      "id": "d2-perm-0006",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-permissions-auditing",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "The same procedure now builds its query with dynamic SQL (sp_executesql). The user gets 'SELECT permission denied'. Why?" },
+      "options": [
+        { "id": "a", "text": { "en": "Dynamic SQL runs as a separate batch, breaking the ownership chain; permissions are checked against the caller" } },
+        { "id": "b", "text": { "en": "sp_executesql requires sysadmin" } },
+        { "id": "c", "text": { "en": "Dynamic SQL is not allowed in procedures" } },
+        { "id": "d", "text": { "en": "The procedure needs to be recompiled" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Ownership chaining doesn't extend into dynamic SQL. Fixes: EXECUTE AS on the module or module signing with a certificate. Recompiling (d) changes nothing." },
+      "example": { "en": "CREATE PROCEDURE ... WITH EXECUTE AS OWNER — or sign it and grant SELECT to a certificate user." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/authentication-access/ownership-chains"]
+    },
+    {
+      "id": "d2-perm-0007",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-permissions-auditing",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "For each statement about Microsoft Entra authentication in Azure SQL, answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "You can create a database user for an Entra group." } },
+        { "id": "s2", "text": { "en": "Entra-only authentication disables SQL logins on the logical server." } },
+        { "id": "s3", "text": { "en": "Managed identities require you to rotate their passwords every 90 days." } },
+        { "id": "s4", "text": { "en": "Entra authentication allows MFA and Conditional Access for human users." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "yes", "s3": "no", "s4": "yes" },
+      "explanation": { "en": "Group-based users centralize membership in Entra. Entra-only auth turns off SQL authentication. Managed identities have no passwords to rotate — the platform handles credentials. Human sign-ins benefit from MFA and Conditional Access." },
+      "example": { "en": "CREATE USER [SQL-Readers-Group] FROM EXTERNAL PROVIDER;" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-sql/database/authentication-azure-ad-only-authentication"]
+    },
+    {
+      "id": "d2-perm-0008",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-permissions-auditing",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which statement grants SELECT on every current and future table in the Reporting schema to a role?" },
+      "options": [
+        { "id": "a", "text": { "en": "GRANT SELECT ON SCHEMA::Reporting TO ReportRole;" } },
+        { "id": "b", "text": { "en": "GRANT SELECT ON Reporting.* TO ReportRole;" } },
+        { "id": "c", "text": { "en": "GRANT ALL TABLES IN Reporting TO ReportRole;" } },
+        { "id": "d", "text": { "en": "ALTER ROLE ReportRole ADD SCHEMA Reporting;" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Schema-scoped grants use the SCHEMA:: class and cover objects created later. The other forms are not valid T-SQL." },
+      "example": { "en": "Combine with a DENY on a specific sensitive object if needed." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/grant-schema-permissions-transact-sql"]
+    },
+    {
+      "id": "d2-perm-0009",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-permissions-auditing",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "HR may read Name and Department from dbo.Employees but not Salary. What implements this most directly?" },
+      "options": [
+        { "id": "a", "text": { "en": "GRANT SELECT ON dbo.Employees(Name, Department) TO HR;" } },
+        { "id": "b", "text": { "en": "GRANT SELECT ON dbo.Employees TO HR; with Salary masked" } },
+        { "id": "c", "text": { "en": "RLS on Salary" } },
+        { "id": "d", "text": { "en": "GRANT ALTER ON dbo.Employees TO HR;" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Column-level permissions restrict which columns can be selected; SELECT * would then fail for HR. Masking (b) still allows inference through predicates. RLS (c) filters rows, not columns. ALTER (d) is unrelated and dangerous." },
+      "example": { "en": "Alternatively expose a view with only the allowed columns." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/permissions-database-engine"]
+    },
+    {
+      "id": "d2-perm-0010",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-permissions-auditing",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "In SQL Server Audit, which object defines WHERE audit records are written?" },
+      "options": [
+        { "id": "a", "text": { "en": "SERVER AUDIT" } },
+        { "id": "b", "text": { "en": "DATABASE AUDIT SPECIFICATION" } },
+        { "id": "c", "text": { "en": "SERVER AUDIT SPECIFICATION" } },
+        { "id": "d", "text": { "en": "Extended Events session" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The SERVER AUDIT is the target (file, Application log, Security log; URL for Managed Instance). Specifications define WHICH actions are captured and point to a server audit. Extended Events underpin auditing but aren't the configuration object here." },
+      "example": { "en": "CREATE SERVER AUDIT A1 TO FILE (FILEPATH = 'D:\\Audit\\');" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/auditing/sql-server-audit-database-engine"]
+    },
+    {
+      "id": "d2-perm-0011",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-permissions-auditing",
+      "type": "dragdrop-order", "difficulty": "medium",
+      "text": { "en": "Order the steps to audit SELECTs on dbo.Payroll in SQL Server." },
+      "items": [
+        { "id": "i1", "text": { "en": "CREATE SERVER AUDIT with a file target" } },
+        { "id": "i2", "text": { "en": "ALTER SERVER AUDIT ... WITH (STATE = ON)" } },
+        { "id": "i3", "text": { "en": "CREATE DATABASE AUDIT SPECIFICATION ... ADD (SELECT ON dbo.Payroll BY public)" } },
+        { "id": "i4", "text": { "en": "Read events with sys.fn_get_audit_file" } }
+      ],
+      "answer": ["i1", "i2", "i3", "i4"],
+      "explanation": { "en": "Create the target, enable it, define the database audit specification (which references the audit), then read the results. The specification also needs STATE = ON (typically in its CREATE)." },
+      "example": { "en": "SELECT * FROM sys.fn_get_audit_file('D:\\Audit\\*.sqlaudit', DEFAULT, DEFAULT);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/auditing/create-a-server-audit-and-database-audit-specification"]
+    },
+    {
+      "id": "d2-perm-0012",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-permissions-auditing",
+      "type": "multiple", "difficulty": "medium", "selectCount": 3,
+      "text": { "en": "Which three are supported destinations for Azure SQL Database auditing? (Select 3)" },
+      "options": [
+        { "id": "a", "text": { "en": "Azure Storage account" } },
+        { "id": "b", "text": { "en": "Log Analytics workspace" } },
+        { "id": "c", "text": { "en": "Event Hubs" } },
+        { "id": "d", "text": { "en": "A local file on the server's D: drive" } },
+        { "id": "e", "text": { "en": "Windows Security event log" } }
+      ],
+      "answer": ["a", "b", "c"],
+      "explanation": { "en": "Azure SQL Database (PaaS) audits to Storage, Log Analytics or Event Hubs. Local files and Windows event logs are SQL Server targets — you have no OS access in Azure SQL Database." },
+      "example": { "en": "Log Analytics: query audits with KQL and build alerts; Event Hubs: stream to a SIEM." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-sql/database/auditing-overview"]
+    },
+    {
+      "id": "d2-perm-0013",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-permissions-auditing",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "The security team wants to query audit logs with KQL and raise alerts on suspicious activity. Which Azure SQL auditing destination fits best?" },
+      "options": [
+        { "id": "a", "text": { "en": "Log Analytics workspace" } },
+        { "id": "b", "text": { "en": "Azure Storage only" } },
+        { "id": "c", "text": { "en": "Event Hubs only" } },
+        { "id": "d", "text": { "en": "sys.fn_get_audit_file" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Log Analytics supports KQL queries, workbooks and alert rules natively. Storage is cheap long-term retention; Event Hubs streams to external systems; fn_get_audit_file reads file/storage audits but doesn't provide alerting." },
+      "example": { "en": "AzureDiagnostics | where Category == 'SQLSecurityAuditEvents' | where action_name_s == 'DATABASE AUTHENTICATION FAILED'" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-sql/database/auditing-overview"]
+    },
+    {
+      "id": "d2-perm-0014",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-permissions-auditing",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Why should applications avoid membership in db_owner?" },
+      "options": [
+        { "id": "a", "text": { "en": "A compromised app (e.g. via SQL injection) could then alter schema, permissions and security policies" } },
+        { "id": "b", "text": { "en": "db_owner queries run slower" } },
+        { "id": "c", "text": { "en": "db_owner can't read data" } },
+        { "id": "d", "text": { "en": "db_owner is deprecated" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Least privilege limits the blast radius: an app with db_owner can drop tables, disable RLS and grant itself anything. Performance (b) is unaffected, db_owner can read everything (c), and it isn't deprecated (d)." },
+      "example": { "en": "Give apps EXECUTE on an API schema or narrow SELECT/INSERT grants instead." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/securing-sql-server"]
+    },
+    {
+      "id": "d2-perm-0015",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-permissions-auditing",
+      "type": "dragdrop-match", "difficulty": "medium",
+      "text": { "en": "Match each statement to its effect." },
+      "items": [
+        { "id": "i1", "text": { "en": "GRANT" } },
+        { "id": "i2", "text": { "en": "DENY" } },
+        { "id": "i3", "text": { "en": "REVOKE" } },
+        { "id": "i4", "text": { "en": "GRANT ... WITH GRANT OPTION" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "Gives a permission" } },
+        { "id": "t2", "text": { "en": "Explicitly forbids, overriding grants" } },
+        { "id": "t3", "text": { "en": "Removes a previous grant or deny entry" } },
+        { "id": "t4", "text": { "en": "Lets the grantee grant the permission to others" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "The core DCL verbs. WITH GRANT OPTION delegates the ability to grant — use sparingly, and REVOKE … CASCADE removes downstream grants." },
+      "example": { "en": "REVOKE SELECT ON dbo.T FROM Lead CASCADE; — also removes what Lead granted to others." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/permissions-database-engine"]
+    },
+    {
+      "id": "d2-perm-0016",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-permissions-auditing",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A procedure must read a table owned by a different schema owner, and you want to avoid EXECUTE AS impersonation. Which technique grants exactly that extra permission to the procedure?" },
+      "options": [
+        { "id": "a", "text": { "en": "Module signing: sign the procedure with a certificate, create a user from the certificate, and grant that user SELECT" } },
+        { "id": "b", "text": { "en": "Grant the caller db_owner" } },
+        { "id": "c", "text": { "en": "Enable TRUSTWORTHY on the database" } },
+        { "id": "d", "text": { "en": "Use WITH RECOMPILE" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Signing attaches extra permissions to the code, not the caller, and keeps the caller's identity (useful for auditing). db_owner (b) is excessive; TRUSTWORTHY (c) is a broad, risky setting; RECOMPILE (d) is a plan option." },
+      "example": { "en": "CREATE CERTIFICATE SignCert …; ADD SIGNATURE TO dbo.GetData BY CERTIFICATE SignCert; CREATE USER SignUser FROM CERTIFICATE SignCert; GRANT SELECT ON Other.T TO SignUser;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/tutorial-signing-stored-procedures-with-a-certificate"]
+    },
+    {
+      "id": "d2-perm-0017",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-permissions-auditing",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which function lists the permissions the current user has on an object?" },
+      "options": [
+        { "id": "a", "text": { "en": "fn_my_permissions" } },
+        { "id": "b", "text": { "en": "HAS_DBACCESS" } },
+        { "id": "c", "text": { "en": "sys.dm_exec_sessions" } },
+        { "id": "d", "text": { "en": "SUSER_SNAME" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "fn_my_permissions returns effective permissions for a securable. HAS_DBACCESS checks database access; dm_exec_sessions lists sessions; SUSER_SNAME returns the login name." },
+      "example": { "en": "SELECT * FROM fn_my_permissions('dbo.Orders', 'OBJECT');" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-functions/sys-fn-my-permissions-transact-sql"]
+    },
+    {
+      "id": "d2-perm-0018",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-permissions-auditing",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "For each statement about auditing, answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "Auditing prevents unauthorized queries from running." } },
+        { "id": "s2", "text": { "en": "A database audit specification references a server audit." } },
+        { "id": "s3", "text": { "en": "Azure SQL auditing can be configured at server level and apply to all databases." } }
+      ],
+      "answerMap": { "s1": "no", "s2": "yes", "s3": "yes" },
+      "explanation": { "en": "Auditing records activity; it doesn't block it (permissions and RLS do). Database audit specifications write to a server audit. In Azure SQL, server-level auditing covers every database on the logical server (database-level auditing can add more)." },
+      "example": { "en": "Detection (audit) + prevention (permissions) + integrity (ledger)." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-sql/database/auditing-overview"]
+    },
+    {
+      "id": "d2-perm-0019",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-permissions-auditing",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Many apps share one service identity. Auditors need to know which END USER triggered each update. What helps most?" },
+      "options": [
+        { "id": "a", "text": { "en": "Have the app set the end-user id in SESSION_CONTEXT and capture it (e.g. in audit columns or triggers)" } },
+        { "id": "b", "text": { "en": "Rely on server_principal_name in audit logs" } },
+        { "id": "c", "text": { "en": "Turn off auditing" } },
+        { "id": "d", "text": { "en": "Use NOLOCK" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Audit logs show the shared service identity (b), not the human. Passing the user through SESSION_CONTEXT lets the database record who acted. Disabling auditing (c) and NOLOCK (d) are irrelevant." },
+      "example": { "en": "EXEC sp_set_session_context N'UserId', @userId, @read_only = 1; then UpdatedBy DEFAULT CAST(SESSION_CONTEXT(N'UserId') AS NVARCHAR(128))." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/session-context-transact-sql"]
+    },
+    {
+      "id": "d2-perm-0020",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-permissions-auditing",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "What is a contained database user?" },
+      "options": [
+        { "id": "a", "text": { "en": "A user that authenticates at the database without a server login (e.g. Entra users in Azure SQL)" } },
+        { "id": "b", "text": { "en": "A user restricted to one table" } },
+        { "id": "c", "text": { "en": "A user inside a container image" } },
+        { "id": "d", "text": { "en": "A user with read-only rights" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Contained users live entirely in the database, making it portable (geo-replication, moves) without matching logins. They are not limited to one table or to read-only access." },
+      "example": { "en": "CREATE USER [app] FROM EXTERNAL PROVIDER; — contained Entra user." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/contained-database-users-making-your-database-portable"]
+    },
+    {
+      "id": "d2-perm-0021",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-permissions-auditing",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which .NET connection string setting connects with a system-assigned managed identity?" },
+      "options": [
+        { "id": "a", "text": { "en": "Authentication=Active Directory Managed Identity" } },
+        { "id": "b", "text": { "en": "Integrated Security=SSPI" } },
+        { "id": "c", "text": { "en": "User ID=sa;Password=..." } },
+        { "id": "d", "text": { "en": "TrustServerCertificate=True" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Microsoft.Data.SqlClient supports 'Active Directory Managed Identity' (and 'Active Directory Default'). Integrated Security uses Windows auth, sa uses a password, and TrustServerCertificate controls TLS validation (and shouldn't be true in production)." },
+      "example": { "en": "For a user-assigned identity add User Id=<client-id>." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/connect/ado-net/sql/azure-active-directory-authentication"]
+    },
+    {
+      "id": "d2-perm-0022",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-permissions-auditing",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Complete the database audit specification capturing schema changes and payroll updates." },
+      "code": "CREATE DATABASE AUDIT SPECIFICATION ChangesSpec\nFOR [BLANK1] PayrollAudit\n    ADD ([BLANK2]),\n    ADD (UPDATE ON dbo.Payroll BY public)\nWITH (STATE = ON);",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "SERVER AUDIT" } },
+            { "id": "c2", "text": { "en": "EVENT SESSION" } },
+            { "id": "c3", "text": { "en": "DATABASE" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "SCHEMA_OBJECT_CHANGE_GROUP" } },
+            { "id": "c2", "text": { "en": "FAILED_LOGIN_GROUP" } },
+            { "id": "c3", "text": { "en": "BACKUP_RESTORE_GROUP" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "Specifications are written FOR SERVER AUDIT <name>. SCHEMA_OBJECT_CHANGE_GROUP captures CREATE/ALTER/DROP of schema objects. FAILED_LOGIN_GROUP is a server-level group, and backup/restore isn't what's asked." },
+      "example": { "en": "Server-level groups (logins) go in SERVER AUDIT SPECIFICATION; object-level actions in DATABASE AUDIT SPECIFICATION." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/auditing/sql-server-audit-action-groups-and-actions"]
+    },
+    {
+      "id": "d2-perm-0023",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-permissions-auditing",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Where should failed login attempts be captured in SQL Server Audit?" },
+      "options": [
+        { "id": "a", "text": { "en": "A SERVER AUDIT SPECIFICATION with FAILED_LOGIN_GROUP" } },
+        { "id": "b", "text": { "en": "A DATABASE AUDIT SPECIFICATION on each table" } },
+        { "id": "c", "text": { "en": "A trigger on sys.logins" } },
+        { "id": "d", "text": { "en": "The query store" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Logins are server-scoped events, so they belong in a server audit specification. Table-level specs (b) can't see logins, system views can't have triggers (c), and Query Store (d) tracks query performance." },
+      "example": { "en": "CREATE SERVER AUDIT SPECIFICATION LoginSpec FOR SERVER AUDIT A1 ADD (FAILED_LOGIN_GROUP) WITH (STATE = ON);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/auditing/sql-server-audit-action-groups-and-actions"]
+    },
+    {
+      "id": "d2-perm-0024",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-permissions-auditing",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A table-level DENY SELECT exists on dbo.Employees for a user, and a column-level GRANT SELECT on dbo.Employees(Name) is added. Under default settings, can the user SELECT Name?" },
+      "options": [
+        { "id": "a", "text": { "en": "Yes — a column-level GRANT overrides a table-level DENY (legacy behavior), unless common criteria compliance is enabled" } },
+        { "id": "b", "text": { "en": "No — DENY always wins in every case" } },
+        { "id": "c", "text": { "en": "Only if the user is db_owner" } },
+        { "id": "d", "text": { "en": "The GRANT fails with an error" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "This is the documented exception to 'DENY wins': column-level GRANT takes precedence over table-level DENY for backward compatibility. Enabling common criteria compliance changes this so the DENY wins." },
+      "example": { "en": "Know the rule AND its exception — hard questions target the exception." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/deny-object-permissions-transact-sql"]
+    },
+    {
+      "id": "d2-perm-0025",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-permissions-auditing",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Why grant permissions to roles instead of individual users?" },
+      "options": [
+        { "id": "a", "text": { "en": "Easier management and review: change membership instead of re-granting many permissions" } },
+        { "id": "b", "text": { "en": "Roles make queries faster" } },
+        { "id": "c", "text": { "en": "Users can't receive permissions directly" } },
+        { "id": "d", "text": { "en": "Roles bypass DENY" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Role-based access keeps permission sets consistent and auditable. Users can technically receive direct grants (c), roles don't affect performance (b), and DENY still applies (d)." },
+      "example": { "en": "With Entra, map an Entra group to a database role for central membership management." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/authentication-access/database-level-roles"]
+    },
+    {
+      "id": "d2-perm-0026",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-permissions-auditing",
+      "type": "multiple", "difficulty": "medium", "selectCount": 2,
+      "text": { "en": "Which two are benefits of passwordless (managed identity) database access? (Select 2)" },
+      "options": [
+        { "id": "a", "text": { "en": "No secrets in configuration to leak or rotate" } },
+        { "id": "b", "text": { "en": "Access can be revoked centrally in Microsoft Entra ID" } },
+        { "id": "c", "text": { "en": "Grants the app sysadmin automatically" } },
+        { "id": "d", "text": { "en": "Removes the need for database permissions" } }
+      ],
+      "answer": ["a", "b"],
+      "explanation": { "en": "Managed identities eliminate stored credentials and centralize identity lifecycle. They grant nothing by themselves (c) — database users and permissions are still required (d)." },
+      "example": { "en": "Disable the identity or remove its database user to cut access immediately." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-sql/database/authentication-aad-overview"]
+    },
+    {
+      "id": "d2-perm-0027",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-permissions-auditing",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A developer gets 'Login failed for user <token-identified principal>' connecting with a managed identity. What's the most likely cause?" },
+      "options": [
+        { "id": "a", "text": { "en": "No database user exists for that identity (CREATE USER … FROM EXTERNAL PROVIDER was never run)" } },
+        { "id": "b", "text": { "en": "The password expired" } },
+        { "id": "c", "text": { "en": "The query is too slow" } },
+        { "id": "d", "text": { "en": "TDE is enabled" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Token authentication succeeds at Entra, but the database needs a user mapped to the identity. Managed identities have no passwords (b); performance (c) and TDE (d) don't cause login failures." },
+      "example": { "en": "Also verify the Entra admin is configured on the logical server so FROM EXTERNAL PROVIDER works." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-sql/database/authentication-aad-configure"]
+    },
+    {
+      "id": "d2-perm-0028",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-permissions-auditing",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "Answer Yes or No for each least-privilege practice." },
+      "statements": [
+        { "id": "s1", "text": { "en": "Use a separate identity for each application." } },
+        { "id": "s2", "text": { "en": "Let all apps share the server admin login for simplicity." } },
+        { "id": "s3", "text": { "en": "Expose writes through procedures with EXECUTE grants." } },
+        { "id": "s4", "text": { "en": "Grant CONTROL on the database to reporting tools." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "no", "s3": "yes", "s4": "no" },
+      "explanation": { "en": "Separate identities give attribution and isolation; procedure-based access narrows what apps can do. Shared admin logins and CONTROL for reporting tools violate least privilege." },
+      "example": { "en": "Reporting: SELECT on a reporting schema or views — never CONTROL." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/securing-sql-server"]
+    },
+    {
+      "id": "d2-perm-0029",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-permissions-auditing",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which permission lets a user see execution plans without granting broader rights?" },
+      "options": [
+        { "id": "a", "text": { "en": "SHOWPLAN" } },
+        { "id": "b", "text": { "en": "CONTROL" } },
+        { "id": "c", "text": { "en": "ALTER ANY USER" } },
+        { "id": "d", "text": { "en": "UNMASK" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "SHOWPLAN allows viewing plans (still requiring permission on the queried objects). CONTROL is far broader, ALTER ANY USER manages users, and UNMASK reveals masked data." },
+      "example": { "en": "GRANT SHOWPLAN TO PerfAnalysts;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/performance/showplan-security"]
+    },
+    {
+      "id": "d2-perm-0030",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-permissions-auditing",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Performance engineers need to query server-level DMVs in Azure SQL without admin rights. Which built-in role helps?" },
+      "options": [
+        { "id": "a", "text": { "en": "##MS_ServerStateReader## (server role in master)" } },
+        { "id": "b", "text": { "en": "db_owner" } },
+        { "id": "c", "text": { "en": "db_datawriter" } },
+        { "id": "d", "text": { "en": "public" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Azure SQL provides granular server roles like ##MS_ServerStateReader## (VIEW SERVER STATE) so you don't hand out admin. db_owner is excessive, db_datawriter is unrelated, public grants almost nothing." },
+      "example": { "en": "ALTER SERVER ROLE ##MS_ServerStateReader## ADD MEMBER [perf-team-login];" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-sql/database/security-server-roles"]
+    },
+    {
+      "id": "d2-perm-0031",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-permissions-auditing",
+      "type": "dragdrop-match", "difficulty": "medium",
+      "text": { "en": "Match each scenario to the security feature." },
+      "items": [
+        { "id": "i1", "text": { "en": "Record who read the Payroll table" } },
+        { "id": "i2", "text": { "en": "Stop contractors reading Payroll" } },
+        { "id": "i3", "text": { "en": "Prove Payroll rows weren't altered by admins" } },
+        { "id": "i4", "text": { "en": "Let the payroll app connect with no password" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "Auditing" } },
+        { "id": "t2", "text": { "en": "DENY / permissions" } },
+        { "id": "t3", "text": { "en": "Ledger" } },
+        { "id": "t4", "text": { "en": "Managed identity + Entra auth" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "Detection → auditing; prevention → permissions; integrity proof → ledger; passwordless access → managed identity." },
+      "example": { "en": "One table can use all four controls together." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/security-center-for-sql-server-database-engine-and-azure-sql-database"]
+    },
+    {
+      "id": "d2-perm-0032",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-permissions-auditing",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "Why is setting a database TRUSTWORTHY ON considered risky?" },
+      "options": [
+        { "id": "a", "text": { "en": "Code impersonating principals in that database can gain server-level permissions of the database owner, enabling privilege escalation" } },
+        { "id": "b", "text": { "en": "It disables backups" } },
+        { "id": "c", "text": { "en": "It turns off auditing" } },
+        { "id": "d", "text": { "en": "It encrypts the database" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "TRUSTWORTHY lets impersonation contexts reach outside the database; if the owner is highly privileged (e.g. sa), a db_owner can escalate to sysadmin. Prefer module signing. It doesn't affect backups, auditing or encryption." },
+      "example": { "en": "Microsoft guidance: keep TRUSTWORTHY OFF; use certificate signing for cross-database access." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/trustworthy-database-property"]
+    },
+    {
+      "id": "d2-perm-0033",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-permissions-auditing",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which view shows explicit permissions granted or denied in the current database?" },
+      "options": [
+        { "id": "a", "text": { "en": "sys.database_permissions" } },
+        { "id": "b", "text": { "en": "sys.dm_db_index_usage_stats" } },
+        { "id": "c", "text": { "en": "sys.masked_columns" } },
+        { "id": "d", "text": { "en": "sys.dm_os_wait_stats" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "sys.database_permissions lists permission entries (state GRANT/DENY, class, grantee). The other views cover indexes, masking and waits." },
+      "example": { "en": "Join with sys.database_principals for readable grantee names." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-database-permissions-transact-sql"]
+    },
+    {
+      "id": "d2-perm-0034",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-permissions-auditing",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "To give an Entra group read access to a SQL database in Fabric or Azure SQL, the cleanest approach is:" },
+      "options": [
+        { "id": "a", "text": { "en": "CREATE USER [Group-Name] FROM EXTERNAL PROVIDER and add it to a role with the needed grants" } },
+        { "id": "b", "text": { "en": "Create a SQL login per group member" } },
+        { "id": "c", "text": { "en": "Share one SQL password with the group" } },
+        { "id": "d", "text": { "en": "Grant the group sysadmin" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Group-mapped users let Entra membership control access. Per-member SQL logins (b) and shared passwords (c) defeat central identity; sysadmin (d) is excessive." },
+      "example": { "en": "New team member? Add them to the Entra group — no database change needed." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-sql/database/authentication-aad-configure"]
+    },
+    {
+      "id": "d2-perm-0035",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-permissions-auditing",
+      "type": "yesno", "difficulty": "hard",
+      "text": { "en": "Answer Yes or No about ownership chains." },
+      "statements": [
+        { "id": "s1", "text": { "en": "A view owned by dbo selecting from a table owned by 'sales' (different owner) breaks the chain." } },
+        { "id": "s2", "text": { "en": "Cross-database ownership chaining is enabled by default." } },
+        { "id": "s3", "text": { "en": "Ownership chaining also skips RLS predicates." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "no", "s3": "no" },
+      "explanation": { "en": "Different owners break the chain, so the caller needs permission on the table. Cross-database chaining is off by default (and should usually stay off). RLS predicates are always evaluated; chaining affects only permission checks." },
+      "example": { "en": "Keep objects in a schema owned by one principal to keep chains simple." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/authentication-access/ownership-chains"]
+    },
+    {
+      "id": "d2-perm-0036",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-permissions-auditing",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What is Microsoft Defender for SQL's role relative to auditing?" },
+      "options": [
+        { "id": "a", "text": { "en": "It adds threat detection (e.g. SQL injection, anomalous access) and vulnerability assessment on top of logging" } },
+        { "id": "b", "text": { "en": "It replaces permissions" } },
+        { "id": "c", "text": { "en": "It encrypts columns" } },
+        { "id": "d", "text": { "en": "It is the same as auditing" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Defender for SQL analyzes activity for threats and flags misconfigurations; auditing provides the raw activity record. It doesn't replace permissions or encrypt data." },
+      "example": { "en": "Alerts like 'Potential SQL injection' or 'Login from an unusual location'." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/defender-for-cloud/defender-for-sql-introduction"]
+    },
+    {
+      "id": "d2-perm-0037",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-permissions-auditing",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Complete the role setup for a reporting team." },
+      "code": "CREATE [BLANK1] ReportReaders;\nGRANT SELECT ON SCHEMA::Reporting TO ReportReaders;\nALTER ROLE ReportReaders [BLANK2] [ReportingTeam];",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "ROLE" } },
+            { "id": "c2", "text": { "en": "GROUP" } },
+            { "id": "c3", "text": { "en": "LOGIN" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "ADD MEMBER" } },
+            { "id": "c2", "text": { "en": "INCLUDE" } },
+            { "id": "c3", "text": { "en": "GRANT TO" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "CREATE ROLE defines a database role; ALTER ROLE … ADD MEMBER adds principals. CREATE GROUP doesn't exist, CREATE LOGIN is server-level, and INCLUDE/GRANT TO aren't ALTER ROLE syntax." },
+      "example": { "en": "sp_addrolemember is the deprecated older syntax." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-role-transact-sql"]
+    },
+    {
+      "id": "d2-perm-0038",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-permissions-auditing",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Azure SQL auditing is enabled at the server level and also at the database level with the same destination. What is the result?" },
+      "options": [
+        { "id": "a", "text": { "en": "Both policies apply, so events may be recorded twice; server-level alone is usually enough unless the database needs different settings" } },
+        { "id": "b", "text": { "en": "The database policy disables the server policy" } },
+        { "id": "c", "text": { "en": "Auditing fails to start" } },
+        { "id": "d", "text": { "en": "Only failed logins are recorded" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Server and database auditing are independent; enabling both can duplicate records. Microsoft recommends server-level auditing unless a database needs additional or different action groups or destinations." },
+      "example": { "en": "Use database-level auditing for one database that needs extra retention or a different storage account." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-sql/database/auditing-overview"]
+    },
+    {
+      "id": "d2-perm-0039",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-permissions-auditing",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which statement explicitly forbids a user from deleting rows in dbo.Orders?" },
+      "options": [
+        { "id": "a", "text": { "en": "DENY DELETE ON dbo.Orders TO TheUser;" } },
+        { "id": "b", "text": { "en": "REVOKE INSERT ON dbo.Orders FROM TheUser;" } },
+        { "id": "c", "text": { "en": "GRANT DELETE ON dbo.Orders TO TheUser;" } },
+        { "id": "d", "text": { "en": "DROP USER TheUser;" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "DENY DELETE blocks deletes regardless of grants elsewhere. Revoking INSERT (b) is a different permission, GRANT (c) is the opposite, and dropping the user (d) is not what's asked." },
+      "example": { "en": "Use DENY sparingly — it can confuse troubleshooting; prefer not granting in the first place." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/deny-object-permissions-transact-sql"]
+    },
+    {
+      "id": "d2-perm-0040",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-permissions-auditing",
+      "type": "dragdrop-order", "difficulty": "medium",
+      "text": { "en": "Order the steps to move an app from SQL authentication to managed identity." },
+      "items": [
+        { "id": "i1", "text": { "en": "Enable a managed identity on the app's hosting resource" } },
+        { "id": "i2", "text": { "en": "Create a database user FROM EXTERNAL PROVIDER and grant least-privilege permissions" } },
+        { "id": "i3", "text": { "en": "Change the connection string to Active Directory Managed Identity and deploy" } },
+        { "id": "i4", "text": { "en": "Remove the old SQL login/password (optionally enable Entra-only auth)" } }
+      ],
+      "answer": ["i1", "i2", "i3", "i4"],
+      "explanation": { "en": "Identity first, then database mapping, then app change, then retire the old secret. Removing the SQL login before the app switches would cause an outage." },
+      "example": { "en": "Finally consider Entra-only authentication to block SQL logins server-wide." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-sql/database/authentication-azure-ad-user-assigned-managed-identity"]
+    },
+    {
+      "id": "d2-perm-0041",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-permissions-auditing",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which function reads SQL Server Audit file contents with T-SQL?" },
+      "options": [
+        { "id": "a", "text": { "en": "sys.fn_get_audit_file" } },
+        { "id": "b", "text": { "en": "sys.fn_xe_file_target_read_file only" } },
+        { "id": "c", "text": { "en": "OPENROWSET(BULK ...) with SINGLE_CLOB" } },
+        { "id": "d", "text": { "en": "DBCC AUDIT" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "sys.fn_get_audit_file parses .sqlaudit files (also from Azure Storage for Azure SQL). The XE reader is for Extended Events files, OPENROWSET can't parse the binary format, and DBCC AUDIT doesn't exist." },
+      "example": { "en": "SELECT event_time, action_id, statement FROM sys.fn_get_audit_file('https://acct.blob.core.windows.net/sqldbauditlogs/...', DEFAULT, DEFAULT);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-functions/sys-fn-get-audit-file-transact-sql"]
+    },
+    {
+      "id": "d2-perm-0042",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-permissions-auditing",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "Answer Yes or No for each statement about permissions hierarchy." },
+      "statements": [
+        { "id": "s1", "text": { "en": "CONTROL on a schema implies SELECT on its tables." } },
+        { "id": "s2", "text": { "en": "SELECT granted on a schema applies to tables created in it later." } },
+        { "id": "s3", "text": { "en": "A permission on a table automatically grants it on other schemas." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "yes", "s3": "no" },
+      "explanation": { "en": "Higher permissions imply lower ones (CONTROL ⊃ SELECT), and schema-scoped grants cover future objects. Permissions never spread sideways to other schemas." },
+      "example": { "en": "Use the permissions poster/chart to see implication chains." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/permissions-hierarchy-database-engine"]
+    },
+    {
+      "id": "d2-perm-0043",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-permissions-auditing",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "An external model is used by AI_GENERATE_EMBEDDINGS. Which permission must an app user have to call it?" },
+      "options": [
+        { "id": "a", "text": { "en": "EXECUTE on the external model (GRANT EXECUTE ON EXTERNAL MODEL::name)" } },
+        { "id": "b", "text": { "en": "CONTROL SERVER" } },
+        { "id": "c", "text": { "en": "ALTER ANY EXTERNAL MODEL" } },
+        { "id": "d", "text": { "en": "No permission is needed" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Using a model requires EXECUTE on it; creating/altering requires CREATE/ALTER ANY EXTERNAL MODEL. CONTROL SERVER is excessive. Permissions are definitely required." },
+      "example": { "en": "GRANT EXECUTE ON EXTERNAL MODEL::EmbeddingModel TO [search-api];" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-external-model-transact-sql"]
+    },
+    {
+      "id": "d2-perm-0044",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-permissions-auditing",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A procedure uses EXECUTE AS OWNER to run privileged cleanup. Auditing shows the owner, not the caller. How can you keep the caller's identity visible?" },
+      "options": [
+        { "id": "a", "text": { "en": "Use module signing instead of EXECUTE AS, or capture ORIGINAL_LOGIN() inside the procedure" } },
+        { "id": "b", "text": { "en": "Disable auditing" } },
+        { "id": "c", "text": { "en": "Use EXECUTE AS CALLER and grant callers sysadmin" } },
+        { "id": "d", "text": { "en": "It's impossible" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Signing adds permissions without changing execution context, so audits show the real caller. ORIGINAL_LOGIN() returns the login that started the session even under impersonation. Granting sysadmin (c) defeats the purpose." },
+      "example": { "en": "INSERT INTO dbo.CleanupLog (RunBy) VALUES (ORIGINAL_LOGIN());" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/original-login-transact-sql"]
+    },
+    {
+      "id": "d2-perm-0045",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-permissions-auditing",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which authentication method should human DBAs use for Azure SQL to benefit from MFA?" },
+      "options": [
+        { "id": "a", "text": { "en": "Microsoft Entra authentication (interactive with MFA)" } },
+        { "id": "b", "text": { "en": "A shared SQL login" } },
+        { "id": "c", "text": { "en": "The sa account" } },
+        { "id": "d", "text": { "en": "Anonymous access" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Entra interactive authentication supports MFA and Conditional Access. Shared SQL logins and sa provide neither, and anonymous access isn't supported." },
+      "example": { "en": "SSMS: Authentication = 'Microsoft Entra MFA'." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-sql/database/authentication-mfa-ssms-overview"]
+    },
+    {
+      "id": "d2-perm-0046",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-permissions-auditing",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "An app identity needs to read data but never change schema. Which fixed database roles are appropriate?" },
+      "options": [
+        { "id": "a", "text": { "en": "db_datareader (or narrower custom grants)" } },
+        { "id": "b", "text": { "en": "db_ddladmin" } },
+        { "id": "c", "text": { "en": "db_owner" } },
+        { "id": "d", "text": { "en": "db_securityadmin" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "db_datareader allows SELECT on all user tables. db_ddladmin changes schema, db_owner does everything, db_securityadmin manages permissions. Even narrower custom grants are often better than database-wide read." },
+      "example": { "en": "Prefer GRANT SELECT ON SCHEMA::Api if the app needs only one schema." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/authentication-access/database-level-roles"]
+    },
+    {
+      "id": "d2-perm-0047",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-permissions-auditing",
+      "type": "multiple", "difficulty": "hard", "selectCount": 2,
+      "text": { "en": "Which two audit configurations best support investigating a suspected data leak from a sensitive table? (Select 2)" },
+      "options": [
+        { "id": "a", "text": { "en": "Audit SELECT on the sensitive table (database audit specification / action group)" } },
+        { "id": "b", "text": { "en": "Send audit logs to a destination with alerting and sufficient retention (e.g. Log Analytics)" } },
+        { "id": "c", "text": { "en": "Audit only failed logins" } },
+        { "id": "d", "text": { "en": "Store audit files on the same disk as the data with no retention" } }
+      ],
+      "answer": ["a", "b"],
+      "explanation": { "en": "You need to record reads of the table and keep logs where they can be analyzed and retained. Failed logins alone (c) miss authorized-but-abused access; unretained logs next to the data (d) are fragile and may be tampered with." },
+      "example": { "en": "Combine with SESSION_CONTEXT to attribute reads behind service identities." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-sql/database/auditing-overview"]
+    },
+    {
+      "id": "d2-perm-0048",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-permissions-auditing",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "In SQL Server 2022+ connected through Azure Arc, what enables Microsoft Entra authentication?" },
+      "options": [
+        { "id": "a", "text": { "en": "Configuring an Entra admin for the Arc-enabled instance; then CREATE LOGIN/USER FROM EXTERNAL PROVIDER" } },
+        { "id": "b", "text": { "en": "It's impossible on SQL Server" } },
+        { "id": "c", "text": { "en": "Installing Active Directory Federation Services" } },
+        { "id": "d", "text": { "en": "Enabling TDE" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "SQL Server 2022+ supports Entra authentication via Azure Arc with an Entra admin configured. It's not limited to Azure SQL (b); ADFS (c) isn't required; TDE (d) is unrelated." },
+      "example": { "en": "The same Arc connection provides the managed identity used for external models in SQL Server 2025." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/authentication-access/azure-ad-authentication-sql-server-overview"]
+    },
+    {
+      "id": "d2-perm-0049",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-permissions-auditing",
+      "type": "yesno", "difficulty": "easy",
+      "text": { "en": "Is each item a passwordless approach for application access? Answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "System-assigned managed identity" } },
+        { "id": "s2", "text": { "en": "User-assigned managed identity" } },
+        { "id": "s3", "text": { "en": "SQL login with a 32-character password in Key Vault" } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "yes", "s3": "no" },
+      "explanation": { "en": "Both managed identity types avoid secrets. A SQL login password is still a secret — storing it in Key Vault is better than in config, but it isn't passwordless." },
+      "example": { "en": "User-assigned identities can be shared across resources and survive resource recreation." },
+      "sources": ["https://learn.microsoft.com/en-us/entra/identity/managed-identities-azure-resources/overview"]
+    },
+    {
+      "id": "d2-perm-0050",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-permissions-auditing",
+      "type": "dragdrop-match", "difficulty": "hard",
+      "text": { "en": "Match each permission problem to its best fix." },
+      "items": [
+        { "id": "i1", "text": { "en": "Procedure with dynamic SQL fails for callers" } },
+        { "id": "i2", "text": { "en": "Dozens of users each have individual grants" } },
+        { "id": "i3", "text": { "en": "App connection string contains a SQL password" } },
+        { "id": "i4", "text": { "en": "DBAs need DMV access but not admin rights (Azure SQL)" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "Module signing or EXECUTE AS" } },
+        { "id": "t2", "text": { "en": "Roles (mapped to Entra groups)" } },
+        { "id": "t3", "text": { "en": "Managed identity" } },
+        { "id": "t4", "text": { "en": "##MS_ServerStateReader##" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "Dynamic SQL breaks ownership chains → signing/EXECUTE AS; scattered grants → roles; passwords → managed identity; DMV access → granular server role." },
+      "example": { "en": "Least privilege applied to four common situations." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/securing-sql-server"]
+    }
+  ]
+}

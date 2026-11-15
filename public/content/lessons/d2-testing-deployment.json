@@ -1,0 +1,60 @@
+{
+  "subtopic": "d2-testing-deployment",
+  "title": { "en": "Testing, schema drift & deployment controls" },
+  "prerequisiteRecap": [
+    {
+      "heading": { "en": "The pipeline mental model" },
+      "body": {
+        "en": "A database CI/CD pipeline has two halves: **CI** (on every PR/commit: build the SQL project, run tests, produce a validated .dacpac artifact) and **CD** (promote that SAME artifact through environments — test → staging → production — with gates and approvals). The study guide bullets map onto this: testing strategy, schema drift detection, updating and deploying, and pipeline controls (branch policies, triggers, approvals, code owners)."
+      }
+    }
+  ],
+  "sections": [
+    {
+      "heading": { "en": "Testing strategy: unit vs integration" },
+      "body": {
+        "en": "- **Unit tests** check one programmable object in isolation (a function's result, a procedure's logic) with controlled inputs. The common T-SQL framework is **tSQLt**: tests are procedures in test classes; `tSQLt.FakeTable` replaces real tables with empty copies (no constraints) so tests control data; `tSQLt.AssertEquals` / `AssertEqualsTable` verify results; each test runs in a transaction that rolls back.\n- **Integration tests** deploy the full schema (the dacpac) to a real database — often an ephemeral SQL Server container or temporary Azure SQL database in the pipeline — and test end-to-end behaviors: constraints, triggers, RLS, app data access, migrations against realistic data.\n- **Deployment tests**: run the publish against a copy of production (or production-like data) to catch data-loss blocks, long table rebuilds and failing post-deployment scripts before they hit production.\nRun fast unit tests on every PR; heavier integration/deployment tests on merge or nightly."
+      },
+      "code": "EXEC tSQLt.NewTestClass 'OrderTests';\nGO\nCREATE PROCEDURE OrderTests.[test GetOrderTotal sums line amounts]\nAS\nBEGIN\n    EXEC tSQLt.FakeTable 'dbo.OrderLines';\n    INSERT INTO dbo.OrderLines (OrderId, Qty, Price) VALUES (1, 2, 10.00), (1, 1, 5.00);\n\n    DECLARE @actual DECIMAL(12,2) = dbo.GetOrderTotal(1);\n\n    EXEC tSQLt.AssertEquals @Expected = 25.00, @Actual = @actual;\nEND;\nGO\nEXEC tSQLt.Run 'OrderTests';"
+    },
+    {
+      "heading": { "en": "Schema drift" },
+      "body": {
+        "en": "**Drift** = the target database no longer matches what was last deployed from source (hotfix indexes, manual procedure edits, objects created by other tools). Detect it BEFORE deploying:\n- `SqlPackage /Action:DriftReport` — reports changes to a registered data-tier application since its last deployment.\n- **Schema compare** (project or dacpac vs live database) — shows every difference.\n- `SqlPackage /Action:DeployReport` — what the publish would change; unexpected drops/alters reveal drift.\nThen decide: back-port legitimate changes into source via a PR, or let the deployment overwrite them. Publish options like `BlockWhenDriftDetected` stop deployments to a registered database when drift is found."
+      }
+    },
+    {
+      "heading": { "en": "Updating a project and deploying changes" },
+      "body": {
+        "en": "The deploy loop: change `.sql` files → build → review the generated script → publish with environment-specific profile. In GitHub Actions, deployment commonly uses **SqlPackage** directly or the **azure/sql-action** (which builds a .sqlproj or publishes a .dacpac to Azure SQL with arguments like the publish profile). Promote ONE artifact across environments (build once, deploy many) so production gets exactly what was tested. Keep deployments idempotent and backward compatible; schedule large operations (index builds, data backfills) deliberately."
+      },
+      "code": "jobs:\n  deploy-prod:\n    needs: deploy-test\n    environment: production          # required reviewers gate this job\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/download-artifact@v4\n        with: { name: dacpac }\n      - uses: azure/login@v2\n        with:\n          client-id: ${{ vars.AZURE_CLIENT_ID }}\n          tenant-id: ${{ vars.AZURE_TENANT_ID }}\n          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}\n      - uses: azure/sql-action@v2\n        with:\n          connection-string: ${{ secrets.SQL_CONNECTION_STRING }}   # e.g. Authentication=Active Directory Default\n          path: ./Sales.dacpac\n          action: publish\n          arguments: /Profile:prod.publish.xml",
+      "codeLang": "text"
+    },
+    {
+      "heading": { "en": "Pipeline controls" },
+      "body": {
+        "en": "- **Branch protection rules / rulesets** on `main`: require pull requests, a minimum number of approving reviews, **required status checks** (build + tests), up-to-date branches, conversation resolution, no force pushes, signed commits if desired.\n- **CODEOWNERS** (`.github/CODEOWNERS`): map paths to owners, e.g. `/src/Database/ @contoso/dba-team`; with 'Require review from Code Owners', any PR touching database files needs a DBA approval.\n- **Triggers**: `pull_request` for validation, `push` to main for deployment to test, `workflow_dispatch` for manual runs, path filters to scope.\n- **Environments with protection rules**: required reviewers (manual approval), wait timers, deployment branch restrictions (only `main` can deploy to production), environment secrets.\n- **Authentication**: deployment identities via OIDC federated credentials scoped to repo + environment; least-privilege database permissions for the deploy identity; audit deployments."
+      },
+      "code": "# .github/CODEOWNERS\n/src/Database/            @contoso/dba-team\n/src/Database/Security/   @contoso/security-team",
+      "codeLang": "text"
+    }
+  ],
+  "examTips": [
+    { "en": "Unit tests = isolated objects (tSQLt FakeTable + Assert*, rolled back); integration tests = full schema deployed to a real (ephemeral) database." },
+    { "en": "Drift detection: SqlPackage DriftReport (registered DB), schema compare, DeployReport; BlockWhenDriftDetected stops deployments." },
+    { "en": "Build once, deploy the same dacpac to every environment." },
+    { "en": "azure/sql-action deploys dacpacs/sqlprojects to Azure SQL from GitHub Actions; SqlPackage works everywhere." },
+    { "en": "CODEOWNERS + 'Require review from Code Owners' forces DBA approval for database paths." },
+    { "en": "Environments: required reviewers, wait timers, branch restrictions, environment secrets — the approval gate for production." },
+    { "en": "Required status checks block merging until CI passes." }
+  ],
+  "sources": [
+    "https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/continuous-integration-deployment",
+    "https://learn.microsoft.com/en-us/sql/tools/sqlpackage/sqlpackage-deploy-drift-report",
+    "https://github.com/Azure/sql-action",
+    "https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners",
+    "https://docs.github.com/en/actions/managing-workflow-runs-and-deployments/managing-deployments/managing-environments-for-deployment",
+    "https://tsqlt.org/"
+  ]
+}

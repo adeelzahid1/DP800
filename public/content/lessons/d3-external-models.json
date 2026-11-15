@@ -1,0 +1,51 @@
+{
+  "subtopic": "d3-external-models",
+  "title": { "en": "External models (evaluate, create, manage)" },
+  "prerequisiteRecap": [
+    {
+      "heading": { "en": "Models, tokens and embeddings in one minute" },
+      "body": {
+        "en": "An **embedding model** turns text (or images) into a vector of numbers so similar meanings get similar vectors. A **chat/completion model** (LLM) generates text. Models read **tokens** (word pieces), have **input limits** and are billed per token. In SQL Server 2025, Azure SQL Database, Azure SQL Managed Instance (Always-up-to-date) and SQL database in Fabric, an **external model** is a database object that stores *where* an embedding endpoint is, *how* to authenticate and *which* model to call, so T-SQL can run `AI_GENERATE_EMBEDDINGS(text USE MODEL m)`. See the Foundations lesson on vectors for the basics."
+      }
+    }
+  ],
+  "sections": [
+    {
+      "heading": { "en": "Evaluating models for SQL workloads" },
+      "body": {
+        "en": "Compare candidates on:\n- **Modality**: text-only vs **multimodal** (text + images). Product photos or scanned documents need a multimodal embedding model.\n- **Language support**: **multilingual** models embed different languages into the same space, so a Spanish query can match English content.\n- **Size / dimensions**: larger models and more dimensions usually capture more nuance but cost more storage, memory, latency and money. `text-embedding-ada-002` and `text-embedding-3-small` return **1,536** dimensions; `text-embedding-3-large` returns **3,072**. The `text-embedding-3` models accept a **`dimensions`** parameter to shorten vectors.\n- **Fit with the vector type**: `vector` float32 allows up to **1,998** dimensions and float16 up to **3,996**, so 3,072-dimension embeddings need float16 or a smaller `dimensions` value.\n- **Token limits**: current Azure OpenAI embedding models accept up to **8,192 tokens per input** (up to 2,048 inputs per request), which drives your chunk size.\n- **Structured output** (chat models): JSON Schema output (`response_format` type `json_schema`, `strict: true`, every property required, `additionalProperties: false`) makes responses easy to parse with `OPENJSON`/`JSON_VALUE` — useful in RAG.\n- **Hosting & lifecycle**: Microsoft Foundry's model catalog shows capabilities, benchmarks, versions and retirement dates; local options (Ollama, ONNX Runtime) keep data on-premises.\n**Rule:** the same embedding model (and dimensions) must be used for stored vectors *and* query vectors."
+      }
+    },
+    {
+      "heading": { "en": "Creating an external model" },
+      "body": {
+        "en": "Steps: (1) make sure outbound REST calls are allowed (`external rest endpoint enabled` is on by default in Azure SQL Database and Fabric; enable it with `sp_configure` in SQL Server 2025), (2) create a **database master key**, (3) create a **database scoped credential** whose **name is the endpoint URL** (no query string), (4) `CREATE EXTERNAL MODEL`.\n- `LOCATION`: HTTPS endpoint, e.g. `https://{endpoint}/openai/deployments/{deployment}/embeddings?api-version=...` for Azure OpenAI, `https://{server}/v1/embeddings` for OpenAI, `https://localhost:{port}/api/embed` for Ollama, or a local folder for ONNX Runtime.\n- `API_FORMAT`: `Azure OpenAI`, `OpenAI`, `Ollama`, `ONNX Runtime`.\n- `MODEL_TYPE`: `EMBEDDINGS` (the only accepted value).\n- `MODEL`: model name. `CREDENTIAL`: the credential. `PARAMETERS`: JSON added to each request, e.g. `{\"dimensions\":1024}` or `{\"sql_rest_options\":{\"retry_count\":3}}` (0–10).\n- Credentials: **Managed identity** (`IDENTITY = 'Managed Identity'`, `SECRET = '{\"resourceid\":\"https://cognitiveservices.azure.com\"}'`) — preferred; or an API key (`IDENTITY = 'HTTPEndpointHeaders'`, `SECRET = '{\"api-key\":\"...\"}'`). SQL Server 2025 needs Azure Arc and `allow server scoped db credentials` for managed identity."
+      },
+      "code": "CREATE MASTER KEY ENCRYPTION BY PASSWORD = N'<strong password>';\n\nCREATE DATABASE SCOPED CREDENTIAL [https://contoso-ai.openai.azure.com/]\n    WITH IDENTITY = 'Managed Identity',\n         SECRET   = '{\"resourceid\":\"https://cognitiveservices.azure.com\"}';\n\nCREATE EXTERNAL MODEL ProductEmbedder\nWITH (\n    LOCATION   = 'https://contoso-ai.openai.azure.com/openai/deployments/text-embedding-3-small/embeddings?api-version=2024-02-01',\n    API_FORMAT = 'Azure OpenAI',\n    MODEL_TYPE = EMBEDDINGS,\n    MODEL      = 'text-embedding-3-small',\n    CREDENTIAL = [https://contoso-ai.openai.azure.com/],\n    PARAMETERS = '{\"sql_rest_options\":{\"retry_count\":3}}'\n);\n\nSELECT AI_GENERATE_EMBEDDINGS(N'waterproof hiking boots' USE MODEL ProductEmbedder);"
+    },
+    {
+      "heading": { "en": "Managing and securing external models" },
+      "body": {
+        "en": "- **Permissions**: `CREATE EXTERNAL MODEL` or `ALTER ANY EXTERNAL MODEL` to create/alter; users who call AI functions need `GRANT EXECUTE ON EXTERNAL MODEL::ProductEmbedder TO [app_user]`. `AUTHORIZATION owner` sets the owner.\n- **Change** with `ALTER EXTERNAL MODEL m SET (MODEL = '...', LOCATION = '...', PARAMETERS = '...')`. **Remove** with `DROP EXTERNAL MODEL m` — blocked while a `SCHEMABINDING` view references it.\n- **Inspect** with `sys.external_models`.\n- **Override per call**: `AI_GENERATE_EMBEDDINGS(text USE MODEL m PARAMETERS @json)` overrides model parameters (e.g., dimensions or retry_count) for that call.\n- **Troubleshoot** with the `ai_generate_embeddings_summary` and `external_rest_endpoint_summary` extended events.\n- **Switching models** changes the vector space: re-embed all stored rows (and recreate vector indexes) before querying with the new model.\n- **Local ONNX Runtime** (SQL Server 2025 on Windows, preview): needs Machine Learning Services, `external AI runtimes enabled`, `PREVIEW_FEATURES`, and `LOCAL_RUNTIME_PATH`; only load models from trusted sources."
+      }
+    }
+  ],
+  "examTips": [
+    { "en": "Evaluate models by modality, language support, size/dimensions, token limits, structured output and lifecycle." },
+    { "en": "ada-002 and 3-small = 1,536 dims; 3-large = 3,072; float32 vector max 1,998 → shorten with dimensions or use float16 (max 3,996)." },
+    { "en": "CREATE EXTERNAL MODEL: LOCATION, API_FORMAT (Azure OpenAI/OpenAI/Ollama/ONNX Runtime), MODEL_TYPE = EMBEDDINGS, MODEL, CREDENTIAL, PARAMETERS." },
+    { "en": "Credential name = endpoint URL (no query string); managed identity preferred over API keys." },
+    { "en": "EXECUTE ON EXTERNAL MODEL::name lets a user call AI_GENERATE_EMBEDDINGS; CREATE/ALTER ANY EXTERNAL MODEL to manage." },
+    { "en": "retry_count 0–10 in PARAMETERS ({\"sql_rest_options\":{\"retry_count\":n}}); call-level PARAMETERS override the model's." },
+    { "en": "Query and stored vectors must come from the same model; changing models means re-embedding." }
+  ],
+  "sources": [
+    "https://learn.microsoft.com/en-us/training/modules/design-implement-models-embeddings-with-sql/02-understand-evaluate-models-sql-database-workloads",
+    "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-external-model-transact-sql",
+    "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-external-model-transact-sql",
+    "https://learn.microsoft.com/en-us/sql/t-sql/functions/ai-generate-embeddings-transact-sql",
+    "https://learn.microsoft.com/en-us/sql/t-sql/data-types/vector-data-type",
+    "https://learn.microsoft.com/en-us/azure/foundry/openai/how-to/embeddings",
+    "https://learn.microsoft.com/en-us/azure/foundry/openai/how-to/structured-outputs"
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "subtopic": "d3-embedding-design",
+  "title": { "en": "Embedding design: column selection & chunking" },
+  "prerequisiteRecap": [
+    {
+      "heading": { "en": "One embedding = one focused piece of meaning" },
+      "body": {
+        "en": "An embedding summarizes *all* the text you send into one vector. If you send a clear, focused passage, similar questions land close to it. If you send IDs, prices and three unrelated topics glued together, the vector becomes a blurry average and search quality drops. Embedding design is therefore two decisions made **before** any model runs: **what text to embed** and **how to cut long text into chunks**."
+      }
+    }
+  ],
+  "sections": [
+    {
+      "heading": { "en": "Choosing columns to include" },
+      "body": {
+        "en": "- **Include** columns with semantic meaning: titles, names, descriptions, reviews, ticket bodies, notes, article text.\n- **Exclude** identifiers, prices, quantities, dates, status codes and other operational metadata. They add tokens but little meaning. Keep them as **relational columns** and filter with `WHERE` next to vector search (latest vector indexes apply these predicates during the search).\n- **Compose** a clean input when several text fields matter, with short labels: `CONCAT_WS(' | ', 'Title: ' + Name, 'Category: ' + Category, Description)`.\n- Use **separate embeddings per field** when users search them differently (e.g., `title_vector` and `content_vector`).\n- Exact codes (SKUs, order numbers) are better served by equality or full-text search than by embeddings.\n- **Clean** the text (strip HTML, boilerplate) and skip NULL/blank values.\n- **Privacy**: the text is sent to the model endpoint; avoid embedding PII or secrets you don't need, or redact first.\n- **Deduplicate**: many identical vectors waste cost and hurt vector-index result quality.\n- Tip from Microsoft Learn: store vectors in a **separate embeddings table** so you can track their space and rebuild them without touching source rows."
+      },
+      "code": "SELECT p.ProductId,\n       CONCAT_WS(N' | ', N'Title: ' + p.Name, N'Category: ' + c.Name, p.Description) AS embed_text\nFROM dbo.Products AS p\nJOIN dbo.Categories AS c ON c.CategoryId = p.CategoryId\nWHERE LEN(TRIM(p.Description)) > 0;   -- price, stock and dates stay as filter columns"
+    },
+    {
+      "heading": { "en": "Why and how to chunk" },
+      "body": {
+        "en": "Chunk long text because (1) models have input limits (current Azure OpenAI embedding models: **8,192 tokens** per input), (2) smaller passages give more **precise** matches, and (3) in RAG you send only the best chunks to the LLM, saving tokens.\nTrade-off: chunks **too large** dilute meaning, may exceed limits and bring irrelevant text into prompts; chunks **too small** lose context and multiply rows and embedding calls.\nStrategies:\n- **Fixed size** — split every N characters. Simple and predictable; may cut words or sentences.\n- **Overlap** — repeat part of the previous chunk so ideas on a boundary stay retrievable.\n- **Structure-aware** — split on paragraphs, headings, sections or sentences (in the app or with `REGEXP_SPLIT_TO_TABLE`), often with a size cap.\n- **Add context** — prefix each chunk with its document title/section heading so a chunk like \"It must be renewed annually\" still says *what* must be renewed.\nTest chunk sizes against real questions; there's no universal best size."
+      }
+    },
+    {
+      "heading": { "en": "AI_GENERATE_CHUNKS" },
+      "body": {
+        "en": "Table-valued function (SQL Server 2025, Azure SQL Database, Managed Instance with SQL Server 2025/Always-up-to-date policy, Fabric; **compatibility level 170+**):\n`AI_GENERATE_CHUNKS(SOURCE = text, CHUNK_TYPE = FIXED, CHUNK_SIZE = n [, OVERLAP = pct] [, ENABLE_CHUNK_SET_ID = 1])`\n- `CHUNK_TYPE`: `FIXED` is the accepted value. `CHUNK_SIZE`: **characters**, required for FIXED, > 0.\n- `OVERLAP`: **percentage** (0–50, default 0) of the chunk size taken from the preceding text.\n- Output: `chunk`, `chunk_order` (1, 2, …), `chunk_offset` (start position), `chunk_length`, and optional `chunk_set_id` grouping chunks of the same source.\nUse it with `CROSS APPLY` and keep the source key in the select list; it only splits text — embeddings come from `AI_GENERATE_EMBEDDINGS`."
+      },
+      "code": "INSERT INTO dbo.DocumentChunks (DocumentId, ChunkOrder, ChunkText, Embedding)\nSELECT d.DocumentId, c.chunk_order, c.chunk,\n       AI_GENERATE_EMBEDDINGS(CONCAT(d.Title, N': ', c.chunk) USE MODEL DocEmbedder)\nFROM dbo.Documents AS d\nCROSS APPLY AI_GENERATE_CHUNKS(SOURCE = d.Body, CHUNK_TYPE = FIXED,\n                               CHUNK_SIZE = 1500, OVERLAP = 10) AS c;"
+    },
+    {
+      "heading": { "en": "Chunk table design" },
+      "body": {
+        "en": "Model chunks as a **child table**: one row per chunk with a foreign key to the source row, the chunk order, the chunk text (needed for RAG prompts and citations), the vector and, ideally, the embedding model/version. Search the chunk table, then join back to the parent for titles, URLs and filters, and group by parent when you want one hit per document. Changing chunk rules or the model means deleting and regenerating that document's chunks."
+      },
+      "code": "CREATE TABLE dbo.DocumentChunks\n(\n    ChunkId      INT IDENTITY PRIMARY KEY,\n    DocumentId   INT NOT NULL REFERENCES dbo.Documents(DocumentId),\n    ChunkOrder   INT NOT NULL,\n    ChunkText    NVARCHAR(MAX) NOT NULL,\n    Embedding    VECTOR(1536) NOT NULL,\n    ModelVersion VARCHAR(50) NOT NULL DEFAULT 'text-embedding-3-small'\n);"
+    }
+  ],
+  "examTips": [
+    { "en": "Embed meaningful text (titles, descriptions, bodies); keep IDs, prices, dates and statuses as filter columns." },
+    { "en": "Compose labeled text from several fields; use separate vectors when fields are searched independently." },
+    { "en": "AI_GENERATE_CHUNKS: CHUNK_TYPE = FIXED, CHUNK_SIZE in characters (required), OVERLAP = percent 0–50 (default 0), compat level 170." },
+    { "en": "Output columns: chunk, chunk_order, chunk_offset, chunk_length, optional chunk_set_id (ENABLE_CHUNK_SET_ID = 1)." },
+    { "en": "Too-large chunks dilute meaning and waste prompt tokens; too-small chunks lose context." },
+    { "en": "Store chunks in a child table with FK, order, text and vector; join back to the parent for metadata and filters." },
+    { "en": "Avoid embedding unnecessary PII; deduplicate text before indexing." }
+  ],
+  "sources": [
+    "https://learn.microsoft.com/en-us/training/modules/design-implement-models-embeddings-with-sql/04-design-embeddings-sql-database-workloads",
+    "https://learn.microsoft.com/en-us/sql/t-sql/functions/ai-generate-chunks-transact-sql",
+    "https://learn.microsoft.com/en-us/sql/t-sql/functions/ai-generate-embeddings-transact-sql",
+    "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-vector-index-transact-sql",
+    "https://learn.microsoft.com/en-us/azure/foundry/openai/how-to/embeddings"
+  ]
+}

@@ -1,0 +1,84 @@
+{
+  "subtopic": "d2-monitoring-change",
+  "title": { "en": "Monitoring & change handling (CES, CDC, Change Tracking)" },
+  "prerequisiteRecap": [
+    {
+      "heading": { "en": "Two questions this lesson answers" },
+      "body": {
+        "en": "1. **How do I see what my database solution is doing?** Azure Monitor collects **metrics** (numbers over time), **resource logs** (detailed events) and **application telemetry** (requests, dependencies, exceptions). You choose where each goes: Log Analytics, Storage, Event Hubs or Application Insights.\n2. **How do other systems react when rows change?** SQL offers several change-detection features with different trade-offs: **Change Tracking** (which rows changed), **CDC** (what the values were, from the log), **change event streaming** (push events to Event Hubs), plus Azure services that build on them: **Azure Functions SQL trigger** and **Logic Apps SQL triggers**."
+      }
+    }
+  ],
+  "sections": [
+    {
+      "heading": { "en": "Azure Monitor for Azure SQL" },
+      "body": {
+        "en": "- **Platform metrics** (CPU %, DTU/vCore usage, log write %, sessions/workers %, storage, deadlocks, connections) are collected automatically. Use **metric alert rules** with **action groups** for notification or automation.\n- **Resource logs** are **not collected until you create a diagnostic setting**. Database categories include `SQLInsights` (Intelligent Insights), `AutomaticTuning`, `QueryStoreRuntimeStatistics`, `QueryStoreWaitStatistics`, `Errors`, `DatabaseWaitStatistics`, `Timeouts`, `Blocks`, `Deadlocks`; metrics categories such as `Basic`, `InstanceAndAppAdvanced`, `WorkloadManagement`.\n- Destinations: **Log Analytics workspace** (KQL queries, workbooks, log alerts, correlation across resources), **Storage account** (cheap long-term archive), **Event Hubs** (stream to SIEM/third-party tools), partner solutions.\n- **Auditing** can also write to Log Analytics, Storage or Event Hubs.\n- Retired/retiring tools: SQL Insights is retired; database watcher (preview) is retiring — don't design new solutions on them."
+      }
+    },
+    {
+      "heading": { "en": "Application Insights and DAB telemetry" },
+      "body": {
+        "en": "**Application Insights** (workspace-based, stored in Log Analytics) monitors the *application* side: request rates and latency, failures, exceptions, **dependency calls to SQL**, the application map and end-to-end transactions. Recommend it for .NET APIs, Azure Functions and Data API builder; recommend Log Analytics for database resource logs and cross-resource KQL.\n\nDAB `runtime.telemetry` options:\n- `application-insights`: `connection-string` (required; use `@env()`), `enabled` (default true).\n- `open-telemetry`: `endpoint`, `headers`, `service-name` (default `dab`), `exporter-protocol` (`grpc` default or `httpprotobuf`).\n- `azure-log-analytics` (DAB 2.0): sends batches to a custom table through a **data collection endpoint** and **data collection rule** (`auth.custom-table-name`, `auth.dcr-immutable-id`, `auth.dce-endpoint`).\n- `file` sink (DAB 2.0) and `log-level` per namespace — the only setting that hot-reloads in production."
+      },
+      "code": "\"telemetry\": {\n  \"application-insights\": {\n    \"enabled\": true,\n    \"connection-string\": \"@env('APPLICATIONINSIGHTS_CONNECTION_STRING')\"\n  },\n  \"log-level\": { \"default\": \"warning\" }\n}",
+      "codeLang": "json"
+    },
+    {
+      "heading": { "en": "Change Tracking" },
+      "body": {
+        "en": "Lightweight and **synchronous** (recorded in the same transaction as the DML). It records **that** a row changed (primary key, operation I/U/D, optional changed-columns mask, version) — **not** the old or new values; you join back to the table for current values. Requires a **primary key**. Default retention 2 days with auto cleanup.\nSync pattern: store the last synced version → `CHANGETABLE(CHANGES t, @last)` → save `CHANGE_TRACKING_CURRENT_VERSION()`. If `@last < CHANGE_TRACKING_MIN_VALID_VERSION(OBJECT_ID('t'))`, changes were cleaned up: reinitialize. Read under **snapshot isolation** for a consistent version and data. Azure Functions SQL trigger is built on Change Tracking."
+      },
+      "code": "ALTER DATABASE CURRENT SET CHANGE_TRACKING = ON (CHANGE_RETENTION = 2 DAYS, AUTO_CLEANUP = ON);\nALTER TABLE dbo.Products ENABLE CHANGE_TRACKING WITH (TRACK_COLUMNS_UPDATED = ON);\n\nDECLARE @last BIGINT = 1041;  -- saved from previous sync\nSELECT ct.ProductId, ct.SYS_CHANGE_OPERATION, p.Name, p.Price\nFROM CHANGETABLE(CHANGES dbo.Products, @last) AS ct\nLEFT JOIN dbo.Products AS p ON p.ProductId = ct.ProductId;\nSELECT CHANGE_TRACKING_CURRENT_VERSION();  -- save for next time"
+    },
+    {
+      "heading": { "en": "Change data capture (CDC)" },
+      "body": {
+        "en": "**Asynchronous**: a capture process reads the **transaction log** and writes full row images to change tables `cdc.<capture_instance>_CT`. `__$operation`: **1 = delete, 2 = insert, 3 = update (before), 4 = update (after)**. Query with `cdc.fn_cdc_get_all_changes_<ci>` (and `fn_cdc_get_net_changes_<ci>` when `@supports_net_changes = 1`, which needs a primary key or unique index) between `sys.fn_cdc_get_min_lsn` and `sys.fn_cdc_get_max_lsn`. Default retention **3 days** (4,320 minutes).\n- SQL Server / Managed Instance: SQL Server **Agent** capture and cleanup jobs.\n- Azure SQL Database: a **CDC scheduler** (capture every 20 seconds, cleanup hourly); any vCore tier, DTU **S3 or higher**; enabling needs `db_owner`.\n- The log can't truncate until captured — monitor log usage. Best for ETL/auditing that needs history and before/after values."
+      },
+      "code": "EXEC sys.sp_cdc_enable_db;\nEXEC sys.sp_cdc_enable_table @source_schema = N'dbo', @source_name = N'Orders',\n     @role_name = NULL, @supports_net_changes = 1;\n\nDECLARE @from BINARY(10) = sys.fn_cdc_get_min_lsn(N'dbo_Orders'),\n        @to   BINARY(10) = sys.fn_cdc_get_max_lsn();\nSELECT __$operation, OrderId, Status\nFROM cdc.fn_cdc_get_all_changes_dbo_Orders(@from, @to, N'all');"
+    },
+    {
+      "heading": { "en": "Change event streaming (CES, preview)" },
+      "body": {
+        "en": "SQL Server 2025, Azure SQL Database, Managed Instance and Fabric SQL database can **push** INSERT/UPDATE/DELETE events (schema, old and new values) as **CloudEvents** (JSON or Avro) to **Azure Event Hubs** or **Fabric Eventstream** in near real time — no polling, many consumers.\nSetup: full recovery model → master key + database scoped credential (**Managed Identity** with the *Azure Event Hubs Data Sender* role, or a SAS policy with Send) → `sys.sp_enable_event_stream` → `sys.sp_create_event_stream_group` (destination, credential, `@max_message_size_kb`, `@partition_key_scheme`) → `sys.sp_add_object_to_event_stream_group`.\nKey limitations: can't coexist with **CDC, transactional replication, Fabric mirroring or Synapse Link** (Change Tracking is fine); **no initial snapshot** of existing rows; **no DDL events**; `TRUNCATE TABLE` unsupported; some types are skipped (json, vector, xml, geography…); values over 1 MB truncated; **RLS and dynamic data masking don't apply** to streamed data; public Event Hubs endpoints only; failed delivery blocks **log truncation**. Monitor `sys.dm_change_feed_errors`."
+      },
+      "code": "CREATE MASTER KEY ENCRYPTION BY PASSWORD = '<strong password>';\nCREATE DATABASE SCOPED CREDENTIAL EhCred WITH IDENTITY = 'Managed Identity';\nEXEC sys.sp_enable_event_stream;\nEXEC sys.sp_create_event_stream_group\n     @stream_group_name      = N'OrdersStream',\n     @destination_type       = N'AzureEventHubs',\n     @destination_location   = N'contoso-ns.servicebus.windows.net:9093/orders',\n     @destination_credential = EhCred,\n     @partition_key_scheme   = N'None';\nEXEC sys.sp_add_object_to_event_stream_group N'OrdersStream', N'dbo.Orders';"
+    },
+    {
+      "heading": { "en": "Azure Functions SQL trigger and Logic Apps" },
+      "body": {
+        "en": "**Azure Functions SQL trigger** uses **Change Tracking** (enable it on the database and table). A polling loop reads up to `MaxBatchSize` changes (default 100) every `PollingIntervalMs` (default 1,000 ms) and passes `IReadOnlyList<SqlChange<T>>` (each with `Operation` Insert/Update/Delete and `Item`). Several changes to one row between polls arrive as **one** change with the latest state. State lives in **lease tables in the `az_func` schema**; the identity needs SELECT and VIEW CHANGE TRACKING on the table plus rights to create/use `az_func`. A failing batch is retried after 60 seconds; a row that fails 5 times in a row is skipped.\n**Logic Apps SQL connector** triggers poll the table: *When an item is created (V2)* needs an **IDENTITY** column; *When an item is modified (V2)* needs a **ROWVERSION** column and fires on inserts and updates. Great for low-code workflows (email, Teams, approvals)."
+      },
+      "code": "[Function(\"ProductChanged\")]\npublic static void Run(\n    [SqlTrigger(\"[dbo].[Products]\", \"SqlConnectionString\")]\n    IReadOnlyList<SqlChange<Product>> changes, FunctionContext ctx)\n{\n    foreach (var c in changes)\n        ctx.GetLogger(\"p\").LogInformation(\"{op} {id}\", c.Operation, c.Item.ProductId);\n}",
+      "codeLang": "csharp"
+    },
+    {
+      "heading": { "en": "Choosing a change-handling method" },
+      "body": {
+        "en": "- Need only *which rows* changed, cheap, for sync or cache refresh → **Change Tracking**.\n- Need *history* with before/after values for ETL or audit → **CDC**.\n- Need *push* to an event backbone, many subscribers, near real time → **CES** (preview).\n- Need code to run per change without managing polling → **Azure Functions SQL trigger** (on Change Tracking).\n- Need a low-code workflow on new/modified rows → **Logic Apps** SQL triggers.\n- Need logic *inside the same transaction* → a table **trigger** (keep it small; it adds latency to every write)."
+      }
+    }
+  ],
+  "examTips": [
+    { "en": "Resource logs need a diagnostic setting; metrics are automatic. Log Analytics = KQL/correlation, Storage = archive, Event Hubs = stream to SIEM." },
+    { "en": "Application Insights = app/API/Functions/DAB telemetry incl. SQL dependency calls; DAB uses runtime.telemetry.application-insights.connection-string." },
+    { "en": "Change Tracking: synchronous, PK required, no old values; CHANGETABLE + CHANGE_TRACKING_CURRENT_VERSION/MIN_VALID_VERSION." },
+    { "en": "CDC: log-based, async; __$operation 1 delete, 2 insert, 3 before, 4 after; Azure SQL DB uses a scheduler (S3+ for DTU); retention 3 days." },
+    { "en": "CES: pushes CloudEvents to Event Hubs/Fabric Eventstream; no snapshot, no DDL, no TRUNCATE; incompatible with CDC/replication/mirroring; RLS/DDM not applied." },
+    { "en": "Functions SQL trigger = Change Tracking + polling; batch 100, poll 1 s; az_func lease tables; one change per row per poll." },
+    { "en": "Logic Apps: created (V2) needs IDENTITY; modified (V2) needs ROWVERSION." }
+  ],
+  "sources": [
+    "https://learn.microsoft.com/en-us/azure/azure-sql/database/metrics-diagnostic-telemetry-logging-streaming-export-configure",
+    "https://learn.microsoft.com/en-us/azure/azure-sql/database/monitoring-metrics-alerts",
+    "https://learn.microsoft.com/en-us/azure/data-api-builder/configuration/runtime",
+    "https://learn.microsoft.com/en-us/sql/relational-databases/track-changes/about-change-tracking-sql-server",
+    "https://learn.microsoft.com/en-us/sql/relational-databases/track-changes/about-change-data-capture-sql-server",
+    "https://learn.microsoft.com/en-us/azure/azure-sql/database/change-data-capture-overview",
+    "https://learn.microsoft.com/en-us/sql/relational-databases/track-changes/change-event-streaming/overview",
+    "https://learn.microsoft.com/en-us/sql/relational-databases/track-changes/change-event-streaming/configure",
+    "https://learn.microsoft.com/en-us/azure/azure-functions/functions-bindings-azure-sql-trigger",
+    "https://learn.microsoft.com/en-us/connectors/sql/"
+  ]
+}

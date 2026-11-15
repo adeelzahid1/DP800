@@ -1,0 +1,852 @@
+{
+  "subtopic": "d2-config-concurrency",
+  "questions": [
+    {
+      "id": "d2-conc-0001",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-config-concurrency",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "What is the default transaction isolation level in SQL Server and Azure SQL?" },
+      "options": [
+        { "id": "a", "text": { "en": "READ COMMITTED" } },
+        { "id": "b", "text": { "en": "SERIALIZABLE" } },
+        { "id": "c", "text": { "en": "READ UNCOMMITTED" } },
+        { "id": "d", "text": { "en": "SNAPSHOT" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "READ COMMITTED is the default everywhere. In Azure SQL Database it runs with RCSI (row versioning) by default; on SQL Server it uses locking unless RCSI is enabled." },
+      "example": { "en": "DBCC USEROPTIONS shows the current isolation level of the session." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/set-transaction-isolation-level-transact-sql"]
+    },
+    {
+      "id": "d2-conc-0002",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-config-concurrency",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Reports block order inserts on a SQL Server database because readers take shared locks. You want readers not to block writers, with minimal code change. What should you enable?" },
+      "options": [
+        { "id": "a", "text": { "en": "READ_COMMITTED_SNAPSHOT (RCSI) on the database" } },
+        { "id": "b", "text": { "en": "Add WITH (NOLOCK) to every report query" } },
+        { "id": "c", "text": { "en": "SERIALIZABLE isolation for reports" } },
+        { "id": "d", "text": { "en": "Disable auto update statistics" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "RCSI makes READ COMMITTED readers use row versions, so they don't take shared locks — no app changes. NOLOCK (b) allows dirty and inconsistent reads; SERIALIZABLE (c) increases blocking; statistics (d) are unrelated." },
+      "example": { "en": "ALTER DATABASE Sales SET READ_COMMITTED_SNAPSHOT ON WITH ROLLBACK IMMEDIATE;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-transaction-locking-and-row-versioning-guide"]
+    },
+    {
+      "id": "d2-conc-0003",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-config-concurrency",
+      "type": "dragdrop-match", "difficulty": "medium",
+      "text": { "en": "Match each isolation level to the strongest anomaly it still allows." },
+      "items": [
+        { "id": "i1", "text": { "en": "READ UNCOMMITTED" } },
+        { "id": "i2", "text": { "en": "READ COMMITTED" } },
+        { "id": "i3", "text": { "en": "REPEATABLE READ" } },
+        { "id": "i4", "text": { "en": "SERIALIZABLE" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "Dirty reads" } },
+        { "id": "t2", "text": { "en": "Non-repeatable reads" } },
+        { "id": "t3", "text": { "en": "Phantoms" } },
+        { "id": "t4", "text": { "en": "None of these" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "Each level closes one more anomaly: READ COMMITTED stops dirty reads, REPEATABLE READ stops non-repeatable reads, SERIALIZABLE stops phantoms. SNAPSHOT also prevents all three via versioning." },
+      "example": { "en": "The classic isolation ladder." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/set-transaction-isolation-level-transact-sql"]
+    },
+    {
+      "id": "d2-conc-0004",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-config-concurrency",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A report runs two SELECTs in one transaction and needs both to see the same consistent data, without blocking writers. Which isolation level?" },
+      "options": [
+        { "id": "a", "text": { "en": "SNAPSHOT" } },
+        { "id": "b", "text": { "en": "READ COMMITTED with RCSI" } },
+        { "id": "c", "text": { "en": "READ UNCOMMITTED" } },
+        { "id": "d", "text": { "en": "SERIALIZABLE" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "SNAPSHOT gives transaction-level consistency via versioning. RCSI (b) is consistent per statement — the second SELECT may see newer commits. READ UNCOMMITTED (c) is inconsistent; SERIALIZABLE (d) is consistent but blocks writers." },
+      "example": { "en": "ALTER DATABASE … SET ALLOW_SNAPSHOT_ISOLATION ON; SET TRANSACTION ISOLATION LEVEL SNAPSHOT;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-transaction-locking-and-row-versioning-guide"]
+    },
+    {
+      "id": "d2-conc-0005",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-config-concurrency",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Under SNAPSHOT isolation, a transaction updates a row that another transaction modified and committed after the first one started. What happens?" },
+      "options": [
+        { "id": "a", "text": { "en": "The update fails with an update conflict error (3960) and the transaction is rolled back" } },
+        { "id": "b", "text": { "en": "The update silently overwrites the other change" } },
+        { "id": "c", "text": { "en": "The update waits forever" } },
+        { "id": "d", "text": { "en": "Both changes are merged" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "SNAPSHOT detects write-write conflicts and raises error 3960 instead of losing updates. Apps should catch it and retry. RCSI doesn't raise this error — it blocks on the writer's lock instead." },
+      "example": { "en": "Retry logic: IF ERROR_NUMBER() = 3960 … retry the transaction." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-transaction-locking-and-row-versioning-guide"]
+    },
+    {
+      "id": "d2-conc-0006",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-config-concurrency",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "For each statement about RCSI, answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "RCSI is enabled by default in Azure SQL Database." } },
+        { "id": "s2", "text": { "en": "Under RCSI, readers see the last committed version as of the start of each statement." } },
+        { "id": "s3", "text": { "en": "RCSI eliminates blocking between two writers updating the same row." } },
+        { "id": "s4", "text": { "en": "RCSI uses a version store." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "yes", "s3": "no", "s4": "yes" },
+      "explanation": { "en": "RCSI is default-on in Azure SQL Database, gives statement-level versioned reads and stores versions (tempdb or the ADR persistent version store). Writers still take exclusive locks, so two writers on the same row still block each other." },
+      "example": { "en": "SELECT is_read_committed_snapshot_on FROM sys.databases WHERE name = DB_NAME();" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-transaction-locking-and-row-versioning-guide"]
+    },
+    {
+      "id": "d2-conc-0007",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-config-concurrency",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Two users load the same product, each changes the price, and the second save overwrites the first without warning. Which pattern prevents this lost update in a web app?" },
+      "options": [
+        { "id": "a", "text": { "en": "Optimistic concurrency with a rowversion column checked in the UPDATE's WHERE clause" } },
+        { "id": "b", "text": { "en": "Use NOLOCK on the read" } },
+        { "id": "c", "text": { "en": "Hold a transaction open while the user edits" } },
+        { "id": "d", "text": { "en": "Increase the lock timeout" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Checking the original rowversion detects that the row changed; zero affected rows signals a conflict. NOLOCK (b) worsens consistency; long transactions during user think-time (c) cause blocking; lock timeouts (d) don't detect conflicts." },
+      "example": { "en": "UPDATE … WHERE ProductId = @id AND RowVer = @orig; IF @@ROWCOUNT = 0 → conflict." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/data-types/rowversion-transact-sql"]
+    },
+    {
+      "id": "d2-conc-0008",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-config-concurrency",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What is a major risk of using WITH (NOLOCK) on reporting queries?" },
+      "options": [
+        { "id": "a", "text": { "en": "Dirty reads plus rows read twice or skipped during page splits" } },
+        { "id": "b", "text": { "en": "It causes deadlocks on every query" } },
+        { "id": "c", "text": { "en": "It encrypts data" } },
+        { "id": "d", "text": { "en": "It disables indexes" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "NOLOCK (READ UNCOMMITTED) can return uncommitted data and, during allocation-order scans, duplicate or missing rows. RCSI is usually the correct fix for reader/writer blocking." },
+      "example": { "en": "Financial totals computed with NOLOCK can be simply wrong." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/hints-transact-sql-table"]
+    },
+    {
+      "id": "d2-conc-0009",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-config-concurrency",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "Which two mechanisms make up optimized locking?" },
+      "options": [
+        { "id": "a", "text": { "en": "Transaction ID (TID) locking and lock after qualification (LAQ)" } },
+        { "id": "b", "text": { "en": "NOLOCK and READPAST hints" } },
+        { "id": "c", "text": { "en": "Page compression and columnstore" } },
+        { "id": "d", "text": { "en": "Snapshot isolation and SERIALIZABLE" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Optimized locking uses TID locking (one lock per transaction instead of many row locks held to the end) and LAQ (rows are evaluated against the predicate using the latest committed version before locking). It reduces lock memory, escalation and blocking." },
+      "example": { "en": "Available in Azure SQL Database, SQL database in Fabric and SQL Server 2025; requires ADR." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/performance/optimized-locking"]
+    },
+    {
+      "id": "d2-conc-0010",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-config-concurrency",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which feature is a prerequisite for optimized locking?" },
+      "options": [
+        { "id": "a", "text": { "en": "Accelerated Database Recovery (ADR)" } },
+        { "id": "b", "text": { "en": "Query Store" } },
+        { "id": "c", "text": { "en": "Always Encrypted" } },
+        { "id": "d", "text": { "en": "Columnstore indexes" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Optimized locking depends on ADR's persistent version store. RCSI is strongly recommended for lock-after-qualification benefits, but ADR is the hard prerequisite." },
+      "example": { "en": "ALTER DATABASE CURRENT SET ACCELERATED_DATABASE_RECOVERY = ON; then OPTIMIZED_LOCKING = ON (SQL Server 2025)." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/performance/optimized-locking"]
+    },
+    {
+      "id": "d2-conc-0011",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-config-concurrency",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Complete the statements that enable transaction-level snapshot reads." },
+      "code": "ALTER DATABASE Sales SET [BLANK1] ON;\nGO\nSET TRANSACTION ISOLATION LEVEL [BLANK2];\nBEGIN TRAN;\n  SELECT SUM(Total) FROM dbo.Orders;\n  SELECT COUNT(*) FROM dbo.Orders;\nCOMMIT;",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "ALLOW_SNAPSHOT_ISOLATION" } },
+            { "id": "c2", "text": { "en": "READ_ONLY" } },
+            { "id": "c3", "text": { "en": "AUTO_SHRINK" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "SNAPSHOT" } },
+            { "id": "c2", "text": { "en": "READ UNCOMMITTED" } },
+            { "id": "c3", "text": { "en": "REPEATABLE READ" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "SNAPSHOT isolation requires ALLOW_SNAPSHOT_ISOLATION ON, then the session sets SNAPSHOT. READ_ONLY and AUTO_SHRINK are unrelated; REPEATABLE READ uses locks, not versions." },
+      "example": { "en": "Both SELECTs see data as of the transaction's start." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/set-transaction-isolation-level-transact-sql"]
+    },
+    {
+      "id": "d2-conc-0012",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-config-concurrency",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What is lock escalation?" },
+      "options": [
+        { "id": "a", "text": { "en": "Converting many fine-grained (row/page) locks on an object into a table (or partition) lock to save memory" } },
+        { "id": "b", "text": { "en": "Raising a session's priority" } },
+        { "id": "c", "text": { "en": "Converting shared locks to NOLOCK" } },
+        { "id": "d", "text": { "en": "Moving locks to tempdb" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "When a statement acquires roughly 5,000 locks on one object (or memory pressure occurs), SQL Server escalates to a coarser lock, which can block other sessions. Batching large modifications and optimized locking reduce escalation." },
+      "example": { "en": "Delete in batches of 4,000 rows to stay below the escalation threshold." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-transaction-locking-and-row-versioning-guide"]
+    },
+    {
+      "id": "d2-conc-0013",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-config-concurrency",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Why do UPDATE statements take U (update) locks while searching for rows?" },
+      "options": [
+        { "id": "a", "text": { "en": "To prevent conversion deadlocks where two sessions hold S locks and both try to convert to X" } },
+        { "id": "b", "text": { "en": "To allow dirty reads" } },
+        { "id": "c", "text": { "en": "To speed up inserts" } },
+        { "id": "d", "text": { "en": "U locks are only used in tempdb" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Only one session can hold a U lock on a resource, so two updaters can't both hold read locks and then deadlock converting to exclusive. The UPDLOCK hint applies the same idea to read-then-write patterns." },
+      "example": { "en": "SELECT … FROM dbo.Counter WITH (UPDLOCK, HOLDLOCK) WHERE Id = 1; UPDATE dbo.Counter …" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-transaction-locking-and-row-versioning-guide"]
+    },
+    {
+      "id": "d2-conc-0014",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-config-concurrency",
+      "type": "multiple", "difficulty": "medium", "selectCount": 2,
+      "text": { "en": "Which two isolation options use row versioning? (Select 2)" },
+      "options": [
+        { "id": "a", "text": { "en": "READ COMMITTED with READ_COMMITTED_SNAPSHOT ON" } },
+        { "id": "b", "text": { "en": "SNAPSHOT" } },
+        { "id": "c", "text": { "en": "REPEATABLE READ" } },
+        { "id": "d", "text": { "en": "SERIALIZABLE" } }
+      ],
+      "answer": ["a", "b"],
+      "explanation": { "en": "RCSI and SNAPSHOT both read row versions. REPEATABLE READ and SERIALIZABLE rely on locks held until commit." },
+      "example": { "en": "Versioning trades tempdb/PVS storage for less blocking." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-transaction-locking-and-row-versioning-guide"]
+    },
+    {
+      "id": "d2-conc-0015",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-config-concurrency",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A database uses REGEXP_LIKE but the function isn't recognized. Which configuration change is required?" },
+      "options": [
+        { "id": "a", "text": { "en": "Set the database compatibility level to 170" } },
+        { "id": "b", "text": { "en": "Enable RCSI" } },
+        { "id": "c", "text": { "en": "Turn on Query Store" } },
+        { "id": "d", "text": { "en": "Set MAXDOP to 1" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "REGEXP_LIKE requires compatibility level 170. Compatibility level also gates many optimizer features. The other settings don't affect function availability." },
+      "example": { "en": "ALTER DATABASE CURRENT SET COMPATIBILITY_LEVEL = 170;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/regexp-like-transact-sql"]
+    },
+    {
+      "id": "d2-conc-0016",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-config-concurrency",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which database scoped configuration helps a workload with many single-use ad-hoc queries reduce plan cache memory?" },
+      "options": [
+        { "id": "a", "text": { "en": "OPTIMIZE_FOR_AD_HOC_WORKLOADS = ON" } },
+        { "id": "b", "text": { "en": "LEGACY_CARDINALITY_ESTIMATION = ON" } },
+        { "id": "c", "text": { "en": "MAXDOP = 0" } },
+        { "id": "d", "text": { "en": "PARAMETER_SNIFFING = OFF" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "With this option, a first execution caches only a small plan stub; the full plan is cached on reuse. Legacy CE, MAXDOP and parameter sniffing address other problems." },
+      "example": { "en": "ALTER DATABASE SCOPED CONFIGURATION SET OPTIMIZE_FOR_AD_HOC_WORKLOADS = ON;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-database-scoped-configuration-transact-sql"]
+    },
+    {
+      "id": "d2-conc-0017",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-config-concurrency",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "After upgrading compatibility level, a few critical queries regress because of the new cardinality estimator. What is the most targeted mitigation?" },
+      "options": [
+        { "id": "a", "text": { "en": "Use Query Store to force the previous good plan or apply a USE HINT('FORCE_LEGACY_CARDINALITY_ESTIMATION') to those queries" } },
+        { "id": "b", "text": { "en": "Downgrade the whole server" } },
+        { "id": "c", "text": { "en": "Disable statistics" } },
+        { "id": "d", "text": { "en": "Enable NOLOCK everywhere" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Fix only what regressed: plan forcing or a query-level hint (or a Query Store hint without code changes). Database-wide LEGACY_CARDINALITY_ESTIMATION is broader; downgrading or disabling stats is drastic and harmful." },
+      "example": { "en": "EXEC sp_query_store_set_hints @query_id = 42, @query_hints = N'OPTION(USE HINT(''FORCE_LEGACY_CARDINALITY_ESTIMATION''))';" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/performance/query-store-hints"]
+    },
+    {
+      "id": "d2-conc-0018",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-config-concurrency",
+      "type": "dragdrop-match", "difficulty": "medium",
+      "text": { "en": "Match each workload to the most suitable Azure SQL Database option." },
+      "items": [
+        { "id": "i1", "text": { "en": "Dev database used a few hours a week" } },
+        { "id": "i2", "text": { "en": "40 TB OLTP database needing fast scale-out reads" } },
+        { "id": "i3", "text": { "en": "Latency-sensitive OLTP needing a readable secondary" } },
+        { "id": "i4", "text": { "en": "200 small SaaS tenant databases with spiky usage" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "Serverless (auto-pause)" } },
+        { "id": "t2", "text": { "en": "Hyperscale" } },
+        { "id": "t3", "text": { "en": "Business Critical" } },
+        { "id": "t4", "text": { "en": "Elastic pool" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "Serverless pauses when idle; Hyperscale handles very large databases with fast scaling and named replicas; Business Critical offers local SSD latency and a built-in readable secondary; elastic pools share resources across many databases." },
+      "example": { "en": "Recommendations depend on size, latency, usage pattern and density." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-sql/database/service-tiers-vcore"]
+    },
+    {
+      "id": "d2-conc-0019",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-config-concurrency",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What does Accelerated Database Recovery (ADR) primarily improve?" },
+      "options": [
+        { "id": "a", "text": { "en": "Near-instant transaction rollback and fast database recovery regardless of long-running transactions" } },
+        { "id": "b", "text": { "en": "Query compilation speed" } },
+        { "id": "c", "text": { "en": "Backup compression" } },
+        { "id": "d", "text": { "en": "Index rebuild speed" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "ADR uses a persistent version store so rollbacks and crash recovery don't need to undo huge amounts of log. It's on by default in Azure SQL and is the foundation for optimized locking." },
+      "example": { "en": "Killing a 2-hour update finishes rollback almost immediately with ADR." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/accelerated-database-recovery-concepts"]
+    },
+    {
+      "id": "d2-conc-0020",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-config-concurrency",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "For each statement about SERIALIZABLE isolation, answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "It prevents phantom rows using range locks." } },
+        { "id": "s2", "text": { "en": "It typically increases blocking compared with READ COMMITTED." } },
+        { "id": "s3", "text": { "en": "It uses row versioning to avoid locks." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "yes", "s3": "no" },
+      "explanation": { "en": "SERIALIZABLE takes key-range locks until commit — preventing phantoms at the cost of concurrency. It's lock-based; SNAPSHOT is the versioning alternative." },
+      "example": { "en": "HOLDLOCK is the table-hint equivalent of SERIALIZABLE." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/set-transaction-isolation-level-transact-sql"]
+    },
+    {
+      "id": "d2-conc-0021",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-config-concurrency",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A procedure reads the next invoice number and increments it in a separate statement. Under load, duplicates appear. What fixes it with minimal blocking?" },
+      "options": [
+        { "id": "a", "text": { "en": "Do the read and increment atomically, e.g. UPDATE … SET @n = Next = Next + 1, or use a SEQUENCE" } },
+        { "id": "b", "text": { "en": "Add NOLOCK to the read" } },
+        { "id": "c", "text": { "en": "Use READ UNCOMMITTED" } },
+        { "id": "d", "text": { "en": "Run the procedure less often" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "A single UPDATE that returns the new value (or OUTPUT inserted.Next) is atomic; a SEQUENCE is purpose-built. NOLOCK/READ UNCOMMITTED make races worse." },
+      "example": { "en": "UPDATE dbo.Counters SET @next = NextNo = NextNo + 1 WHERE Name = 'Invoice';" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/sequence-numbers/sequence-numbers"]
+    },
+    {
+      "id": "d2-conc-0022",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-config-concurrency",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "With optimized locking and RCSI, an UPDATE with WHERE Status = 'Open' scans many rows. How does lock after qualification (LAQ) reduce blocking?" },
+      "options": [
+        { "id": "a", "text": { "en": "It evaluates the predicate on the latest committed version without locks and only locks rows that qualify" } },
+        { "id": "b", "text": { "en": "It skips the WHERE clause" } },
+        { "id": "c", "text": { "en": "It escalates to a table lock early" } },
+        { "id": "d", "text": { "en": "It reads uncommitted rows" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "LAQ avoids taking update locks on every scanned row; only qualifying rows are locked, so the UPDATE no longer blocks on (or blocks) unrelated rows. It doesn't read uncommitted data." },
+      "example": { "en": "Fewer lock waits for concurrent updates on different rows of the same table." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/performance/optimized-locking"]
+    },
+    {
+      "id": "d2-conc-0023",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-config-concurrency",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which data type automatically changes each time a row is updated, making it ideal for optimistic concurrency?" },
+      "options": [
+        { "id": "a", "text": { "en": "rowversion" } },
+        { "id": "b", "text": { "en": "datetime2" } },
+        { "id": "c", "text": { "en": "uniqueidentifier" } },
+        { "id": "d", "text": { "en": "sql_variant" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "rowversion (formerly timestamp) is a database-wide, automatically incremented binary value updated on every row change. datetime2 isn't updated automatically, GUIDs don't change, sql_variant is a generic container." },
+      "example": { "en": "EF Core maps rowversion as a concurrency token with [Timestamp]." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/data-types/rowversion-transact-sql"]
+    },
+    {
+      "id": "d2-conc-0024",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-config-concurrency",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What is a cost of enabling RCSI or SNAPSHOT isolation?" },
+      "options": [
+        { "id": "a", "text": { "en": "Version store growth (tempdb or the ADR persistent version store) and a small per-row versioning overhead" } },
+        { "id": "b", "text": { "en": "All queries become serializable" } },
+        { "id": "c", "text": { "en": "Indexes are dropped" } },
+        { "id": "d", "text": { "en": "Backups stop working" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Row versioning needs storage for old versions and adds row overhead (versioning info). Long-running transactions can make the version store grow. It doesn't change isolation semantics to serializable or affect indexes/backups." },
+      "example": { "en": "Monitor with sys.dm_tran_version_store_space_usage." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-transaction-locking-and-row-versioning-guide"]
+    },
+    {
+      "id": "d2-conc-0025",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-config-concurrency",
+      "type": "dragdrop-order", "difficulty": "medium",
+      "text": { "en": "Order the steps of an optimistic-concurrency update from a web form." },
+      "items": [
+        { "id": "i1", "text": { "en": "Read the row including its rowversion value" } },
+        { "id": "i2", "text": { "en": "User edits the data (no transaction open)" } },
+        { "id": "i3", "text": { "en": "UPDATE … WHERE Id = @id AND RowVer = @originalRowVer" } },
+        { "id": "i4", "text": { "en": "If 0 rows were affected, report a conflict and reload" } }
+      ],
+      "answer": ["i1", "i2", "i3", "i4"],
+      "explanation": { "en": "No locks are held during user think-time; the WHERE clause detects changes at save time. A zero row count means someone else updated the row." },
+      "example": { "en": "EF Core throws DbUpdateConcurrencyException in step 4." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/data-types/rowversion-transact-sql"]
+    },
+    {
+      "id": "d2-conc-0026",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-config-concurrency",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which setting caps the number of processors a query can use in parallel for a single database in Azure SQL?" },
+      "options": [
+        { "id": "a", "text": { "en": "ALTER DATABASE SCOPED CONFIGURATION SET MAXDOP = n" } },
+        { "id": "b", "text": { "en": "sp_configure 'max server memory'" } },
+        { "id": "c", "text": { "en": "SET NOCOUNT ON" } },
+        { "id": "d", "text": { "en": "ALTER DATABASE … SET AUTO_CLOSE ON" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Database scoped MAXDOP controls parallelism per database (server-level sp_configure isn't available in Azure SQL Database). The other settings don't control parallelism." },
+      "example": { "en": "Azure SQL Database new databases default to MAXDOP 8." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-database-scoped-configuration-transact-sql"]
+    },
+    {
+      "id": "d2-conc-0027",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-config-concurrency",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "Answer Yes or No for each configuration recommendation for a new Azure SQL Database." },
+      "statements": [
+        { "id": "s1", "text": { "en": "Keep Query Store enabled." } },
+        { "id": "s2", "text": { "en": "Turn on AUTO_SHRINK to save space." } },
+        { "id": "s3", "text": { "en": "Use the latest compatibility level after testing." } },
+        { "id": "s4", "text": { "en": "Keep automatic plan correction (FORCE_LAST_GOOD_PLAN) on." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "no", "s3": "yes", "s4": "yes" },
+      "explanation": { "en": "Query Store, current compatibility levels and automatic plan correction are recommended. AUTO_SHRINK causes fragmentation and repeated growth/shrink cycles and is discouraged." },
+      "example": { "en": "Shrink manually only after exceptional one-off deletions." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-sql/database/automatic-tuning-overview"]
+    },
+    {
+      "id": "d2-conc-0028",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-config-concurrency",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A long-running SNAPSHOT transaction stays open for hours. What side effect is most likely?" },
+      "options": [
+        { "id": "a", "text": { "en": "The version store can't be cleaned up and keeps growing" } },
+        { "id": "b", "text": { "en": "All writers are blocked" } },
+        { "id": "c", "text": { "en": "Statistics are deleted" } },
+        { "id": "d", "text": { "en": "The database switches to READ_ONLY" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Versions must be kept as long as an active transaction might need them, so old versions accumulate. Writers aren't blocked by snapshot readers." },
+      "example": { "en": "Find culprits with sys.dm_tran_active_snapshot_database_transactions." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-transaction-locking-and-row-versioning-guide"]
+    },
+    {
+      "id": "d2-conc-0029",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-config-concurrency",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which table hint lets a queue reader skip rows locked by other readers so multiple workers can dequeue concurrently?" },
+      "options": [
+        { "id": "a", "text": { "en": "READPAST (typically with UPDLOCK, ROWLOCK)" } },
+        { "id": "b", "text": { "en": "NOLOCK" } },
+        { "id": "c", "text": { "en": "TABLOCKX" } },
+        { "id": "d", "text": { "en": "HOLDLOCK" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "READPAST skips locked rows, so each worker claims different rows. NOLOCK reads uncommitted rows (two workers could grab the same item); TABLOCKX and HOLDLOCK increase blocking." },
+      "example": { "en": "DELETE TOP (1) FROM dbo.Queue WITH (ROWLOCK, READPAST, UPDLOCK) OUTPUT deleted.*;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/hints-transact-sql-table"]
+    },
+    {
+      "id": "d2-conc-0030",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-config-concurrency",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which statement sets the isolation level for the current session?" },
+      "options": [
+        { "id": "a", "text": { "en": "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;" } },
+        { "id": "b", "text": { "en": "ALTER SESSION SET ISOLATION = REPEATABLE;" } },
+        { "id": "c", "text": { "en": "BEGIN TRAN ISOLATION REPEATABLE;" } },
+        { "id": "d", "text": { "en": "SET ISOLATION REPEATABLE READ;" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "SET TRANSACTION ISOLATION LEVEL is the T-SQL syntax. ALTER SESSION is Oracle; the others don't exist." },
+      "example": { "en": "Set in an ad-hoc batch, the level persists for the session until changed." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/set-transaction-isolation-level-transact-sql"]
+    },
+    {
+      "id": "d2-conc-0031",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-config-concurrency",
+      "type": "multiple", "difficulty": "hard", "selectCount": 2,
+      "text": { "en": "A batch DELETE of 10 million rows blocks the OLTP workload for minutes. Which two changes reduce the impact? (Select 2)" },
+      "options": [
+        { "id": "a", "text": { "en": "Delete in smaller batches in a loop to avoid lock escalation and long transactions" } },
+        { "id": "b", "text": { "en": "Use partition switching/truncation if the rows map to whole partitions" } },
+        { "id": "c", "text": { "en": "Wrap the delete in SERIALIZABLE isolation" } },
+        { "id": "d", "text": { "en": "Add NOLOCK to the delete" } }
+      ],
+      "answer": ["a", "b"],
+      "explanation": { "en": "Batching keeps lock counts and log usage small; partition operations remove data as metadata changes. SERIALIZABLE increases locking; NOLOCK can't be used for the target of a DELETE." },
+      "example": { "en": "WHILE 1=1 BEGIN DELETE TOP (4000) FROM dbo.Log WHERE LoggedAt < @cutoff; IF @@ROWCOUNT = 0 BREAK; END" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-transaction-locking-and-row-versioning-guide"]
+    },
+    {
+      "id": "d2-conc-0032",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-config-concurrency",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A stored procedure runs SET TRANSACTION ISOLATION LEVEL SERIALIZABLE and then returns. The caller was at READ COMMITTED. What isolation level does the caller have afterwards?" },
+      "options": [
+        { "id": "a", "text": { "en": "READ COMMITTED — a level set inside a procedure or trigger reverts when the module returns" } },
+        { "id": "b", "text": { "en": "SERIALIZABLE for the rest of the session" } },
+        { "id": "c", "text": { "en": "READ UNCOMMITTED" } },
+        { "id": "d", "text": { "en": "The session is disconnected" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Documented behavior: if SET TRANSACTION ISOLATION LEVEL is issued in a stored procedure or trigger, the level is reset to the one in effect when the module was invoked once it returns. Set in an ad-hoc batch, it persists for the session." },
+      "example": { "en": "In .NET, prefer setting IsolationLevel explicitly on SqlTransaction/TransactionScope for each unit of work." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/set-transaction-isolation-level-transact-sql"]
+    },
+    {
+      "id": "d2-conc-0033",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-config-concurrency",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Complete the configuration commands for a SQL Server 2025 database that will use vector indexes (preview) and modern optimizer features." },
+      "code": "ALTER DATABASE CURRENT SET COMPATIBILITY_LEVEL = [BLANK1];\nALTER DATABASE SCOPED CONFIGURATION SET [BLANK2] = ON;",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "170" } },
+            { "id": "c2", "text": { "en": "100" } },
+            { "id": "c3", "text": { "en": "130" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "PREVIEW_FEATURES" } },
+            { "id": "c2", "text": { "en": "LEGACY_CARDINALITY_ESTIMATION" } },
+            { "id": "c3", "text": { "en": "AUTO_SHRINK" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "170 is the SQL Server 2025 compatibility level. PREVIEW_FEATURES enables SQL Server 2025 preview features such as vector indexes and JSON indexes. Legacy CE and AUTO_SHRINK aren't related." },
+      "example": { "en": "Azure SQL Database exposes vector indexes as GA without the preview switch." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-database-scoped-configuration-transact-sql"]
+    },
+    {
+      "id": "d2-conc-0034",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-config-concurrency",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which statement about Business Critical service tier in Azure SQL Database is true?" },
+      "options": [
+        { "id": "a", "text": { "en": "It uses local SSD storage with multiple replicas and includes a free readable secondary for read scale-out" } },
+        { "id": "b", "text": { "en": "It auto-pauses when idle" } },
+        { "id": "c", "text": { "en": "It is the cheapest tier" } },
+        { "id": "d", "text": { "en": "It supports databases up to 100 TB" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Business Critical is designed for low-latency OLTP with an Always On-style architecture, including a read-only replica accessible via ApplicationIntent=ReadOnly. Auto-pause is serverless; very large sizes are Hyperscale." },
+      "example": { "en": "Connection string: ApplicationIntent=ReadOnly to route reports to the secondary." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-sql/database/service-tier-business-critical"]
+    },
+    {
+      "id": "d2-conc-0035",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-config-concurrency",
+      "type": "yesno", "difficulty": "hard",
+      "text": { "en": "Under READ COMMITTED with RCSI ON, transaction T1 reads a row, then T2 updates and commits it, then T1 reads it again. Answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "T1's second read returns T2's committed value." } },
+        { "id": "s2", "text": { "en": "T1 was blocked during T2's update." } },
+        { "id": "s3", "text": { "en": "Under SNAPSHOT instead, T1's second read would return the original value." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "no", "s3": "yes" },
+      "explanation": { "en": "RCSI is per statement: each read sees the latest committed version at statement start, so the second read sees T2's change (a non-repeatable read) without blocking. SNAPSHOT keeps the transaction-start view." },
+      "example": { "en": "Choose SNAPSHOT when multi-statement consistency matters." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-transaction-locking-and-row-versioning-guide"]
+    },
+    {
+      "id": "d2-conc-0036",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-config-concurrency",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which SQL Server 2022+ feature, enabled by compatibility level 160, keeps several cached plans for one parameterized query to handle skewed parameter values?" },
+      "options": [
+        { "id": "a", "text": { "en": "Parameter Sensitive Plan (PSP) optimization" } },
+        { "id": "b", "text": { "en": "Optimized locking" } },
+        { "id": "c", "text": { "en": "Accelerated Database Recovery" } },
+        { "id": "d", "text": { "en": "Batch mode on rowstore" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "PSP optimization creates plan variants for different cardinality ranges of a parameter, reducing parameter-sniffing problems. The other features address locking, recovery and execution mode." },
+      "example": { "en": "A query for a tiny customer and a huge customer can each get an appropriate plan." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/performance/parameter-sensitive-plan-optimization"]
+    },
+    {
+      "id": "d2-conc-0037",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-config-concurrency",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "An Azure SQL Database serverless database takes seconds to respond to the first query each morning. Why?" },
+      "options": [
+        { "id": "a", "text": { "en": "It auto-paused when idle and resumes on the first connection" } },
+        { "id": "b", "text": { "en": "Statistics were dropped" } },
+        { "id": "c", "text": { "en": "RCSI was disabled overnight" } },
+        { "id": "d", "text": { "en": "Indexes rebuild at startup" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Serverless can auto-pause after an inactivity delay to save compute cost; resume adds latency. If that's unacceptable, disable auto-pause or use provisioned compute." },
+      "example": { "en": "Set auto-pause delay to -1 to disable it." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-sql/database/serverless-tier-overview"]
+    },
+    {
+      "id": "d2-conc-0038",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-config-concurrency",
+      "type": "dragdrop-match", "difficulty": "medium",
+      "text": { "en": "Match each lock mode to its purpose." },
+      "items": [
+        { "id": "i1", "text": { "en": "S (shared)" } },
+        { "id": "i2", "text": { "en": "X (exclusive)" } },
+        { "id": "i3", "text": { "en": "U (update)" } },
+        { "id": "i4", "text": { "en": "IX (intent exclusive)" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "Reading data under locking isolation" } },
+        { "id": "t2", "text": { "en": "Modifying data" } },
+        { "id": "t3", "text": { "en": "Searching rows that may be updated, preventing conversion deadlocks" } },
+        { "id": "t4", "text": { "en": "Signals on a page/table that exclusive locks exist below" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "Shared for reads, exclusive for writes, update locks for the search phase of updates, intent locks to make higher-level compatibility checks efficient." },
+      "example": { "en": "View current locks with sys.dm_tran_locks." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-transaction-locking-and-row-versioning-guide"]
+    },
+    {
+      "id": "d2-conc-0039",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-config-concurrency",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which statement about the persistent version store (PVS) is true?" },
+      "options": [
+        { "id": "a", "text": { "en": "With ADR enabled, row versions are stored in the user database's PVS rather than tempdb" } },
+        { "id": "b", "text": { "en": "PVS stores backups" } },
+        { "id": "c", "text": { "en": "PVS is only used by columnstore" } },
+        { "id": "d", "text": { "en": "PVS replaces the transaction log" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "ADR introduces a persistent version store inside the database, used for row versioning and fast rollback. It doesn't hold backups, isn't columnstore-specific, and the log still exists." },
+      "example": { "en": "Monitor with sys.dm_tran_persistent_version_store_stats." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/accelerated-database-recovery-concepts"]
+    },
+    {
+      "id": "d2-conc-0040",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-config-concurrency",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A check-then-insert procedure ('if the username doesn't exist, insert it') occasionally creates duplicates under concurrency. What's the most robust fix?" },
+      "options": [
+        { "id": "a", "text": { "en": "Add a UNIQUE constraint and handle the duplicate-key error (optionally use UPDLOCK, HOLDLOCK on the existence check)" } },
+        { "id": "b", "text": { "en": "Use NOLOCK on the existence check" } },
+        { "id": "c", "text": { "en": "Use READ UNCOMMITTED" } },
+        { "id": "d", "text": { "en": "Add a delay before inserting" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Only a constraint guarantees uniqueness; key-range locking (UPDLOCK, HOLDLOCK) can serialize the check-and-insert window. NOLOCK, READ UNCOMMITTED and delays don't close the race." },
+      "example": { "en": "IF NOT EXISTS (SELECT 1 FROM dbo.Users WITH (UPDLOCK, HOLDLOCK) WHERE UserName = @u) INSERT …" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/hints-transact-sql-table"]
+    },
+    {
+      "id": "d2-conc-0041",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-config-concurrency",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which isolation level setting is equivalent to using NOLOCK on every table in a query?" },
+      "options": [
+        { "id": "a", "text": { "en": "READ UNCOMMITTED" } },
+        { "id": "b", "text": { "en": "READ COMMITTED" } },
+        { "id": "c", "text": { "en": "SNAPSHOT" } },
+        { "id": "d", "text": { "en": "SERIALIZABLE" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "NOLOCK is the table-hint form of READ UNCOMMITTED." },
+      "example": { "en": "Neither should be used where correctness matters." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/hints-transact-sql-table"]
+    },
+    {
+      "id": "d2-conc-0042",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-config-concurrency",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Reporting queries overload a Business Critical database's primary. What's the simplest way to offload them?" },
+      "options": [
+        { "id": "a", "text": { "en": "Route them to the built-in readable secondary using ApplicationIntent=ReadOnly" } },
+        { "id": "b", "text": { "en": "Use NOLOCK" } },
+        { "id": "c", "text": { "en": "Lower MAXDOP to 1" } },
+        { "id": "d", "text": { "en": "Turn off Query Store" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Read scale-out sends read-only workloads to a replica at no extra cost in Business Critical (and via replicas in Hyperscale). NOLOCK doesn't reduce load; lower MAXDOP may slow reports; Query Store is a diagnostic tool." },
+      "example": { "en": "Server=…;Database=Sales;ApplicationIntent=ReadOnly;" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-sql/database/read-scale-out"]
+    },
+    {
+      "id": "d2-conc-0043",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-config-concurrency",
+      "type": "dragdrop-order", "difficulty": "medium",
+      "text": { "en": "Order these isolation levels from least to most strict in terms of anomalies prevented (locking-based levels)." },
+      "items": [
+        { "id": "i1", "text": { "en": "READ UNCOMMITTED" } },
+        { "id": "i2", "text": { "en": "READ COMMITTED" } },
+        { "id": "i3", "text": { "en": "REPEATABLE READ" } },
+        { "id": "i4", "text": { "en": "SERIALIZABLE" } }
+      ],
+      "answer": ["i1", "i2", "i3", "i4"],
+      "explanation": { "en": "Each step prevents one more anomaly: dirty reads, then non-repeatable reads, then phantoms." },
+      "example": { "en": "SNAPSHOT sits beside SERIALIZABLE in anomaly prevention but uses versions." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/set-transaction-isolation-level-transact-sql"]
+    },
+    {
+      "id": "d2-conc-0044",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-config-concurrency",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What happens to sessions when you run ALTER DATABASE … SET READ_COMMITTED_SNAPSHOT ON on a busy SQL Server database without WITH ROLLBACK IMMEDIATE?" },
+      "options": [
+        { "id": "a", "text": { "en": "The statement waits until it's the only active connection in the database, which may take a long time" } },
+        { "id": "b", "text": { "en": "It applies instantly to all sessions" } },
+        { "id": "c", "text": { "en": "It fails immediately with a syntax error" } },
+        { "id": "d", "text": { "en": "It restarts the server" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Changing RCSI requires exclusive access; without a termination clause it waits for other connections to leave. WITH ROLLBACK IMMEDIATE (or a maintenance window) avoids indefinite waits." },
+      "example": { "en": "ALTER DATABASE Sales SET READ_COMMITTED_SNAPSHOT ON WITH ROLLBACK IMMEDIATE;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-database-transact-sql-set-options"]
+    },
+    {
+      "id": "d2-conc-0045",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-config-concurrency",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "Answer Yes or No for each statement about automatic tuning in Azure SQL Database." },
+      "statements": [
+        { "id": "s1", "text": { "en": "FORCE_LAST_GOOD_PLAN can revert plan regressions automatically." } },
+        { "id": "s2", "text": { "en": "CREATE_INDEX and DROP_INDEX recommendations can be applied automatically if enabled." } },
+        { "id": "s3", "text": { "en": "Automatic tuning requires Query Store." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "yes", "s3": "yes" },
+      "explanation": { "en": "Automatic plan correction relies on Query Store data to detect regressions and force the last good plan; index recommendations can be auto-applied and validated." },
+      "example": { "en": "ALTER DATABASE CURRENT SET AUTOMATIC_TUNING (FORCE_LAST_GOOD_PLAN = ON);" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-sql/database/automatic-tuning-overview"]
+    },
+    {
+      "id": "d2-conc-0046",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-config-concurrency",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which ACID property do isolation levels primarily control?" },
+      "options": [
+        { "id": "a", "text": { "en": "Isolation — how concurrent transactions see each other's changes" } },
+        { "id": "b", "text": { "en": "Durability" } },
+        { "id": "c", "text": { "en": "Atomicity" } },
+        { "id": "d", "text": { "en": "Availability" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Isolation levels define visibility between concurrent transactions. Durability is guaranteed by the log; atomicity by commit/rollback; availability isn't an ACID property." },
+      "example": { "en": "ACID = Atomicity, Consistency, Isolation, Durability." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-transaction-locking-and-row-versioning-guide"]
+    },
+    {
+      "id": "d2-conc-0047",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-config-concurrency",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "Why can a READ COMMITTED (locking, no RCSI) scan still return a row twice or miss rows?" },
+      "options": [
+        { "id": "a", "text": { "en": "Locks are released as the scan moves on, so concurrent updates that move rows (e.g. key changes) can relocate them ahead of or behind the scan" } },
+        { "id": "b", "text": { "en": "Because READ COMMITTED allows dirty reads" } },
+        { "id": "c", "text": { "en": "It can't — READ COMMITTED guarantees a consistent snapshot" } },
+        { "id": "d", "text": { "en": "Because of TDE" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Locking READ COMMITTED only prevents reading uncommitted data; it doesn't provide statement-level consistency. Row movement during a scan can cause duplicates or misses. RCSI (or SNAPSHOT) provides a consistent view." },
+      "example": { "en": "Another reason RCSI is the recommended default." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-transaction-locking-and-row-versioning-guide"]
+    },
+    {
+      "id": "d2-conc-0048",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-config-concurrency",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which DMV shows sessions currently waiting on locks along with the blocking session id?" },
+      "options": [
+        { "id": "a", "text": { "en": "sys.dm_exec_requests (blocking_session_id, wait_type)" } },
+        { "id": "b", "text": { "en": "sys.dm_db_index_physical_stats" } },
+        { "id": "c", "text": { "en": "sys.dm_os_volume_stats" } },
+        { "id": "d", "text": { "en": "sys.masked_columns" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "dm_exec_requests exposes blocking_session_id, wait_type (e.g. LCK_M_X) and wait_time. The other views cover index fragmentation, disk volumes and masking." },
+      "example": { "en": "SELECT session_id, blocking_session_id, wait_type FROM sys.dm_exec_requests WHERE blocking_session_id <> 0;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-views/sys-dm-exec-requests-transact-sql"]
+    },
+    {
+      "id": "d2-conc-0049",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-config-concurrency",
+      "type": "multiple", "difficulty": "medium", "selectCount": 2,
+      "text": { "en": "Which two settings are ON by default for new Azure SQL Database databases? (Select 2)" },
+      "options": [
+        { "id": "a", "text": { "en": "READ_COMMITTED_SNAPSHOT" } },
+        { "id": "b", "text": { "en": "Accelerated Database Recovery" } },
+        { "id": "c", "text": { "en": "AUTO_SHRINK" } },
+        { "id": "d", "text": { "en": "LEGACY_CARDINALITY_ESTIMATION" } }
+      ],
+      "answer": ["a", "b"],
+      "explanation": { "en": "Azure SQL Database enables RCSI and ADR by default. AUTO_SHRINK and legacy CE are off by default." },
+      "example": { "en": "That's why Azure SQL readers rarely block writers out of the box." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/accelerated-database-recovery-concepts"]
+    },
+    {
+      "id": "d2-conc-0050",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-config-concurrency",
+      "type": "dragdrop-match", "difficulty": "hard",
+      "text": { "en": "Match each requirement to the best concurrency technique." },
+      "items": [
+        { "id": "i1", "text": { "en": "Readers must never block writers, statement-level consistency is enough" } },
+        { "id": "i2", "text": { "en": "A multi-query report needs one consistent point-in-time view" } },
+        { "id": "i3", "text": { "en": "Detect conflicting edits in a web form" } },
+        { "id": "i4", "text": { "en": "Several workers dequeue different rows concurrently" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "RCSI" } },
+        { "id": "t2", "text": { "en": "SNAPSHOT isolation" } },
+        { "id": "t3", "text": { "en": "rowversion optimistic concurrency" } },
+        { "id": "t4", "text": { "en": "READPAST + UPDLOCK" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "Each technique solves a different concurrency need: RCSI for non-blocking reads, SNAPSHOT for transaction consistency, rowversion for user-edit conflicts, READPAST for queue processing." },
+      "example": { "en": "Mix techniques per workload rather than one global setting." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-transaction-locking-and-row-versioning-guide"]
+    }
+  ]
+}

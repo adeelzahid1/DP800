@@ -1,0 +1,62 @@
+{
+  "subtopic": "d1-constraints-sequences",
+  "title": { "en": "Constraints & sequences" },
+  "prerequisiteRecap": [
+    {
+      "heading": { "en": "Why constraints exist" },
+      "body": {
+        "en": "Constraints are rules the **database engine** enforces on every write, no matter which application or script performs it. Application-side validation can be bypassed; constraints cannot. The exam expects you to pick the right constraint for a requirement and to know the side effects (indexes, NULL handling, cascades)."
+      }
+    }
+  ],
+  "sections": [
+    {
+      "heading": { "en": "PRIMARY KEY and UNIQUE" },
+      "body": {
+        "en": "- **PRIMARY KEY**: uniquely identifies each row; disallows NULL; one per table; enforced by a unique index (clustered by default if none exists).\n- **UNIQUE**: also enforces uniqueness, but allows exactly **one NULL** (SQL Server treats NULL as a value here, unlike the standard); multiple UNIQUE constraints allowed; enforced by a nonclustered unique index by default.\nNeed many NULLs but unique non-NULLs? Use a **filtered unique index** with `WHERE Col IS NOT NULL` instead of a UNIQUE constraint."
+      },
+      "code": "CREATE TABLE dbo.Users (\n    UserId INT IDENTITY CONSTRAINT PK_Users PRIMARY KEY,\n    LoginName NVARCHAR(100) NOT NULL CONSTRAINT UQ_Users_Login UNIQUE,\n    NationalId CHAR(13) NULL\n);\n-- Many NULL NationalIds allowed, non-NULLs unique:\nCREATE UNIQUE INDEX UX_Users_NationalId ON dbo.Users(NationalId)\n    WHERE NationalId IS NOT NULL;"
+    },
+    {
+      "heading": { "en": "FOREIGN KEY and referential actions" },
+      "body": {
+        "en": "A FOREIGN KEY makes child values match a parent's PK/UNIQUE key (or be NULL). Referential actions on the parent's UPDATE/DELETE:\n- `NO ACTION` (default) — block the change if children exist.\n- `CASCADE` — propagate the delete/update to children.\n- `SET NULL` / `SET DEFAULT` — detach children by setting the FK column.\nFacts the exam probes: FKs must reference a PK or UNIQUE constraint; the FK column is **not** automatically indexed (create one yourself — joins and cascades need it); `WITH NOCHECK` skips validating existing rows and leaves the constraint *untrusted* (optimizer benefits lost until `WITH CHECK CHECK CONSTRAINT` revalidates)."
+      },
+      "code": "ALTER TABLE dbo.Orders\n    ADD CONSTRAINT FK_Orders_Customer\n    FOREIGN KEY (CustomerId) REFERENCES dbo.Customers(CustomerId)\n    ON DELETE NO ACTION\n    ON UPDATE CASCADE;\n\nCREATE INDEX IX_Orders_CustomerId ON dbo.Orders(CustomerId); -- do this too"
+    },
+    {
+      "heading": { "en": "CHECK and DEFAULT" },
+      "body": {
+        "en": "- **CHECK** enforces a boolean expression per row (`Price > 0`, `EndDate >= StartDate` — multi-column checks are table-level constraints). A row passes when the expression is TRUE **or UNKNOWN**: NULLs slip through CHECKs — a classic trap.\n- **DEFAULT** supplies a value when the INSERT omits the column (functions allowed: `SYSUTCDATETIME()`, `NEWID()`).\nCHECK constraints can call scalar functions (including `REGEXP_LIKE` in SQL Server 2025 for pattern validation) but not query other tables (use triggers or indexed constraints for cross-row rules)."
+      },
+      "code": "CREATE TABLE dbo.Bookings (\n    BookingId INT IDENTITY PRIMARY KEY,\n    StartDate DATE NOT NULL,\n    EndDate   DATE NOT NULL,\n    Seats     TINYINT NOT NULL CONSTRAINT DF_Bookings_Seats DEFAULT (1),\n    Email     VARCHAR(320)\n        CHECK (REGEXP_LIKE(Email, '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$')),\n    CONSTRAINT CK_Bookings_Dates CHECK (EndDate >= StartDate)\n);"
+    },
+    {
+      "heading": { "en": "Sequences" },
+      "body": {
+        "en": "A **SEQUENCE** is a standalone number generator, unlike IDENTITY which is bound to one column of one table.\n- Get values with `NEXT VALUE FOR dbo.SeqName` — in SELECTs, DEFAULTs, or ahead of the INSERT (so the app can know the id first).\n- Options: `START WITH`, `INCREMENT BY` (can be negative), `MINVALUE/MAXVALUE`, `CYCLE` (wrap around), `CACHE n` (performance; a crash can skip cached numbers).\n- One sequence can feed **multiple tables** (e.g. one document-number series across Invoices and CreditNotes).\n- `sp_sequence_get_range` reserves a block of values for bulk operations.\nLike IDENTITY, sequences do **not** guarantee gap-free numbering — rollbacks and cache losses skip values. If the law requires gapless invoice numbers, you need your own serializing logic."
+      },
+      "code": "CREATE SEQUENCE dbo.DocumentNumber\n    AS INT\n    START WITH 10000\n    INCREMENT BY 1\n    CACHE 100;\n\n-- Same series across two tables:\nCREATE TABLE dbo.Invoices   (DocNo INT DEFAULT (NEXT VALUE FOR dbo.DocumentNumber) PRIMARY KEY, ...);\nCREATE TABLE dbo.CreditNotes(DocNo INT DEFAULT (NEXT VALUE FOR dbo.DocumentNumber) PRIMARY KEY, ...);"
+    },
+    {
+      "heading": { "en": "IDENTITY vs SEQUENCE decision" },
+      "body": {
+        "en": "Choose **IDENTITY** for a simple per-table surrogate key. Choose **SEQUENCE** when you need: values before insert, one series shared across tables, cycling, a different increment at runtime (`ALTER SEQUENCE … RESTART`), or the same generator from multiple sessions without a table dependency. Both produce gaps; neither is 'safer' for gapless numbering."
+      }
+    }
+  ],
+  "examTips": [
+    { "en": "UNIQUE constraint allows ONE NULL; filtered unique index (WHERE col IS NOT NULL) allows many." },
+    { "en": "CHECK passes NULL (UNKNOWN is not failure). To force a value, combine CHECK with NOT NULL." },
+    { "en": "FK columns are NOT auto-indexed. FK must reference PK or UNIQUE. NOCHECK ⇒ untrusted constraint." },
+    { "en": "NEXT VALUE FOR works in DEFAULTs and SELECTs; sequences can be shared across tables and can CYCLE." },
+    { "en": "IDENTITY and SEQUENCE both leave gaps after rollbacks/restarts — gapless requirements need app logic." },
+    { "en": "ON DELETE CASCADE wording trap: 'delete children automatically' = CASCADE; 'prevent deleting parents with children' = NO ACTION (default)." }
+  ],
+  "sources": [
+    "https://learn.microsoft.com/en-us/sql/relational-databases/tables/primary-and-foreign-key-constraints",
+    "https://learn.microsoft.com/en-us/sql/relational-databases/tables/unique-constraints-and-check-constraints",
+    "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-sequence-transact-sql",
+    "https://learn.microsoft.com/en-us/sql/relational-databases/sequence-numbers/sequence-numbers"
+  ]
+}

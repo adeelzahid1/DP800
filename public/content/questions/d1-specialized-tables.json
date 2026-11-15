@@ -1,0 +1,851 @@
+{
+  "subtopic": "d1-specialized-tables",
+  "questions": [
+    {
+      "id": "d1-spec-0001",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-specialized-tables",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which table type automatically keeps every previous version of a row and lets you query the data as it existed at any point in time?" },
+      "options": [
+        { "id": "a", "text": { "en": "System-versioned temporal table" } },
+        { "id": "b", "text": { "en": "Memory-optimized table" } },
+        { "id": "c", "text": { "en": "External table" } },
+        { "id": "d", "text": { "en": "Graph node table" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Temporal tables pair the current table with a history table and validity periods, enabling FOR SYSTEM_TIME time travel. Memory-optimized tables target throughput, not history. External tables virtualize remote data. Graph tables model relationships — none of the three keeps automatic row history." },
+      "example": { "en": "SELECT * FROM dbo.Price FOR SYSTEM_TIME AS OF '2026-06-01';" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/tables/temporal-tables"]
+    },
+    {
+      "id": "d1-spec-0002",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-specialized-tables",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A staging table is reloaded from scratch on every ETL run and its contents may be discarded if the server restarts. Which option gives maximum ingestion speed?" },
+      "options": [
+        { "id": "a", "text": { "en": "Memory-optimized table with DURABILITY = SCHEMA_ONLY" } },
+        { "id": "b", "text": { "en": "Memory-optimized table with DURABILITY = SCHEMA_AND_DATA" } },
+        { "id": "c", "text": { "en": "Disk-based table with a clustered columnstore index" } },
+        { "id": "d", "text": { "en": "Temporal table" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "SCHEMA_ONLY durability skips all data logging and checkpointing — the fastest possible writes, with data intentionally lost on restart, exactly matching a rebuildable staging scenario. SCHEMA_AND_DATA (b) logs for durability you don't need. Columnstore (c) is for analytics. Temporal (d) adds history overhead — the opposite of the goal." },
+      "example": { "en": "WITH (MEMORY_OPTIMIZED = ON, DURABILITY = SCHEMA_ONLY)" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/in-memory-oltp/defining-durability-for-memory-optimized-objects"]
+    },
+    {
+      "id": "d1-spec-0003",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-specialized-tables",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Regulators require cryptographic proof that financial transaction rows were never modified after insert — even by administrators. Rows must never be updated or deleted. Which design meets this?" },
+      "options": [
+        { "id": "a", "text": { "en": "An append-only ledger table" } },
+        { "id": "b", "text": { "en": "An updatable ledger table" } },
+        { "id": "c", "text": { "en": "A temporal table" } },
+        { "id": "d", "text": { "en": "A table with a DML trigger that blocks updates" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Append-only ledger tables block UPDATE/DELETE at the engine level and chain row hashes into verifiable digests — tamper-evidence that even sysadmins can't silently defeat. Updatable ledger (b) permits updates (recorded, but the requirement forbids them). Temporal (c) keeps history but a privileged user can disable versioning and alter it without cryptographic evidence. Triggers (d) can simply be disabled." },
+      "example": { "en": "CREATE TABLE dbo.Tx (...) WITH (LEDGER = ON (APPEND_ONLY = ON)); EXEC sp_verify_database_ledger @digest;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/ledger/ledger-append-only-ledger-tables"]
+    },
+    {
+      "id": "d1-spec-0004",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-specialized-tables",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which clause queries a temporal table as it existed at a specific moment?" },
+      "options": [
+        { "id": "a", "text": { "en": "FOR SYSTEM_TIME AS OF '2026-03-01T00:00:00'" } },
+        { "id": "b", "text": { "en": "WITH HISTORY AT '2026-03-01'" } },
+        { "id": "c", "text": { "en": "AS OF TIMESTAMP '2026-03-01'" } },
+        { "id": "d", "text": { "en": "FOR VERSION AS OF '2026-03-01'" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "T-SQL temporal syntax is FOR SYSTEM_TIME followed by a subclause (AS OF, FROM…TO, BETWEEN…AND, CONTAINED IN, ALL). Options (b) and (d) are invented; (c) resembles Oracle/other engines' flashback syntax." },
+      "example": { "en": "SELECT * FROM dbo.Employee FOR SYSTEM_TIME AS OF '2026-03-01T00:00:00' WHERE Id = 42;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/tables/querying-data-in-a-system-versioned-temporal-table"]
+    },
+    {
+      "id": "d1-spec-0005",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-specialized-tables",
+      "type": "multiple", "difficulty": "medium", "selectCount": 2,
+      "text": { "en": "Which two column/structural elements are required to enable system versioning on a table? (Select 2)" },
+      "options": [
+        { "id": "a", "text": { "en": "Two datetime2 columns GENERATED ALWAYS AS ROW START / ROW END" } },
+        { "id": "b", "text": { "en": "A PERIOD FOR SYSTEM_TIME definition over those columns" } },
+        { "id": "c", "text": { "en": "A rowversion column" } },
+        { "id": "d", "text": { "en": "A trigger that copies rows to the history table" } }
+      ],
+      "answer": ["a", "b"],
+      "explanation": { "en": "System versioning needs the pair of generated period columns plus the PERIOD FOR SYSTEM_TIME declaration (and a primary key). rowversion (c) is an unrelated optimistic-concurrency type. The engine maintains history itself — no triggers involved (d)." },
+      "example": { "en": "ValidFrom DATETIME2 GENERATED ALWAYS AS ROW START, ValidTo DATETIME2 GENERATED ALWAYS AS ROW END, PERIOD FOR SYSTEM_TIME (ValidFrom, ValidTo)" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/tables/creating-a-system-versioned-temporal-table"]
+    },
+    {
+      "id": "d1-spec-0006",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-specialized-tables",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which index type on a memory-optimized table is optimized for point lookups by exact equality and requires choosing a BUCKET_COUNT at creation?" },
+      "options": [
+        { "id": "a", "text": { "en": "Hash index" } },
+        { "id": "b", "text": { "en": "Memory-optimized nonclustered index" } },
+        { "id": "c", "text": { "en": "Clustered columnstore index" } },
+        { "id": "d", "text": { "en": "Filtered index" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Hash indexes bucket rows by key hash — O(1) equality lookups, but useless for ranges and sensitive to BUCKET_COUNT sizing. The memory-optimized nonclustered (Bw-tree) index (b) handles ranges and needs no bucket count. Columnstore (c) is for analytics, and filtered B-tree indexes (d) are a disk-based feature." },
+      "example": { "en": "PRIMARY KEY NONCLUSTERED HASH WITH (BUCKET_COUNT = 2000000) -- size ~1-2× expected distinct keys" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/in-memory-oltp/indexes-for-memory-optimized-tables"]
+    },
+    {
+      "id": "d1-spec-0007",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-specialized-tables",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Your warehouse team lands parquet files in Azure Data Lake daily. Analysts want to JOIN that data with database tables using T-SQL, without importing it. What do you create?" },
+      "options": [
+        { "id": "a", "text": { "en": "An external data source, an external file format, and an external table" } },
+        { "id": "b", "text": { "en": "A linked server to the storage account" } },
+        { "id": "c", "text": { "en": "A temporal table over the parquet files" } },
+        { "id": "d", "text": { "en": "A memory-optimized table loaded nightly" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "That trio is the data-virtualization pattern: queries read the parquet files in place. Linked servers (b) target other relational servers, not object storage with parquet. Temporal tables (c) have nothing to do with files. Importing into any local table (d) violates the 'without importing' requirement." },
+      "example": { "en": "CREATE EXTERNAL TABLE dbo.SalesExt (...) WITH (LOCATION='/2026/', DATA_SOURCE=Lake, FILE_FORMAT=ParquetFF);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/polybase/polybase-guide"]
+    },
+    {
+      "id": "d1-spec-0008",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-specialized-tables",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which clauses declare graph tables in T-SQL?" },
+      "options": [
+        { "id": "a", "text": { "en": "AS NODE for entity tables and AS EDGE for relationship tables" } },
+        { "id": "b", "text": { "en": "AS VERTEX and AS LINK" } },
+        { "id": "c", "text": { "en": "GRAPH = ON in the WITH options" } },
+        { "id": "d", "text": { "en": "CREATE GRAPH TABLE" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "CREATE TABLE … AS NODE / AS EDGE is the SQL graph syntax; the engine adds implicit $node_id / $edge_id / $from_id / $to_id columns. VERTEX/LINK (b), a GRAPH option (c) and CREATE GRAPH TABLE (d) don't exist in T-SQL." },
+      "example": { "en": "CREATE TABLE dbo.Person (Id INT PRIMARY KEY, Name NVARCHAR(100)) AS NODE; CREATE TABLE dbo.Knows AS EDGE;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/graphs/sql-graph-overview"]
+    },
+    {
+      "id": "d1-spec-0009",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-specialized-tables",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "For each statement about ledger tables, answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "An append-only ledger table rejects UPDATE statements with an error." } },
+        { "id": "s2", "text": { "en": "An updatable ledger table keeps previous row versions in a history table." } },
+        { "id": "s3", "text": { "en": "Ledger protection relies on a DML trigger that administrators can disable." } },
+        { "id": "s4", "text": { "en": "Database ledger digests can be stored in immutable storage to support tamper verification." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "yes", "s3": "no", "s4": "yes" },
+      "explanation": { "en": "Append-only ledger blocks UPDATE/DELETE in the engine itself (no trigger involved — that's the point: nothing an admin can switch off silently). Updatable ledger tables version rows into a history table with a ledger view. Digests written to immutable storage (or Azure Confidential Ledger) let sp_verify_database_ledger prove integrity." },
+      "example": { "en": "Msg 37359: 'Updates are not allowed for the append only Ledger table.'" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/ledger/ledger-overview"]
+    },
+    {
+      "id": "d1-spec-0010",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-specialized-tables",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A hash index was created with BUCKET_COUNT = 1000 but the table now holds 50 million distinct keys. What is the performance consequence?" },
+      "options": [
+        { "id": "a", "text": { "en": "Each bucket chains ~50,000 rows, so 'point lookups' degrade into long chain scans" } },
+        { "id": "b", "text": { "en": "The index automatically grows its bucket count" } },
+        { "id": "c", "text": { "en": "Inserts fail once buckets are full" } },
+        { "id": "d", "text": { "en": "Nothing — bucket count only affects memory usage" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "BUCKET_COUNT is fixed at creation; with vastly more keys than buckets, rows chain within buckets and every lookup walks a huge chain. It never auto-grows (b) — you must rebuild with a new count. Buckets don't 'fill up' and block inserts (c). Performance is exactly what suffers (d is wrong). Size buckets at 1–2× expected distinct keys." },
+      "example": { "en": "ALTER TABLE dbo.T ALTER INDEX IX REBUILD WITH (BUCKET_COUNT = 100000000);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/in-memory-oltp/hash-indexes-for-memory-optimized-tables"]
+    },
+    {
+      "id": "d1-spec-0011",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-specialized-tables",
+      "type": "dragdrop-match", "difficulty": "medium",
+      "text": { "en": "Match each requirement to the table type that satisfies it." },
+      "items": [
+        { "id": "i1", "text": { "en": "Microsecond-latency writes to a session-state store" } },
+        { "id": "i2", "text": { "en": "Query last quarter's row values after they changed" } },
+        { "id": "i3", "text": { "en": "Prove to auditors that rows were never tampered with" } },
+        { "id": "i4", "text": { "en": "Query parquet files in the data lake without loading them" } },
+        { "id": "i5", "text": { "en": "Find 'people who follow people who follow Alice'" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "Memory-optimized table" } },
+        { "id": "t2", "text": { "en": "Temporal table" } },
+        { "id": "t3", "text": { "en": "Ledger table" } },
+        { "id": "t4", "text": { "en": "External table" } },
+        { "id": "t5", "text": { "en": "Graph node/edge tables" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4", "i5": "t5" },
+      "explanation": { "en": "Each specialized type maps to its headline scenario: in-memory for extreme OLTP latency, temporal for historical state, ledger for cryptographic tamper-evidence, external for data virtualization, graph for multi-hop relationship traversal." },
+      "example": { "en": "This mapping is the core decision table for 'choose the table type' exam questions." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/tables/tables"]
+    },
+    {
+      "id": "d1-spec-0012",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-specialized-tables",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What happens when you UPDATE a row in a system-versioned temporal table?" },
+      "options": [
+        { "id": "a", "text": { "en": "The old version is copied to the history table with its validity period closed, and the current table gets the new values" } },
+        { "id": "b", "text": { "en": "The update is rejected unless versioning is first disabled" } },
+        { "id": "c", "text": { "en": "Both tables receive the new values" } },
+        { "id": "d", "text": { "en": "A new row is appended to the current table, keeping the old one beside it" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The engine transparently moves the prior version into the history table, stamping its ROW END, while the current table always holds exactly the live rows. Updates are perfectly legal (b — that's the append-only ledger behavior). History never receives current values (c), and the current table never accumulates versions (d)." },
+      "example": { "en": "UPDATE dbo.Price SET ListPrice = 99 WHERE ProductId = 7; -- old price now visible via FOR SYSTEM_TIME ALL" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/tables/temporal-tables"]
+    },
+    {
+      "id": "d1-spec-0013",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-specialized-tables",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which statement about natively compiled stored procedures is true?" },
+      "options": [
+        { "id": "a", "text": { "en": "They are compiled to machine code and can access only memory-optimized tables" } },
+        { "id": "b", "text": { "en": "They can freely join disk-based and memory-optimized tables" } },
+        { "id": "c", "text": { "en": "They are interpreted at execution time for flexibility" } },
+        { "id": "d", "text": { "en": "They require the database to be read-only" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Natively compiled procedures (WITH NATIVE_COMPILATION, SCHEMABINDING, ATOMIC block) compile to a DLL and only touch memory-optimized objects. Cross-container access to disk-based tables requires interpreted T-SQL (b). They are the opposite of interpreted (c), and no read-only requirement exists (d)." },
+      "example": { "en": "CREATE PROCEDURE dbo.InsertSession ... WITH NATIVE_COMPILATION, SCHEMABINDING AS BEGIN ATOMIC WITH (TRANSACTION ISOLATION LEVEL = SNAPSHOT, LANGUAGE = N'English') ... END" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/in-memory-oltp/natively-compiled-stored-procedures"]
+    },
+    {
+      "id": "d1-spec-0014",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-specialized-tables",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Complete the temporal table definition." },
+      "code": "CREATE TABLE dbo.Employee (\n    Id INT PRIMARY KEY,\n    Salary DECIMAL(10,2) NOT NULL,\n    ValidFrom DATETIME2 GENERATED ALWAYS AS [BLANK1] NOT NULL,\n    ValidTo   DATETIME2 GENERATED ALWAYS AS ROW END   NOT NULL,\n    PERIOD FOR [BLANK2] (ValidFrom, ValidTo)\n)\nWITH (SYSTEM_VERSIONING = ON (HISTORY_TABLE = dbo.EmployeeHistory));",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "ROW START" } },
+            { "id": "c2", "text": { "en": "ROW BEGIN" } },
+            { "id": "c3", "text": { "en": "PERIOD START" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "SYSTEM_TIME" } },
+            { "id": "c2", "text": { "en": "VERSIONING" } },
+            { "id": "c3", "text": { "en": "HISTORY" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "The exact keywords are GENERATED ALWAYS AS ROW START / ROW END and PERIOD FOR SYSTEM_TIME. ROW BEGIN, PERIOD START, VERSIONING and HISTORY are plausible-sounding but invalid tokens — the exam's dropdown items test precisely this recall." },
+      "example": { "en": "Add HIDDEN after NOT NULL to keep period columns out of SELECT * results." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/tables/creating-a-system-versioned-temporal-table"]
+    },
+    {
+      "id": "d1-spec-0015",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-specialized-tables",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which pseudo-columns must you populate when inserting a row into a graph EDGE table?" },
+      "options": [
+        { "id": "a", "text": { "en": "$from_id and $to_id" } },
+        { "id": "b", "text": { "en": "$node_id and $edge_id" } },
+        { "id": "c", "text": { "en": "$source and $target" } },
+        { "id": "d", "text": { "en": "$parent_id and $child_id" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "An edge connects two nodes via $from_id and $to_id, which you fill with the nodes' $node_id values. $edge_id is generated automatically (b). $source/$target and $parent_id/$child_id (c, d) are not SQL graph pseudo-columns." },
+      "example": { "en": "INSERT INTO dbo.Follows ($from_id, $to_id) SELECT a.$node_id, b.$node_id FROM Person a, Person b WHERE a.Id=1 AND b.Id=2;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/graphs/sql-graph-overview"]
+    },
+    {
+      "id": "d1-spec-0016",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-specialized-tables",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "You need to export the result of a T-SQL query as parquet files into the data lake. Which statement does this?" },
+      "options": [
+        { "id": "a", "text": { "en": "CREATE EXTERNAL TABLE AS SELECT (CETAS)" } },
+        { "id": "b", "text": { "en": "SELECT INTO OUTFILE" } },
+        { "id": "c", "text": { "en": "BULK EXPORT" } },
+        { "id": "d", "text": { "en": "bcp with the -parquet flag" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "CETAS creates an external table and writes the query's result set to files (e.g. parquet) at the external location in one statement. SELECT INTO OUTFILE is MySQL (b); BULK EXPORT doesn't exist (c); bcp exports delimited/native formats, with no parquet flag (d)." },
+      "example": { "en": "CREATE EXTERNAL TABLE ext.Sales2026 WITH (LOCATION='/out/2026/', DATA_SOURCE=Lake, FILE_FORMAT=ParquetFF) AS SELECT * FROM dbo.Sales WHERE Year=2026;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-external-table-as-select-transact-sql"]
+    },
+    {
+      "id": "d1-spec-0017",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-specialized-tables",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "Why does a temporal table protect against accidental data loss but NOT satisfy a 'protection from malicious administrators' requirement?" },
+      "options": [
+        { "id": "a", "text": { "en": "An administrator can disable SYSTEM_VERSIONING, alter history, and re-enable it without cryptographic evidence" } },
+        { "id": "b", "text": { "en": "Temporal history is stored in volatile memory" } },
+        { "id": "c", "text": { "en": "Temporal tables only keep history for 24 hours" } },
+        { "id": "d", "text": { "en": "History rows are encrypted and unreadable" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Temporal integrity is procedural, not cryptographic: a sysadmin can SET (SYSTEM_VERSIONING = OFF), edit the history table and re-enable. Ledger tables close that gap with hash chains and externally stored digests. History is durable disk storage (b), has no 24-hour limit (c — retention is configurable), and is readable like any table (d)." },
+      "example": { "en": "Requirement keyword mapping: 'audit/history' → temporal; 'tamper-evident / prove integrity' → ledger." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/ledger/ledger-overview"]
+    },
+    {
+      "id": "d1-spec-0018",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-specialized-tables",
+      "type": "multiple", "difficulty": "medium", "selectCount": 2,
+      "text": { "en": "Which two objects are prerequisites for creating an external table over parquet files? (Select 2)" },
+      "options": [
+        { "id": "a", "text": { "en": "EXTERNAL DATA SOURCE" } },
+        { "id": "b", "text": { "en": "EXTERNAL FILE FORMAT" } },
+        { "id": "c", "text": { "en": "EXTERNAL MODEL" } },
+        { "id": "d", "text": { "en": "LINKED SERVER" } }
+      ],
+      "answer": ["a", "b"],
+      "explanation": { "en": "The data source says where the files live; the file format says how they're encoded (PARQUET, DELIMITEDTEXT…). EXTERNAL MODEL (c) is the AI-endpoint object — unrelated to files. Linked servers (d) connect to other servers, not required for external tables over storage." },
+      "example": { "en": "CREATE EXTERNAL DATA SOURCE Lake WITH (LOCATION='abs://...'); CREATE EXTERNAL FILE FORMAT PF WITH (FORMAT_TYPE=PARQUET);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-external-table-transact-sql"]
+    },
+    {
+      "id": "d1-spec-0019",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-specialized-tables",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What does the HIDDEN keyword do on temporal period columns?" },
+      "options": [
+        { "id": "a", "text": { "en": "Excludes them from SELECT * and INSERT without column lists, while they remain queryable by name" } },
+        { "id": "b", "text": { "en": "Encrypts the period values" } },
+        { "id": "c", "text": { "en": "Prevents the optimizer from using them" } },
+        { "id": "d", "text": { "en": "Removes them from the history table" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "HIDDEN keeps generated period columns out of star-expansion and implicit inserts so existing application code keeps working, yet SELECT ValidFrom still works explicitly. It has nothing to do with encryption (b), the optimizer (c), or history storage (d)." },
+      "example": { "en": "ValidFrom DATETIME2 GENERATED ALWAYS AS ROW START HIDDEN NOT NULL" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/tables/creating-a-system-versioned-temporal-table"]
+    },
+    {
+      "id": "d1-spec-0020",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-specialized-tables",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A query must list every version a product row has ever had, including the current one. Which FOR SYSTEM_TIME subclause do you use?" },
+      "options": [
+        { "id": "a", "text": { "en": "ALL" } },
+        { "id": "b", "text": { "en": "AS OF SYSUTCDATETIME()" } },
+        { "id": "c", "text": { "en": "CONTAINED IN (…, …)" } },
+        { "id": "d", "text": { "en": "BETWEEN '1900-01-01' AND '1950-01-01'" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "FOR SYSTEM_TIME ALL unions current and history rows. AS OF (b) returns a single point-in-time snapshot. CONTAINED IN (c) returns only versions fully inside a window — it excludes the open-ended current row. A 1900–1950 range (d) obviously misses modern versions." },
+      "example": { "en": "SELECT *, ValidFrom, ValidTo FROM dbo.Price FOR SYSTEM_TIME ALL WHERE ProductId = 7 ORDER BY ValidFrom;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/tables/querying-data-in-a-system-versioned-temporal-table"]
+    },
+    {
+      "id": "d1-spec-0021",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-specialized-tables",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "For each statement about memory-optimized tables, answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "They eliminate locks and latches for row access." } },
+        { "id": "s2", "text": { "en": "A vector column can be used in a memory-optimized table." } },
+        { "id": "s3", "text": { "en": "With SCHEMA_AND_DATA durability, data survives a server restart." } },
+        { "id": "s4", "text": { "en": "Their indexes are persisted to disk and reloaded at startup." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "no", "s3": "yes", "s4": "no" },
+      "explanation": { "en": "In-Memory OLTP uses optimistic multi-version concurrency — no locks or latches. Vector columns are explicitly unsupported in memory-optimized tables. SCHEMA_AND_DATA persists data via checkpoint file pairs, but indexes are never persisted: they are rebuilt in memory during database recovery." },
+      "example": { "en": "Index rebuild at startup is why many large hash indexes can slow database recovery." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/in-memory-oltp/in-memory-oltp-in-memory-optimization", "https://learn.microsoft.com/en-us/sql/t-sql/data-types/vector-data-type"]
+    },
+    {
+      "id": "d1-spec-0022",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-specialized-tables",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "In a ledger-enabled database, which system view would you query to see transactions recorded in the database ledger?" },
+      "options": [
+        { "id": "a", "text": { "en": "sys.database_ledger_transactions" } },
+        { "id": "b", "text": { "en": "sys.dm_exec_requests" } },
+        { "id": "c", "text": { "en": "sys.ledger_log" } },
+        { "id": "d", "text": { "en": "sys.transaction_history" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "sys.database_ledger_transactions exposes the ledger's transaction records (with hashes). sys.dm_exec_requests (b) shows currently executing requests. sys.ledger_log and sys.transaction_history (c, d) don't exist." },
+      "example": { "en": "SELECT * FROM sys.database_ledger_transactions ORDER BY commit_time DESC;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-database-ledger-transactions-transact-sql"]
+    },
+    {
+      "id": "d1-spec-0023",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-specialized-tables",
+      "type": "dragdrop-order", "difficulty": "medium",
+      "text": { "en": "Arrange the steps to set up querying of data-lake parquet files from SQL, in the correct creation order." },
+      "items": [
+        { "id": "i1", "text": { "en": "Create a database scoped credential for storage access" } },
+        { "id": "i2", "text": { "en": "Create the EXTERNAL DATA SOURCE pointing at the lake" } },
+        { "id": "i3", "text": { "en": "Create the EXTERNAL FILE FORMAT for parquet" } },
+        { "id": "i4", "text": { "en": "Create the EXTERNAL TABLE over the files" } },
+        { "id": "i5", "text": { "en": "Query the external table with T-SQL" } }
+      ],
+      "answer": ["i1", "i2", "i3", "i4", "i5"],
+      "explanation": { "en": "The dependency chain is: credential (authentication) → data source (references the credential) → file format → external table (references data source + format) → query. Each object references the previous one, so the order is fixed." },
+      "example": { "en": "Swap steps 2 and 3 freely? No — while the file format doesn't depend on the data source, the canonical dependency for the table requires both to exist; the credential must precede the data source that uses it." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/polybase/polybase-configure-azure-blob-storage"]
+    },
+    {
+      "id": "d1-spec-0024",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-specialized-tables",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which limitation applies to the history table of an active system-versioned temporal table?" },
+      "options": [
+        { "id": "a", "text": { "en": "You cannot directly INSERT, UPDATE or DELETE its rows while versioning is on" } },
+        { "id": "b", "text": { "en": "It cannot be indexed" } },
+        { "id": "c", "text": { "en": "It must be in a different database" } },
+        { "id": "d", "text": { "en": "It is limited to one million rows" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The engine owns history content; direct DML fails until SYSTEM_VERSIONING is turned off. History tables can and should be indexed (clustered columnstore is common for big histories) (b). They live in the same database (c) and have no row cap (d)." },
+      "example": { "en": "ALTER TABLE dbo.Price SET (SYSTEM_VERSIONING = OFF); -- maintenance window; then re-enable" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/tables/temporal-tables"]
+    },
+    {
+      "id": "d1-spec-0025",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-specialized-tables",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "Your ledger database contains a table with a VECTOR column. What happens when you run sp_verify_database_ledger?" },
+      "options": [
+        { "id": "a", "text": { "en": "It raises an error — ledger verification currently doesn't support databases containing vector columns" } },
+        { "id": "b", "text": { "en": "It silently skips the vector table" } },
+        { "id": "c", "text": { "en": "It verifies successfully; vector data is hashed like any other" } },
+        { "id": "d", "text": { "en": "It converts the vectors to varbinary first" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "A documented limitation: sp_verify_database_ledger generates an error if the database contains a table with a vector column. It doesn't skip (b), succeed (c), or transform data (d). Plan AI features and ledger requirements together." },
+      "example": { "en": "Workaround pattern: keep ledger-audited data and vector-search data in separate databases." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/data-types/vector-data-type"]
+    },
+    {
+      "id": "d1-spec-0026",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-specialized-tables",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which retention mechanism automatically removes aged rows from a temporal history table?" },
+      "options": [
+        { "id": "a", "text": { "en": "HISTORY_RETENTION_PERIOD in the SYSTEM_VERSIONING options" } },
+        { "id": "b", "text": { "en": "An Agent job is the only way" } },
+        { "id": "c", "text": { "en": "TRUNCATE TABLE runs weekly by default" } },
+        { "id": "d", "text": { "en": "History never grows because rows are compressed away" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "SYSTEM_VERSIONING = ON (HISTORY_TABLE = …, HISTORY_RETENTION_PERIOD = 6 MONTHS) lets the engine purge expired history automatically. Custom cleanup jobs are an alternative, not the only way (b). Nothing truncates automatically (c), and compression saves space but doesn't delete (d)." },
+      "example": { "en": "ALTER TABLE dbo.Price SET (SYSTEM_VERSIONING = ON (HISTORY_RETENTION_PERIOD = 12 MONTHS));" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/tables/manage-retention-of-historical-data-in-system-versioned-temporal-tables"]
+    },
+    {
+      "id": "d1-spec-0027",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-specialized-tables",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which scenario is the classic fit for graph edge tables over a traditional junction table?" },
+      "options": [
+        { "id": "a", "text": { "en": "Traversing variable-depth relationships, like 'friends of friends up to 3 hops'" } },
+        { "id": "b", "text": { "en": "Storing a simple one-to-many lookup" } },
+        { "id": "c", "text": { "en": "Archiving cold data" } },
+        { "id": "d", "text": { "en": "Enforcing column-level encryption" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Graph MATCH (and SHORTEST_PATH) expresses multi-hop traversals that become painful recursive joins against junction tables. One-to-many lookups (b) need only a foreign key. Archiving (c) and encryption (d) are unrelated concerns." },
+      "example": { "en": "SELECT p2.Name FROM Person p1, Follows f1, Person pm, Follows f2, Person p2 WHERE MATCH(p1-(f1)->pm-(f2)->p2) AND p1.Name='Alice';" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/graphs/sql-graph-overview"]
+    },
+    {
+      "id": "d1-spec-0028",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-specialized-tables",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Complete the definition of a durable memory-optimized table." },
+      "code": "CREATE TABLE dbo.HotOrders (\n    OrderId BIGINT NOT NULL\n        PRIMARY KEY NONCLUSTERED [BLANK1] WITH (BUCKET_COUNT = 4000000),\n    Payload NVARCHAR(500)\n)\nWITH (MEMORY_OPTIMIZED = ON, DURABILITY = [BLANK2]);",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "HASH" } },
+            { "id": "c2", "text": { "en": "CLUSTERED" } },
+            { "id": "c3", "text": { "en": "COLUMNSTORE" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "SCHEMA_AND_DATA" } },
+            { "id": "c2", "text": { "en": "SCHEMA_ONLY" } },
+            { "id": "c3", "text": { "en": "FULL" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "BUCKET_COUNT only applies to HASH indexes, and 'durable' means SCHEMA_AND_DATA. Memory-optimized tables have no CLUSTERED or COLUMNSTORE primary-key syntax here, SCHEMA_ONLY would lose the orders on restart, and FULL is a recovery-model value, not a durability option." },
+      "example": { "en": "The HASH + BUCKET_COUNT pairing is a strong syntax cue in exam code questions." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/in-memory-oltp/creating-a-memory-optimized-table-and-a-natively-compiled-stored-procedure"]
+    },
+    {
+      "id": "d1-spec-0029",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-specialized-tables",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What does a ledger view (automatically created for an updatable ledger table) show?" },
+      "options": [
+        { "id": "a", "text": { "en": "Every row version with the transaction id, sequence number and operation type (INSERT/DELETE pairs for updates)" } },
+        { "id": "b", "text": { "en": "Only the current rows" } },
+        { "id": "c", "text": { "en": "The raw hash chain blocks" } },
+        { "id": "d", "text": { "en": "Permission grants on the table" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The ledger view joins current and history data, annotating each version with ledger metadata (ledger_transaction_id, ledger_sequence_number, operation type) — an UPDATE appears as a DELETE of the old version plus an INSERT of the new. Current rows alone are the base table (b); hash blocks live in the database ledger structures (c); permissions are unrelated (d)." },
+      "example": { "en": "SELECT * FROM dbo.Accounts_Ledger ORDER BY ledger_transaction_id; -- default view name <table>_Ledger" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/ledger/ledger-updatable-ledger-tables"]
+    },
+    {
+      "id": "d1-spec-0030",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-specialized-tables",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "An UPDATE against an external table over parquet files fails. Why?" },
+      "options": [
+        { "id": "a", "text": { "en": "External tables over files are read-only; you can query them but not modify the underlying files via DML" } },
+        { "id": "b", "text": { "en": "The file format must be DELIMITEDTEXT for updates" } },
+        { "id": "c", "text": { "en": "You must first lock the data source" } },
+        { "id": "d", "text": { "en": "Parquet files only support DELETE" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Data virtualization is read-oriented: INSERT/UPDATE/DELETE against file-backed external tables is not supported (new data is produced with CETAS or by the lake pipeline). The file format doesn't change that (b), there is no 'lock the data source' concept (c), and parquet supports no DML at all here (d)." },
+      "example": { "en": "Pattern: query external data live, or CETAS a transformed copy — never DML in place." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-external-table-transact-sql"]
+    },
+    {
+      "id": "d1-spec-0031",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-specialized-tables",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which workload symptom most strongly suggests migrating a table to In-Memory OLTP?" },
+      "options": [
+        { "id": "a", "text": { "en": "Heavy PAGELATCH contention on the same hot pages from many concurrent sessions" } },
+        { "id": "b", "text": { "en": "Slow aggregation queries over years of history" } },
+        { "id": "c", "text": { "en": "Large TempDB spills during sorts" } },
+        { "id": "d", "text": { "en": "High disk usage from old audit data" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Latch contention on hot pages (classic: last-page insert contention, session-state tables) is exactly what the latch-free in-memory engine eliminates. Aggregation over history (b) wants columnstore. TempDB spills (c) call for memory grants/query tuning. Old audit data (d) wants compression/archival." },
+      "example": { "en": "Diagnose with sys.dm_os_wait_stats: dominant PAGELATCH_EX/SH waits on a hot table → In-Memory OLTP candidate." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/in-memory-oltp/overview-and-usage-scenarios"]
+    },
+    {
+      "id": "d1-spec-0032",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-specialized-tables",
+      "type": "multiple", "difficulty": "hard", "selectCount": 2,
+      "text": { "en": "Which two statements about ledger digests are correct? (Select 2)" },
+      "options": [
+        { "id": "a", "text": { "en": "They are hashes representing the state of the database ledger at a point in time" } },
+        { "id": "b", "text": { "en": "Storing them outside the database (immutable storage) is what makes tampering detectable" } },
+        { "id": "c", "text": { "en": "They contain a full copy of all table data" } },
+        { "id": "d", "text": { "en": "They must be regenerated manually after every transaction" } }
+      ],
+      "answer": ["a", "b"],
+      "explanation": { "en": "A digest is a small hash of the ledger blocks; keeping it in WORM/immutable storage means an attacker who alters the database can't also fix the externally stored digest — verification then fails. Digests are tiny hashes, not data copies (c), and generation can be automated (Azure SQL can upload them automatically) (d)." },
+      "example": { "en": "EXEC sys.sp_generate_database_ledger_digest; then verify later with sp_verify_database_ledger." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/ledger/ledger-digest-management"]
+    },
+    {
+      "id": "d1-spec-0033",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-specialized-tables",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "FOR SYSTEM_TIME BETWEEN @start AND @end differs from FROM @start TO @end in that BETWEEN:" },
+      "options": [
+        { "id": "a", "text": { "en": "Includes row versions that became active exactly at @end" } },
+        { "id": "b", "text": { "en": "Excludes the upper boundary entirely" } },
+        { "id": "c", "text": { "en": "Returns only deleted rows" } },
+        { "id": "d", "text": { "en": "Is not valid temporal syntax" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "BETWEEN is inclusive of the upper boundary (rows whose ValidFrom equals @end are returned); FROM…TO is exclusive at the upper end. That inclusive/exclusive nuance is the entire difference — the subclauses are otherwise identical. Both are valid syntax and neither filters by operation type." },
+      "example": { "en": "Edge-case questions hinge on a version starting exactly at @end: BETWEEN returns it, FROM…TO does not." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/tables/querying-data-in-a-system-versioned-temporal-table"]
+    },
+    {
+      "id": "d1-spec-0034",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-specialized-tables",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Your 2-TB temporal history table is queried only by large analytical scans. Which index should the history table use?" },
+      "options": [
+        { "id": "a", "text": { "en": "A clustered columnstore index" } },
+        { "id": "b", "text": { "en": "No index — history tables can't be indexed" } },
+        { "id": "c", "text": { "en": "A unique clustered index on the primary key" } },
+        { "id": "d", "text": { "en": "A hash index" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Microsoft explicitly recommends clustered columnstore for large, analytics-oriented history tables: huge compression plus fast scans. History tables are indexable (b is false). A unique PK clustered index (c) is impossible — history holds many versions per key. Hash indexes (d) are memory-optimized-only." },
+      "example": { "en": "CREATE CLUSTERED COLUMNSTORE INDEX CCI ON dbo.PriceHistory;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/tables/temporal-table-considerations-and-limitations"]
+    },
+    {
+      "id": "d1-spec-0035",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-specialized-tables",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "For each statement about graph tables, answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "An edge table can carry its own attribute columns (e.g. Since DATE)." } },
+        { "id": "s2", "text": { "en": "$node_id values are supplied by the application on INSERT." } },
+        { "id": "s3", "text": { "en": "One edge table can connect multiple pairs of node table types." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "no", "s3": "yes" },
+      "explanation": { "en": "Edges are real tables and may hold attributes. $node_id is generated by the engine — applications never insert it. A single edge table (e.g. 'linked') may connect different node types unless an edge constraint restricts the allowed pairs." },
+      "example": { "en": "ALTER TABLE Follows ADD CONSTRAINT EC CONNECTION (Person TO Person); -- restrict endpoints with an edge constraint" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/graphs/sql-graph-overview"]
+    },
+    {
+      "id": "d1-spec-0036",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-specialized-tables",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which statement converts an existing regular table dbo.Accounts into a system-versioned temporal table?" },
+      "options": [
+        { "id": "a", "text": { "en": "ALTER TABLE to add the period columns and PERIOD, then ALTER TABLE … SET (SYSTEM_VERSIONING = ON (…))" } },
+        { "id": "b", "text": { "en": "sp_rename to a name ending in _Temporal" } },
+        { "id": "c", "text": { "en": "It is impossible; temporal must be declared at CREATE TABLE" } },
+        { "id": "d", "text": { "en": "CREATE TEMPORAL INDEX ON dbo.Accounts" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Existing tables convert in two ALTERs: add ROW START/ROW END columns (with defaults for existing rows) and the PERIOD, then switch versioning on. Naming conventions (b) do nothing. Conversion is fully supported (c is false), and there is no TEMPORAL INDEX statement (d)." },
+      "example": { "en": "ALTER TABLE dbo.Accounts ADD ValidFrom DATETIME2 GENERATED ALWAYS AS ROW START NOT NULL DEFAULT SYSUTCDATETIME(), ValidTo DATETIME2 GENERATED ALWAYS AS ROW END NOT NULL DEFAULT '9999-12-31 23:59:59.9999999', PERIOD FOR SYSTEM_TIME (ValidFrom, ValidTo); ALTER TABLE dbo.Accounts SET (SYSTEM_VERSIONING = ON);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/tables/creating-a-system-versioned-temporal-table"]
+    },
+    {
+      "id": "d1-spec-0037",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-specialized-tables",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "Why can't you simply add an updatable ledger table's history to a report of 'current account balances'?" },
+      "options": [
+        { "id": "a", "text": { "en": "History/ledger views contain every version ever written, so summing them double-counts; current state lives in the base table only" } },
+        { "id": "b", "text": { "en": "Ledger history is encrypted" } },
+        { "id": "c", "text": { "en": "The ledger view cannot be joined to other tables" } },
+        { "id": "d", "text": { "en": "History is stored off-database" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The ledger view shows the full operation stream (each update = delete+insert version pair); aggregating it mixes old and new versions. Current state is just the base table. The data is not encrypted by ledger (b), the view joins like any view (c), and history lives in a normal history table in the database (d)." },
+      "example": { "en": "Base table → state; ledger view → audit trail. Pick per question intent." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/ledger/ledger-updatable-ledger-tables"]
+    },
+    {
+      "id": "d1-spec-0038",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-specialized-tables",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A development team needs the complete list of changes made to a configuration table last Tuesday between 09:00 and 17:00, including intermediate versions. Which query form is correct?" },
+      "options": [
+        { "id": "a", "text": { "en": "SELECT * FROM dbo.Config FOR SYSTEM_TIME BETWEEN '2026-11-10T09:00' AND '2026-11-10T17:00'" } },
+        { "id": "b", "text": { "en": "SELECT * FROM dbo.Config FOR SYSTEM_TIME AS OF '2026-11-10T09:00'" } },
+        { "id": "c", "text": { "en": "SELECT * FROM dbo.ConfigHistory WHERE ModifiedAt BETWEEN … (direct history query)" } },
+        { "id": "d", "text": { "en": "SELECT * FROM dbo.Config WITH (VERSIONS)" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "BETWEEN returns all versions active at any moment in the window — including intermediates. AS OF (b) is a single snapshot at 09:00. Querying history directly (c) misses rows still current and relies on your own column names; FOR SYSTEM_TIME handles the interval algebra correctly. WITH (VERSIONS) (d) is not T-SQL." },
+      "example": { "en": "Add ORDER BY ValidFrom to see the change sequence." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/tables/querying-data-in-a-system-versioned-temporal-table"]
+    },
+    {
+      "id": "d1-spec-0039",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-specialized-tables",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Complete the append-only ledger table definition." },
+      "code": "CREATE TABLE dbo.SecurityEvents (\n    EventId BIGINT IDENTITY,\n    Detail NVARCHAR(400) NOT NULL\n)\nWITH ( [BLANK1] = ON ( [BLANK2] = ON ) );",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "LEDGER" } },
+            { "id": "c2", "text": { "en": "BLOCKCHAIN" } },
+            { "id": "c3", "text": { "en": "IMMUTABLE" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "APPEND_ONLY" } },
+            { "id": "c2", "text": { "en": "READ_ONLY" } },
+            { "id": "c3", "text": { "en": "INSERT_ONLY" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "The option is LEDGER = ON (APPEND_ONLY = ON). BLOCKCHAIN/IMMUTABLE and READ_ONLY/INSERT_ONLY are plausible-sounding fakes; READ_ONLY in particular would also block INSERTs, which append-only expressly allows." },
+      "example": { "en": "Whole databases can also be created with LEDGER = ON, making every table a ledger table." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/ledger/ledger-how-to-append-only-ledger-tables"]
+    },
+    {
+      "id": "d1-spec-0040",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-specialized-tables",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which feature pairing is the documented combination for slowly changing dimension (SCD) style analysis without writing ETL merge logic?" },
+      "options": [
+        { "id": "a", "text": { "en": "Temporal tables + FOR SYSTEM_TIME queries" } },
+        { "id": "b", "text": { "en": "Ledger tables + digests" } },
+        { "id": "c", "text": { "en": "Graph tables + MATCH" } },
+        { "id": "d", "text": { "en": "External tables + CETAS" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "System versioning automatically tracks attribute changes over time — an SCD Type 2-like history without MERGE pipelines; FOR SYSTEM_TIME reconstructs dimension state at any date. Ledger (b) is about tamper-evidence, graph (c) about relationships, external tables (d) about virtualization." },
+      "example": { "en": "JOIN FactSales f ON ... JOIN DimCustomer FOR SYSTEM_TIME AS OF f.OrderDate d ON d.Id = f.CustomerId" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/tables/temporal-table-usage-scenarios"]
+    },
+    {
+      "id": "d1-spec-0041",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-specialized-tables",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "What does the MATCH clause operate on?" },
+      "options": [
+        { "id": "a", "text": { "en": "Graph node and edge tables listed in the FROM clause" } },
+        { "id": "b", "text": { "en": "Any pair of tables with foreign keys" } },
+        { "id": "c", "text": { "en": "JSON documents" } },
+        { "id": "d", "text": { "en": "Full-text indexes" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "MATCH expresses traversal patterns over AS NODE / AS EDGE tables (e.g. MATCH(p1-(Follows)->p2)). It cannot run against ordinary FK-related tables (b), JSON (c) or full-text indexes (d)." },
+      "example": { "en": "SELECT friend.Name FROM Person p, Follows f, Person friend WHERE MATCH(p-(f)->friend) AND p.Name = 'Alice';" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/match-sql-graph"]
+    },
+    {
+      "id": "d1-spec-0042",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-specialized-tables",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which statement about converting a table to a ledger table is true?" },
+      "options": [
+        { "id": "a", "text": { "en": "Ledger must be enabled at table creation — an existing table cannot simply be ALTERed into a ledger table" } },
+        { "id": "b", "text": { "en": "ALTER TABLE … SET (LEDGER = ON) works on any table" } },
+        { "id": "c", "text": { "en": "Only Azure SQL supports ledger" } },
+        { "id": "d", "text": { "en": "Ledger requires memory-optimized tables" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "LEDGER = ON is a create-time property; migrating existing data means creating a new ledger table and copying rows in. (b) is not supported syntax for existing tables. Ledger exists in SQL Server 2022+, Azure SQL Database and Managed Instance (c). It is disk-based, unrelated to In-Memory OLTP (d)." },
+      "example": { "en": "Migration pattern: CREATE new ledger table → INSERT…SELECT → rename swap." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/ledger/ledger-overview"]
+    },
+    {
+      "id": "d1-spec-0043",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-specialized-tables",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A memory-optimized table's queries filter WHERE CustomerId = @id (equality) 90% of the time, but a nightly job scans WHERE CreatedAt >= @since. What index design is right?" },
+      "options": [
+        { "id": "a", "text": { "en": "HASH index on CustomerId plus a memory-optimized NONCLUSTERED index on CreatedAt" } },
+        { "id": "b", "text": { "en": "HASH indexes on both columns" } },
+        { "id": "c", "text": { "en": "One NONCLUSTERED index on (CustomerId, CreatedAt) only" } },
+        { "id": "d", "text": { "en": "A columnstore index on CreatedAt" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Equality lookups → hash; range scan → memory-optimized nonclustered (Bw-tree). A hash on CreatedAt (b) cannot serve ranges at all. A single composite nonclustered (c) serves both but gives up the O(1) hash lookups that dominate the workload. Columnstore on a single column of a memory-optimized table (d) isn't the range-scan tool here." },
+      "example": { "en": "INDEX IX_Cust HASH (CustomerId) WITH (BUCKET_COUNT=8000000), INDEX IX_Created NONCLUSTERED (CreatedAt)" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/in-memory-oltp/indexes-for-memory-optimized-tables"]
+    },
+    {
+      "id": "d1-spec-0044",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-specialized-tables",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "In Fabric and Azure SQL scenarios, what is the primary benefit of querying lake data through OPENROWSET/external tables instead of importing it?" },
+      "options": [
+        { "id": "a", "text": { "en": "No data duplication or sync pipelines — queries always see the current files" } },
+        { "id": "b", "text": { "en": "Faster performance than local tables in all cases" } },
+        { "id": "c", "text": { "en": "Automatic indexing of the files" } },
+        { "id": "d", "text": { "en": "Transactional updates of the files" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Virtualization avoids copies and staleness — one source of truth in the lake. Performance is usually *worse* than local optimized storage (b), files are not indexed by SQL (c), and file-backed external data is not transactionally updatable (d)." },
+      "example": { "en": "Trade-off wording to watch: 'most current data, no duplication' → virtualize; 'fastest repeated analytics' → import/columnstore." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/polybase/polybase-guide"]
+    },
+    {
+      "id": "d1-spec-0045",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-specialized-tables",
+      "type": "dragdrop-order", "difficulty": "medium",
+      "text": { "en": "Put the lifecycle of a temporal row that gets updated twice and then deleted in chronological order (from the history+current perspective)." },
+      "items": [
+        { "id": "i1", "text": { "en": "INSERT creates version 1 in the current table" } },
+        { "id": "i2", "text": { "en": "First UPDATE: version 1 moves to history; version 2 is current" } },
+        { "id": "i3", "text": { "en": "Second UPDATE: version 2 moves to history; version 3 is current" } },
+        { "id": "i4", "text": { "en": "DELETE: version 3 moves to history; no current row remains" } }
+      ],
+      "answer": ["i1", "i2", "i3", "i4"],
+      "explanation": { "en": "Each modification closes the current version's period and archives it; after the delete, all three versions live in history and the key is absent from the current table. FOR SYSTEM_TIME ALL would show versions 1–3." },
+      "example": { "en": "This lifecycle underlies every temporal 'how many rows in history?' calculation question." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/tables/temporal-tables"]
+    },
+    {
+      "id": "d1-spec-0046",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-specialized-tables",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which permission-related fact about ledger is important for auditors?" },
+      "options": [
+        { "id": "a", "text": { "en": "Verification can prove tampering even if an attacker had sysadmin rights, provided digests were stored externally" } },
+        { "id": "b", "text": { "en": "Ledger removes the need for any database permissions" } },
+        { "id": "c", "text": { "en": "Only the sa login can read ledger tables" } },
+        { "id": "d", "text": { "en": "Ledger tables cannot be backed up" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "That is ledger's core value proposition: trust is anchored in externally stored digests, outside any database principal's reach. Normal permissions still apply for reading/writing (b, c are wrong), and backups work normally (d)." },
+      "example": { "en": "Azure SQL can automatically upload digests to immutable Azure Storage or Azure Confidential Ledger." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/ledger/ledger-digest-management"]
+    },
+    {
+      "id": "d1-spec-0047",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-specialized-tables",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which of these is NOT one of the five specialized table types named in the DP-800 study guide?" },
+      "options": [
+        { "id": "a", "text": { "en": "Partitioned view" } },
+        { "id": "b", "text": { "en": "In-memory table" } },
+        { "id": "c", "text": { "en": "Ledger table" } },
+        { "id": "d", "text": { "en": "Graph table" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The guide lists in-memory, temporal, external, ledger and graph. A partitioned view is a view construct, not one of the specialized table types (partitioning of tables/indexes is its own skill bullet)." },
+      "example": { "en": "Memorize the five: In-memory, Temporal, External, Ledger, Graph — 'I TELG'." },
+      "sources": ["https://learn.microsoft.com/en-us/credentials/certifications/resources/study-guides/dp-800"]
+    },
+    {
+      "id": "d1-spec-0048",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-specialized-tables",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "After switching SYSTEM_VERSIONING OFF to fix bad history rows and back ON, what should you include to prevent the engine from checking that history is temporally consistent?" },
+      "options": [
+        { "id": "a", "text": { "en": "DATA_CONSISTENCY_CHECK = OFF in the SET options" } },
+        { "id": "b", "text": { "en": "WITH NOCHECK on the table" } },
+        { "id": "c", "text": { "en": "TRUSTWORTHY ON at the database level" } },
+        { "id": "d", "text": { "en": "Nothing — consistency is never checked" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "SYSTEM_VERSIONING = ON (DATA_CONSISTENCY_CHECK = OFF) skips the overlap validation (default is ON, which verifies ValidFrom ≤ ValidTo and non-overlap). WITH NOCHECK applies to FK/CHECK constraints (b). TRUSTWORTHY (c) concerns impersonation/CLR. The check absolutely exists by default (d)." },
+      "example": { "en": "Use OFF deliberately and rarely — inconsistent history breaks FOR SYSTEM_TIME semantics." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/tables/stopping-system-versioning-on-a-system-versioned-temporal-table"]
+    },
+    {
+      "id": "d1-spec-0049",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-specialized-tables",
+      "type": "yesno", "difficulty": "easy",
+      "text": { "en": "Answer Yes or No for each statement about external tables." },
+      "statements": [
+        { "id": "s1", "text": { "en": "Querying an external table reads the data from its external location at query time." } },
+        { "id": "s2", "text": { "en": "Creating an external table copies the data into the database." } },
+        { "id": "s3", "text": { "en": "External tables can be joined with regular tables in one query." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "no", "s3": "yes" },
+      "explanation": { "en": "External tables are metadata over remote data: queries fetch from the source live, nothing is copied at creation (that's what distinguishes them from imports), and they participate in joins like any table — the key reason they're useful." },
+      "example": { "en": "SELECT c.Name, s.Amount FROM dbo.Customer c JOIN dbo.SalesExt s ON s.CustId = c.Id;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/tables/create-use-external-tables"]
+    },
+    {
+      "id": "d1-spec-0050",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-specialized-tables",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A retail company wants product-recommendation queries like 'customers who bought X also bought Y' traversed across millions of purchase relationships. Which modeling gives the most natural T-SQL for this?" },
+      "options": [
+        { "id": "a", "text": { "en": "Customer and Product node tables with a Bought edge table, queried via MATCH" } },
+        { "id": "b", "text": { "en": "A temporal table on purchases" } },
+        { "id": "c", "text": { "en": "An append-only ledger table of purchases" } },
+        { "id": "d", "text": { "en": "A memory-optimized purchases table" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The relationship-traversal pattern (X←bought−customer−bought→Y) is exactly what graph MATCH expresses concisely. Temporal (b) adds history, ledger (c) adds tamper-evidence, in-memory (d) adds speed — none changes the awkwardness of multi-hop self-joins that graph removes." },
+      "example": { "en": "SELECT p2.Name FROM Product p1, Bought b1, Customer c, Bought b2, Product p2 WHERE MATCH(p1<-(b1)-c-(b2)->p2) AND p1.Id = @x;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/graphs/sql-graph-overview"]
+    }
+  ]
+}

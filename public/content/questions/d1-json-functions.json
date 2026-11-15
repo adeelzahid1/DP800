@@ -1,0 +1,851 @@
+{
+  "subtopic": "d1-json-functions",
+  "questions": [
+    {
+      "id": "d1-jsonfn-0001",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-json-functions",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which function turns a JSON array into relational rows?" },
+      "options": [
+        { "id": "a", "text": { "en": "OPENJSON" } },
+        { "id": "b", "text": { "en": "JSON_VALUE" } },
+        { "id": "c", "text": { "en": "JSON_ARRAY" } },
+        { "id": "d", "text": { "en": "FOR JSON" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "OPENJSON is the shredder (table-valued). JSON_VALUE extracts one scalar, JSON_ARRAY constructs an array, and FOR JSON goes the opposite direction (rows → JSON)." },
+      "example": { "en": "SELECT value FROM OPENJSON('[1,2,3]');  -- three rows" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/openjson-transact-sql"]
+    },
+    {
+      "id": "d1-jsonfn-0002",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-json-functions",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "OPENJSON('{\"a\":1,\"b\":[2,3]}') without a WITH clause returns which columns?" },
+      "options": [
+        { "id": "a", "text": { "en": "key, value, type" } },
+        { "id": "b", "text": { "en": "a, b" } },
+        { "id": "c", "text": { "en": "name, data" } },
+        { "id": "d", "text": { "en": "One JSON column" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Schema-less OPENJSON always yields key/value/type (type codes 0–5). Property-named columns (b) require WITH. (c) and (d) are invented shapes." },
+      "example": { "en": "Row 'b' would show value='[2,3]' and type=4 (array)." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/openjson-transact-sql"]
+    },
+    {
+      "id": "d1-jsonfn-0003",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-json-functions",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "In an OPENJSON WITH clause, what does AS JSON after a column do?" },
+      "options": [
+        { "id": "a", "text": { "en": "Returns that property's object/array as a JSON fragment instead of trying to extract a scalar (column must be nvarchar(max))" } },
+        { "id": "b", "text": { "en": "Validates the property with ISJSON" } },
+        { "id": "c", "text": { "en": "Converts the value to the json data type automatically" } },
+        { "id": "d", "text": { "en": "Compresses the value" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Without AS JSON, a nested object/array yields NULL (lax) because it isn't a scalar; AS JSON passes the fragment through — typically into a second OPENJSON. It isn't validation (b), doesn't retype to json (c), or compress (d)." },
+      "example": { "en": "WITH (items NVARCHAR(MAX) AS JSON) ... CROSS APPLY OPENJSON(items) ..." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/openjson-transact-sql"]
+    },
+    {
+      "id": "d1-jsonfn-0004",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-json-functions",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which SQL Server 2025 aggregate builds one JSON array per group?" },
+      "options": [
+        { "id": "a", "text": { "en": "JSON_ARRAYAGG" } },
+        { "id": "b", "text": { "en": "STRING_AGG" } },
+        { "id": "c", "text": { "en": "ARRAY_AGG" } },
+        { "id": "d", "text": { "en": "JSON_GROUP" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "JSON_ARRAYAGG produces real JSON arrays with proper quoting/escaping. STRING_AGG makes a delimited string (not valid JSON without manual assembly). ARRAY_AGG is PostgreSQL; JSON_GROUP doesn't exist." },
+      "example": { "en": "SELECT CustomerId, JSON_ARRAYAGG(OrderId ORDER BY OrderId) FROM Orders GROUP BY CustomerId;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/json-arrayagg-transact-sql"]
+    },
+    {
+      "id": "d1-jsonfn-0005",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-json-functions",
+      "type": "yesno", "difficulty": "hard",
+      "text": { "en": "NULL handling defaults of the constructors — answer Yes if the stated default is correct." },
+      "statements": [
+        { "id": "s1", "text": { "en": "JSON_OBJECT includes NULL-valued keys by default (NULL ON NULL)." } },
+        { "id": "s2", "text": { "en": "JSON_ARRAY skips NULL elements by default (ABSENT ON NULL)." } },
+        { "id": "s3", "text": { "en": "Both defaults can be overridden explicitly." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "yes", "s3": "yes" },
+      "explanation": { "en": "The asymmetric defaults are documented: objects keep null-valued keys, arrays drop null elements — each override-able with NULL ON NULL / ABSENT ON NULL. A favorite subtle-recall item." },
+      "example": { "en": "JSON_ARRAY(1, NULL, 2) → [1,2]; JSON_ARRAY(1, NULL, 2 NULL ON NULL) → [1,null,2]" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/json-array-transact-sql"]
+    },
+    {
+      "id": "d1-jsonfn-0006",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-json-functions",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Complete the query that shreds the items array of each order document." },
+      "code": "SELECT o.OrderId, i.sku, i.qty\nFROM dbo.Orders AS o\nCROSS APPLY [BLANK1](o.Doc, '$.items')\n     WITH (sku VARCHAR(10) '$.sku',\n           qty INT '$.qty') AS i\nWHERE [BLANK2](o.Doc, '$.status') = 'open';",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "OPENJSON" } },
+            { "id": "c2", "text": { "en": "JSON_QUERY" } },
+            { "id": "c3", "text": { "en": "JSON_TABLE" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "JSON_VALUE" } },
+            { "id": "c2", "text": { "en": "JSON_QUERY" } },
+            { "id": "c3", "text": { "en": "OPENJSON" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "OPENJSON (not JSON_TABLE — that's Oracle/MySQL) shreds the array; JSON_VALUE extracts the scalar status for the filter. JSON_QUERY would return fragments, unusable in both spots." },
+      "example": { "en": "The CROSS APPLY + OPENJSON WITH combo is the single most reusable JSON query pattern." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/openjson-transact-sql"]
+    },
+    {
+      "id": "d1-jsonfn-0007",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-json-functions",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What does FOR JSON PATH's WITHOUT_ARRAY_WRAPPER option change?" },
+      "options": [
+        { "id": "a", "text": { "en": "Output is a bare object (or concatenated objects) instead of being wrapped in [ ]" } },
+        { "id": "b", "text": { "en": "Null values are included" } },
+        { "id": "c", "text": { "en": "The root property is renamed" } },
+        { "id": "d", "text": { "en": "Arrays inside the data are flattened" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "By default FOR JSON always emits a JSON array; WITHOUT_ARRAY_WRAPPER strips the brackets — intended for single-row results feeding APIs that expect one object. Nulls are INCLUDE_NULL_VALUES (b); ROOT names a wrapper (c); nothing flattens inner arrays (d)." },
+      "example": { "en": "SELECT ... WHERE Id = @id FOR JSON PATH, WITHOUT_ARRAY_WRAPPER; → {\"id\":7,...}" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/json/remove-square-brackets-from-json-without-array-wrapper-option-sql-server"]
+    },
+    {
+      "id": "d1-jsonfn-0008",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-json-functions",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "JSON_VALUE(Doc, '$.customer.name') returns NULL even though the document clearly has customer.name. The document is 5 MB. What's a likely cause?" },
+      "options": [
+        { "id": "a", "text": { "en": "The extracted value exceeds JSON_VALUE's nvarchar(4000) default return — or the property name's case doesn't match" } },
+        { "id": "b", "text": { "en": "JSON_VALUE never works on documents over 1 MB" } },
+        { "id": "c", "text": { "en": "The function requires strict mode" } },
+        { "id": "d", "text": { "en": "customer.name must be quoted in the path" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Two classic silent-NULL causes: value longer than 4,000 chars (use OPENJSON ... nvarchar(max) or varchar(max) return via explicit typing) and case-sensitive path mismatch. Document size itself isn't a limit (b). Strict mode changes NULL to errors, it isn't required (c). Simple names need no quoting (d)." },
+      "example": { "en": "Debug tip: switch to 'strict $.customer.name' — an error tells you more than NULL." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/json-value-transact-sql"]
+    },
+    {
+      "id": "d1-jsonfn-0009",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-json-functions",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "FOR JSON AUTO vs FOR JSON PATH: the key difference is:" },
+      "options": [
+        { "id": "a", "text": { "en": "AUTO derives nesting from the join/table order; PATH gives explicit control through dotted column aliases" } },
+        { "id": "b", "text": { "en": "AUTO is faster in all cases" } },
+        { "id": "c", "text": { "en": "PATH cannot nest objects" } },
+        { "id": "d", "text": { "en": "AUTO requires a ROOT option" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "AUTO = convention (table boundaries become nesting), PATH = configuration (aliases like [customer.name] define structure). Performance is comparable (b). PATH nests precisely via aliases (c is backwards). ROOT is optional for both (d)." },
+      "example": { "en": "APIs with exact contracts → PATH. Quick exports → AUTO." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/json/format-query-results-as-json-with-for-json-sql-server"]
+    },
+    {
+      "id": "d1-jsonfn-0010",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-json-functions",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which expression embeds an existing JSON string column as real JSON (not an escaped string) inside JSON_OBJECT?" },
+      "options": [
+        { "id": "a", "text": { "en": "'spec': JSON_QUERY(SpecJson)" } },
+        { "id": "b", "text": { "en": "'spec': SpecJson" } },
+        { "id": "c", "text": { "en": "'spec': CAST(SpecJson AS NVARCHAR(MAX))" } },
+        { "id": "d", "text": { "en": "'spec': STRING_ESCAPE(SpecJson, 'json')" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "JSON_QUERY (no path) marks the value as JSON so the constructor embeds it verbatim. Passing the raw string (b) or a cast (c) produces an escaped string value: \"{\\\"a\\\":1}\". STRING_ESCAPE (d) escapes even harder — the exact opposite." },
+      "example": { "en": "The same trick applies in JSON_MODIFY and FOR JSON projections." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/json-object-transact-sql"]
+    },
+    {
+      "id": "d1-jsonfn-0011",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-json-functions",
+      "type": "dragdrop-match", "difficulty": "easy",
+      "text": { "en": "Match the task to the JSON function." },
+      "items": [
+        { "id": "i1", "text": { "en": "Check whether $.vip exists at all" } },
+        { "id": "i2", "text": { "en": "Search for a value anywhere under $.tags" } },
+        { "id": "i3", "text": { "en": "Build {\"a\":1} from scalars" } },
+        { "id": "i4", "text": { "en": "Fold a group's values into one object of key/value pairs" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "JSON_PATH_EXISTS" } },
+        { "id": "t2", "text": { "en": "JSON_CONTAINS" } },
+        { "id": "t3", "text": { "en": "JSON_OBJECT" } },
+        { "id": "t4", "text": { "en": "JSON_OBJECTAGG" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "Existence → PATH_EXISTS; value search → CONTAINS; row-level construction → JSON_OBJECT; group-level construction → JSON_OBJECTAGG. Function-role matching is exactly how the official bullet lists them." },
+      "example": { "en": "The study guide names JSON_OBJECT, JSON_ARRAY, JSON_ARRAYAGG, JSON_CONTAINS, OPENJSON and JSON_VALUE explicitly." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/json/json-data-sql-server"]
+    },
+    {
+      "id": "d1-jsonfn-0012",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-json-functions",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "OPENJSON fails with 'Invalid object name OPENJSON' or similar on an older database. The documented cause is:" },
+      "options": [
+        { "id": "a", "text": { "en": "Database compatibility level below 130" } },
+        { "id": "b", "text": { "en": "Missing Enterprise edition" } },
+        { "id": "c", "text": { "en": "JSON functions need a server trace flag" } },
+        { "id": "d", "text": { "en": "OPENJSON requires the json data type" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "OPENJSON is gated on compatibility level 130+ (SQL 2016). Edition (b) and trace flags (c) are irrelevant, and OPENJSON happily reads nvarchar JSON (d)." },
+      "example": { "en": "ALTER DATABASE db SET COMPATIBILITY_LEVEL = 160; -- also unlocks newer IQP features" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/openjson-transact-sql"]
+    },
+    {
+      "id": "d1-jsonfn-0013",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-json-functions",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "An API posts an array of order updates. The procedure receives it as @json NVARCHAR(MAX) and must update many rows at once. Which is the set-based pattern?" },
+      "options": [
+        { "id": "a", "text": { "en": "UPDATE o SET ... FROM Orders o JOIN OPENJSON(@json) WITH (OrderId INT, Status VARCHAR(20)) j ON j.OrderId = o.OrderId" } },
+        { "id": "b", "text": { "en": "A WHILE loop calling JSON_VALUE(@json, CONCAT('$[', @i, '].orderId'))" } },
+        { "id": "c", "text": { "en": "Dynamic SQL per element" } },
+        { "id": "d", "text": { "en": "Send one request per order instead" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "OPENJSON turns the payload into a joinable rowset — one UPDATE for the whole batch, the pattern Microsoft documents for bulk JSON ingestion. Index-walking loops (b) and per-element dynamic SQL (c) are RBAR with parsing overhead each iteration; (d) pushes the problem to the network." },
+      "example": { "en": "Same shape works for INSERT (SELECT ... FROM OPENJSON ...) and MERGE sources." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/json/import-json-documents-into-sql-server"]
+    },
+    {
+      "id": "d1-jsonfn-0014",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-json-functions",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "In OPENJSON's schema-less output, what type code marks an array value?" },
+      "options": [
+        { "id": "a", "text": { "en": "4" } },
+        { "id": "b", "text": { "en": "2" } },
+        { "id": "c", "text": { "en": "5" } },
+        { "id": "d", "text": { "en": "1" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Type codes: 0 null, 1 string, 2 number, 3 true/false, 4 array, 5 object. Worth memorizing — dropdown items love them." },
+      "example": { "en": "SELECT [key], type FROM OPENJSON('{\"a\":[1]}'); -- a → 4" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/openjson-transact-sql"]
+    },
+    {
+      "id": "d1-jsonfn-0015",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-json-functions",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which query returns each customer as {\"id\":…, \"orders\":[{…},…]} using 2025 aggregates (no FOR JSON subquery)?" },
+      "options": [
+        { "id": "a", "text": { "en": "SELECT JSON_OBJECT('id': c.Id, 'orders': JSON_ARRAYAGG(JSON_OBJECT('oid': o.OrderId, 'total': o.Total))) FROM Customers c JOIN Orders o ON ... GROUP BY c.Id" } },
+        { "id": "b", "text": { "en": "SELECT JSON_OBJECT(c.*, o.*) FROM ..." } },
+        { "id": "c", "text": { "en": "SELECT STRING_AGG(o.OrderId, ',') FROM ..." } },
+        { "id": "d", "text": { "en": "SELECT JSON_VALUE(c.Id, o.OrderId) FROM ..." } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Nest JSON_OBJECT inside JSON_ARRAYAGG inside JSON_OBJECT: per-order objects → aggregated array → wrapped per customer. (b) isn't valid constructor syntax (no star expansion), (c) yields a CSV string, (d) misuses an extractor as a constructor." },
+      "example": { "en": "Composability of constructors + aggregates is their main advantage over FOR JSON for nested group shapes." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/json-arrayagg-transact-sql"]
+    },
+    {
+      "id": "d1-jsonfn-0016",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-json-functions",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "For each statement about OPENJSON WITH typed columns, answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "Omitting the path for a column matches a property with the same name as the column." } },
+        { "id": "s2", "text": { "en": "A value that can't convert to the declared type raises an error (lax path mode notwithstanding)." } },
+        { "id": "s3", "text": { "en": "Columns can map to nested paths like '$.customer.address.city'." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "yes", "s3": "yes" },
+      "explanation": { "en": "Column names double as default property names; explicit paths reach nested values. Type conversion failures DO error (conversion is separate from path resolution — lax only governs missing paths). All three behaviors combine to make WITH the typed, safe ingestion tool." },
+      "example": { "en": "WITH (city NVARCHAR(50) '$.customer.address.city', qty INT) -- qty matches $.qty implicitly" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/openjson-transact-sql"]
+    },
+    {
+      "id": "d1-jsonfn-0017",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-json-functions",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "JSON_OBJECTAGG('k' : v) raises an error when:" },
+      "options": [
+        { "id": "a", "text": { "en": "A key expression evaluates to NULL" } },
+        { "id": "b", "text": { "en": "A value is NULL" } },
+        { "id": "c", "text": { "en": "The group has more than 1,000 rows" } },
+        { "id": "d", "text": { "en": "Keys are not sorted" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "JSON object keys cannot be null — a NULL key errors. NULL values are representable (b). No row-count cap exists (c), and key order is not required (d)." },
+      "example": { "en": "Guard: JSON_OBJECTAGG(COALESCE(KeyCol, 'unknown') : Val)" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/json-objectagg-transact-sql"]
+    },
+    {
+      "id": "d1-jsonfn-0018",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-json-functions",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Complete the API response query producing {\"customers\": [ ... ]}." },
+      "code": "SELECT CustomerId AS id, Name AS name\nFROM Sales.Customers\nFOR JSON [BLANK1], [BLANK2]('customers');",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "PATH" } },
+            { "id": "c2", "text": { "en": "OBJECT" } },
+            { "id": "c3", "text": { "en": "DOCUMENT" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "ROOT" } },
+            { "id": "c2", "text": { "en": "WRAP" } },
+            { "id": "c3", "text": { "en": "ENVELOPE" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "FOR JSON PATH (or AUTO) with ROOT('customers') produces the enveloped array. OBJECT/DOCUMENT aren't FOR JSON modes; WRAP/ENVELOPE aren't options." },
+      "example": { "en": "{\"customers\":[{\"id\":1,\"name\":\"…\"},…]}" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/json/format-query-results-as-json-with-for-json-sql-server"]
+    },
+    {
+      "id": "d1-jsonfn-0019",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-json-functions",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "For RAG, you must send the top-5 product rows to a language model as compact JSON. Which single statement produces model-ready output?" },
+      "options": [
+        { "id": "a", "text": { "en": "SELECT TOP(5) Name, Price, Description FROM Products WHERE ... FOR JSON PATH" } },
+        { "id": "b", "text": { "en": "SELECT TOP(5) * FROM Products; -- the model parses tabular text fine" } },
+        { "id": "c", "text": { "en": "BCP the table to a file" } },
+        { "id": "d", "text": { "en": "SELECT CONCAT(Name, Price, Description) FROM Products" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "FOR JSON PATH emits structured, parseable context — the documented step 'convert structured data to JSON for language model processing' in the RAG skill. Raw tabular dumps (b) waste tokens and lose structure; files (c) aren't in the request path; CONCAT (d) mashes fields ambiguously." },
+      "example": { "en": "DECLARE @ctx NVARCHAR(MAX) = (SELECT ... FOR JSON PATH); -- then embed @ctx in the prompt payload" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/json/format-query-results-as-json-with-for-json-sql-server"]
+    },
+    {
+      "id": "d1-jsonfn-0020",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-json-functions",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What does OPENJSON(@doc, '$.items[1]') return for items = [ {\"sku\":\"A\"}, {\"sku\":\"B\"} ]?" },
+      "options": [
+        { "id": "a", "text": { "en": "The properties of the SECOND element ({\"sku\":\"B\"}) — array indexes are zero-based" } },
+        { "id": "b", "text": { "en": "The first element — indexes start at 1" } },
+        { "id": "c", "text": { "en": "Both elements" } },
+        { "id": "d", "text": { "en": "An error — paths can't index arrays" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "JSON paths are zero-based: [1] is the second element; OPENJSON on an object returns its key/value pairs. One-based thinking (b) is the trap — SQL positions are 1-based but JSON paths are not. Whole-array iteration (c) would use '$.items'. Indexing is fully supported (d)." },
+      "example": { "en": "JSON_VALUE(@doc, '$.items[0].sku') → 'A'." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/json/json-path-expressions-sql-server"]
+    },
+    {
+      "id": "d1-jsonfn-0021",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-json-functions",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which function pair goes rows→JSON and JSON→rows respectively?" },
+      "options": [
+        { "id": "a", "text": { "en": "FOR JSON and OPENJSON" } },
+        { "id": "b", "text": { "en": "OPENJSON and FOR JSON" } },
+        { "id": "c", "text": { "en": "JSON_VALUE and JSON_QUERY" } },
+        { "id": "d", "text": { "en": "ISJSON and JSON_MODIFY" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "FOR JSON serializes result sets; OPENJSON parses documents into rows — the round-trip pair. (b) reverses them; (c) are both extractors; (d) are tester and modifier." },
+      "example": { "en": "Round trip: INSERT INTO T SELECT * FROM OPENJSON(@x) WITH (...); SELECT * FROM T FOR JSON PATH;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/json/json-data-sql-server"]
+    },
+    {
+      "id": "d1-jsonfn-0022",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-json-functions",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A WITH-clause column is declared qty INT but some documents store \"qty\": \"two\". What happens at query time?" },
+      "options": [
+        { "id": "a", "text": { "en": "A conversion error aborts the query when such a row is read" } },
+        { "id": "b", "text": { "en": "NULL is returned silently for those rows" } },
+        { "id": "c", "text": { "en": "The string is fuzzy-parsed to 2" } },
+        { "id": "d", "text": { "en": "The row is skipped" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Type conversion in OPENJSON WITH is strict — 'two' cannot become INT and errors. Only missing paths yield NULL in lax mode (b applies to absent properties, not bad conversions). No fuzzy parsing (c) or silent skipping (d) exists; use TRY_CAST over schema-less output for tolerance." },
+      "example": { "en": "Tolerant variant: SELECT TRY_CAST(value AS INT) FROM OPENJSON(@doc, '$.items') ..." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/openjson-transact-sql"]
+    },
+    {
+      "id": "d1-jsonfn-0023",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-json-functions",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "INCLUDE_NULL_VALUES in FOR JSON changes output how?" },
+      "options": [
+        { "id": "a", "text": { "en": "NULL columns appear as \"col\": null instead of being omitted" } },
+        { "id": "b", "text": { "en": "NULL rows are included" } },
+        { "id": "c", "text": { "en": "Empty strings become null" } },
+        { "id": "d", "text": { "en": "It replaces NULLs with defaults" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "By default FOR JSON omits properties for NULL values (lean payloads); INCLUDE_NULL_VALUES emits explicit nulls for consumers needing stable schemas. Rows aren't filtered either way (b); strings aren't transformed (c); no defaulting occurs (d)." },
+      "example": { "en": "Fixed-shape API contract → INCLUDE_NULL_VALUES; token-lean LLM context → default omission." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/json/include-null-values-in-json-include-null-values-option"]
+    },
+    {
+      "id": "d1-jsonfn-0024",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-json-functions",
+      "type": "dragdrop-order", "difficulty": "medium",
+      "text": { "en": "Order the steps to import a JSON file of products into a table." },
+      "items": [
+        { "id": "i1", "text": { "en": "Read the file with OPENROWSET(BULK ..., SINGLE_CLOB)" } },
+        { "id": "i2", "text": { "en": "Validate with ISJSON" } },
+        { "id": "i3", "text": { "en": "Shred with OPENJSON ... WITH typed columns" } },
+        { "id": "i4", "text": { "en": "INSERT INTO the target table from the rowset" } }
+      ],
+      "answer": ["i1", "i2", "i3", "i4"],
+      "explanation": { "en": "The documented import pipeline: bulk-read the document, sanity-check validity, shred to typed rows, insert. Shredding before validation risks mid-stream conversion errors on garbage files." },
+      "example": { "en": "INSERT INTO dbo.Products SELECT p.* FROM OPENROWSET(BULK 'products.json', SINGLE_CLOB) f CROSS APPLY OPENJSON(f.BulkColumn) WITH (...) p WHERE ISJSON(f.BulkColumn) = 1;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/json/import-json-documents-into-sql-server"]
+    },
+    {
+      "id": "d1-jsonfn-0025",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-json-functions",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "JSON_QUERY(Doc, '$.items') vs OPENJSON(Doc, '$.items'): the essential difference?" },
+      "options": [
+        { "id": "a", "text": { "en": "JSON_QUERY returns the array as one JSON fragment; OPENJSON returns one row per element" } },
+        { "id": "b", "text": { "en": "They are interchangeable" } },
+        { "id": "c", "text": { "en": "OPENJSON only reads objects, not arrays" } },
+        { "id": "d", "text": { "en": "JSON_QUERY is table-valued" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Scalar-valued extraction of a fragment (JSON_QUERY) vs table-valued shredding (OPENJSON) — use the first to pass JSON along, the second to relate/aggregate elements. They differ fundamentally (b, d), and OPENJSON handles arrays natively (c)." },
+      "example": { "en": "Keep nested JSON: JSON_QUERY. Count/join/filter elements: OPENJSON." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/json-query-transact-sql"]
+    },
+    {
+      "id": "d1-jsonfn-0026",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-json-functions",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "Count elements of the $.tags array per row, efficiently and correctly:" },
+      "options": [
+        { "id": "a", "text": { "en": "(SELECT COUNT(*) FROM OPENJSON(Doc, '$.tags')) as a correlated expression / CROSS APPLY aggregate" } },
+        { "id": "b", "text": { "en": "LEN(JSON_QUERY(Doc, '$.tags'))" } },
+        { "id": "c", "text": { "en": "JSON_VALUE(Doc, '$.tags.length')" } },
+        { "id": "d", "text": { "en": "DATALENGTH(Doc) / 10" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Counting rows out of OPENJSON is the correct cardinality. LEN of the fragment (b) counts characters, not elements. JavaScript-style .length (c) is not a T-SQL JSON path property. (d) is numerology." },
+      "example": { "en": "SELECT Id, t.N FROM T CROSS APPLY (SELECT COUNT(*) N FROM OPENJSON(Doc,'$.tags')) t;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/openjson-transact-sql"]
+    },
+    {
+      "id": "d1-jsonfn-0027",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-json-functions",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "FOR JSON AUTO on SELECT c.Name, o.OrderId FROM Customers c JOIN Orders o ... — answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "Orders appear nested inside each customer object." } },
+        { "id": "s2", "text": { "en": "Reversing the SELECT column order (o before c) can change the nesting." } },
+        { "id": "s3", "text": { "en": "The same nesting could be produced explicitly with FOR JSON PATH and a subquery." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "yes", "s3": "yes" },
+      "explanation": { "en": "AUTO nests by the order tables first contribute columns — customers outer, orders inner here; flipping column order flips the hierarchy (the fragility that makes PATH preferable for contracts). PATH plus a correlated FOR JSON subquery reproduces any AUTO shape deliberately." },
+      "example": { "en": "Contract APIs: prefer PATH. Ad-hoc exports: AUTO is fine." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/json/format-json-output-automatically-with-auto-mode-sql-server"]
+    },
+    {
+      "id": "d1-jsonfn-0028",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-json-functions",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which expression safely reads an optional numeric $.discount, defaulting to 0 when missing?" },
+      "options": [
+        { "id": "a", "text": { "en": "COALESCE(TRY_CAST(JSON_VALUE(Doc, '$.discount') AS DECIMAL(5,2)), 0)" } },
+        { "id": "b", "text": { "en": "JSON_VALUE(Doc, 'strict $.discount')" } },
+        { "id": "c", "text": { "en": "CAST(JSON_QUERY(Doc, '$.discount') AS DECIMAL)" } },
+        { "id": "d", "text": { "en": "JSON_CONTAINS(Doc, 0, '$.discount')" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Lax JSON_VALUE yields NULL when absent; TRY_CAST tolerates malformed values; COALESCE supplies the default — a robust trio. Strict mode (b) errors on absence — the opposite of optional. JSON_QUERY (c) returns NULL for scalars. JSON_CONTAINS (d) answers a different question." },
+      "example": { "en": "Defensive extraction idiom for semi-trusted documents." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/json-value-transact-sql"]
+    },
+    {
+      "id": "d1-jsonfn-0029",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-json-functions",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "JSON_ARRAY('a', 'b', 'c') returns:" },
+      "options": [
+        { "id": "a", "text": { "en": "[\"a\",\"b\",\"c\"]" } },
+        { "id": "b", "text": { "en": "{\"a\",\"b\",\"c\"}" } },
+        { "id": "c", "text": { "en": "'a,b,c'" } },
+        { "id": "d", "text": { "en": "(\"a\",\"b\",\"c\")" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "A proper JSON array with quoted, escaped elements. Braces (b) denote objects (and this isn't valid JSON anyway), (c) is a CSV string, (d) is a tuple from another language." },
+      "example": { "en": "Elements are typed: JSON_ARRAY(1, 'x', NULL) → [1,\"x\"] (null absent by default)." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/json-array-transact-sql"]
+    },
+    {
+      "id": "d1-jsonfn-0030",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-json-functions",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "To feed OPENJSON output straight into a MERGE as the source of upserts, you would:" },
+      "options": [
+        { "id": "a", "text": { "en": "USING (SELECT * FROM OPENJSON(@payload) WITH (...)) AS src ON src.Id = tgt.Id" } },
+        { "id": "b", "text": { "en": "MERGE accepts raw JSON in USING" } },
+        { "id": "c", "text": { "en": "Convert to XML first" } },
+        { "id": "d", "text": { "en": "MERGE cannot take function sources" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "OPENJSON WITH is a rowset — wrap it as the USING source like any derived table. MERGE has no JSON parser of its own (b), XML adds a pointless conversion (c), and table-valued sources are exactly what USING takes (d)." },
+      "example": { "en": "MERGE dbo.Products tgt USING (SELECT * FROM OPENJSON(@json) WITH (Id INT, Name NVARCHAR(100), Price DECIMAL(10,2))) src ON src.Id = tgt.Id WHEN MATCHED THEN UPDATE ... WHEN NOT MATCHED THEN INSERT ...;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/json/import-json-documents-into-sql-server"]
+    },
+    {
+      "id": "d1-jsonfn-0031",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-json-functions",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Why does FOR JSON escape special characters (e.g. é → \\u00e9 in some cases, quotes → \\\")?" },
+      "options": [
+        { "id": "a", "text": { "en": "To guarantee the output is valid, parseable JSON per the spec" } },
+        { "id": "b", "text": { "en": "A bug to be disabled with a trace flag" } },
+        { "id": "c", "text": { "en": "Only when the database collation is binary" } },
+        { "id": "d", "text": { "en": "To compress the output" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Escaping is correctness: embedded quotes, control characters and certain Unicode must be escaped for valid JSON. Consumers' parsers transparently unescape. It's not a bug (b), not collation-dependent in that way (c), and escaping enlarges rather than compresses (d)." },
+      "example": { "en": "Never post-process escaped output with string replace — parse it properly on the client." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/json/how-for-json-escapes-special-characters-and-control-characters-sql-server"]
+    },
+    {
+      "id": "d1-jsonfn-0032",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-json-functions",
+      "type": "dropdown", "difficulty": "hard",
+      "text": { "en": "Complete the 2025-style aggregation returning one JSON summary row per region." },
+      "code": "SELECT Region,\n       [BLANK1](City ORDER BY City) AS Cities,\n       [BLANK2]('total': SUM(Revenue), 'cnt': COUNT(*)) AS Stats\nFROM Sales.RegionalRevenue\nGROUP BY Region;",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "JSON_ARRAYAGG" } },
+            { "id": "c2", "text": { "en": "JSON_ARRAY" } },
+            { "id": "c3", "text": { "en": "STRING_AGG" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "JSON_OBJECT" } },
+            { "id": "c2", "text": { "en": "JSON_OBJECTAGG" } },
+            { "id": "c3", "text": { "en": "JSON_QUERY" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "Cities needs the AGGREGATE (many rows → one array) = JSON_ARRAYAGG; Stats builds ONE object from two already-aggregated scalars = plain JSON_OBJECT (OBJECTAGG would aggregate key/value pairs across rows — wrong shape here). The aggregate-vs-constructor distinction is the point." },
+      "example": { "en": "Constructor per row/group; AGG across rows. Ask: how many input rows feed this output value?" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/json-object-transact-sql"]
+    },
+    {
+      "id": "d1-jsonfn-0033",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-json-functions",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "OPENJSON's path argument supports lax and strict prefixes. OPENJSON(@d, 'strict $.items') errors when:" },
+      "options": [
+        { "id": "a", "text": { "en": "$.items does not exist in the document" } },
+        { "id": "b", "text": { "en": "$.items has more than 100 elements" } },
+        { "id": "c", "text": { "en": "The document has other properties too" } },
+        { "id": "d", "text": { "en": "strict is never valid in OPENJSON" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Strict mode converts missing-path NULLs/empties into errors — fail-fast for required structure. Element counts (b) and sibling properties (c) are irrelevant, and strict IS valid in OPENJSON paths (d)." },
+      "example": { "en": "Ingestion jobs: strict catches malformed payloads at the gate instead of importing zero rows silently." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/openjson-transact-sql"]
+    },
+    {
+      "id": "d1-jsonfn-0034",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-json-functions",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which query lists orders where ANY item has qty > 10?" },
+      "options": [
+        { "id": "a", "text": { "en": "SELECT o.* FROM Orders o WHERE EXISTS (SELECT 1 FROM OPENJSON(o.Doc,'$.items') WITH (qty INT) i WHERE i.qty > 10)" } },
+        { "id": "b", "text": { "en": "WHERE JSON_VALUE(Doc, '$.items[*].qty') > 10" } },
+        { "id": "c", "text": { "en": "WHERE JSON_QUERY(Doc, '$.items.qty') > 10" } },
+        { "id": "d", "text": { "en": "WHERE Doc LIKE '%qty%10%'" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "EXISTS over the shredded items expresses 'any element matches' precisely. JSON_VALUE takes no wildcards (b). JSON_QUERY returns fragments, not comparable numbers (c). LIKE pattern-matching JSON text (d) is both wrong (qty 100? '10' inside other numbers?) and unmaintainable." },
+      "example": { "en": "ALL-elements variants flip to NOT EXISTS with the negated predicate." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/openjson-transact-sql"]
+    },
+    {
+      "id": "d1-jsonfn-0035",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-json-functions",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "JSON_OBJECT('name': NULL) with default options returns:" },
+      "options": [
+        { "id": "a", "text": { "en": "{\"name\":null}" } },
+        { "id": "b", "text": { "en": "{}" } },
+        { "id": "c", "text": { "en": "NULL" } },
+        { "id": "d", "text": { "en": "An error" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "JSON_OBJECT defaults to NULL ON NULL — the key appears with a null value. {} would require ABSENT ON NULL (b). The function itself doesn't go NULL (c) or error (d) for null VALUES (null KEYS error)." },
+      "example": { "en": "JSON_OBJECT('name': NULL ABSENT ON NULL) → {}" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/json-object-transact-sql"]
+    },
+    {
+      "id": "d1-jsonfn-0036",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-json-functions",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A nightly job shreds millions of documents with OPENJSON and joins to dimension tables; it's CPU-bound. Which change most reduces repeated work?" },
+      "options": [
+        { "id": "a", "text": { "en": "Shred once into a persisted/staging table (or promote hot paths to computed columns) instead of re-parsing documents every night" } },
+        { "id": "b", "text": { "en": "Add NOLOCK hints" } },
+        { "id": "c", "text": { "en": "Switch to JSON_VALUE in a loop" } },
+        { "id": "d", "text": { "en": "Increase MAXDOP to 64" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Parsing is the repeated cost — materialize the shredded form once (or store extracted columns at write time) and reuse it. NOLOCK (b) changes consistency, not CPU. A JSON_VALUE loop (c) parses MORE (once per property). More parallelism (d) burns the same CPU faster, treating the symptom." },
+      "example": { "en": "Write-time extraction (computed columns / ETL) beats read-time parsing for recurring analytics." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/json/store-json-documents-in-sql-tables"]
+    },
+    {
+      "id": "d1-jsonfn-0037",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-json-functions",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "Answer Yes or No for each claim about JSON_CONTAINS (SQL Server 2025)." },
+      "statements": [
+        { "id": "s1", "text": { "en": "It can restrict the search to a path." } },
+        { "id": "s2", "text": { "en": "It returns the matching value itself." } },
+        { "id": "s3", "text": { "en": "It is listed in the official DP-800 study guide's JSON function bullet." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "no", "s3": "yes" },
+      "explanation": { "en": "JSON_CONTAINS(doc, value [, path]) scopes by optional path and returns 1/0 — never the value (extractors do that). It appears verbatim in the study guide's advanced T-SQL bullet, so expect it on the exam." },
+      "example": { "en": "WHERE JSON_CONTAINS(Doc, 'urgent', '$.tags') = 1" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/json-contains-transact-sql", "https://learn.microsoft.com/en-us/credentials/certifications/resources/study-guides/dp-800"]
+    },
+    {
+      "id": "d1-jsonfn-0038",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-json-functions",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "sp_executesql receives JSON in @params. Inside the dynamic SQL, the safe way to use a JSON property in a WHERE clause is:" },
+      "options": [
+        { "id": "a", "text": { "en": "Extract with JSON_VALUE into a local variable / parameter — never concatenate document content into the SQL text" } },
+        { "id": "b", "text": { "en": "CONCAT the JSON_VALUE result into the statement string" } },
+        { "id": "c", "text": { "en": "EXEC the document directly" } },
+        { "id": "d", "text": { "en": "JSON is immune to injection" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "JSON payloads are user input: extracted values go into parameters, not string concatenation (b) — a JSON field containing '; DROP TABLE--' is still injection if concatenated. Executing documents (c) is nonsense, and immunity claims (d) are how incidents happen." },
+      "example": { "en": "DECLARE @status NVARCHAR(20) = JSON_VALUE(@payload,'$.status'); EXEC sp_executesql @sql, N'@s NVARCHAR(20)', @s = @status;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-executesql-transact-sql"]
+    },
+    {
+      "id": "d1-jsonfn-0039",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-json-functions",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which construct turns table rows into one JSON document per row stored in a new column during a migration?" },
+      "options": [
+        { "id": "a", "text": { "en": "UPDATE T SET Doc = (SELECT t2.Col1, t2.Col2 FOR JSON PATH, WITHOUT_ARRAY_WRAPPER) FROM T t2 WHERE t2.Id = T.Id — i.e., a correlated FOR JSON per row" } },
+        { "id": "b", "text": { "en": "One FOR JSON over the whole table assigned to every row" } },
+        { "id": "c", "text": { "en": "JSON_OBJECT cannot reference columns" } },
+        { "id": "d", "text": { "en": "OPENJSON in reverse mode" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Per-row documents need per-row serialization — correlated FOR JSON (or simply JSON_OBJECT('c1': Col1, 'c2': Col2), the cleaner 2025 option). Whole-table FOR JSON (b) is one big array, wrong granularity. JSON_OBJECT happily references columns (c). OPENJSON has no reverse mode (d)." },
+      "example": { "en": "Simplest modern form: UPDATE T SET Doc = JSON_OBJECT('col1': Col1, 'col2': Col2);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/json-object-transact-sql"]
+    },
+    {
+      "id": "d1-jsonfn-0040",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-json-functions",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "In OPENJSON WITH, the declared column name is 'sku' but the JSON property is 'SKU'. Result?" },
+      "options": [
+        { "id": "a", "text": { "en": "NULL for that column — implicit matching is case-sensitive; add an explicit path or match the case" } },
+        { "id": "b", "text": { "en": "It matches case-insensitively like column names" } },
+        { "id": "c", "text": { "en": "A compile error" } },
+        { "id": "d", "text": { "en": "The whole row is skipped" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "JSON key matching is case-sensitive even though T-SQL identifiers usually aren't — the mismatch silently yields NULL (lax). Fix with sku VARCHAR(10) '$.SKU'. No error (c) or row skipping (d) occurs, and (b) is the precise misconception being tested." },
+      "example": { "en": "API casing conventions (camelCase) vs SQL conventions (PascalCase) make explicit paths the safe habit." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/openjson-transact-sql"]
+    },
+    {
+      "id": "d1-jsonfn-0041",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-json-functions",
+      "type": "dragdrop-match", "difficulty": "medium",
+      "text": { "en": "Match the FOR JSON option to its effect." },
+      "items": [
+        { "id": "i1", "text": { "en": "Wrap output in {\"data\": [...]}" } },
+        { "id": "i2", "text": { "en": "Emit \"col\": null for NULLs" } },
+        { "id": "i3", "text": { "en": "Return one object without [ ]" } },
+        { "id": "i4", "text": { "en": "Derive nesting from join order" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "ROOT('data')" } },
+        { "id": "t2", "text": { "en": "INCLUDE_NULL_VALUES" } },
+        { "id": "t3", "text": { "en": "WITHOUT_ARRAY_WRAPPER" } },
+        { "id": "t4", "text": { "en": "AUTO mode" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "The four FOR JSON dials: ROOT (envelope), INCLUDE_NULL_VALUES (explicit nulls), WITHOUT_ARRAY_WRAPPER (single object), AUTO vs PATH (who controls nesting). Hot-area questions love these one-to-one mappings." },
+      "example": { "en": "Note: ROOT and WITHOUT_ARRAY_WRAPPER are mutually exclusive." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/json/format-query-results-as-json-with-for-json-sql-server"]
+    },
+    {
+      "id": "d1-jsonfn-0042",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-json-functions",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "Why can SELECT ... FROM OPENJSON(@big) WITH (...) ORDER BY [key] produce unexpected ordering for arrays with >9 elements?" },
+      "options": [
+        { "id": "a", "text": { "en": "key is NVARCHAR — string ordering puts '10' before '2'; cast to INT for numeric order" } },
+        { "id": "b", "text": { "en": "OPENJSON randomizes order" } },
+        { "id": "c", "text": { "en": "Arrays beyond 9 elements are truncated" } },
+        { "id": "d", "text": { "en": "ORDER BY is ignored after OPENJSON" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "For arrays, key holds the element index as a STRING — '0','1','10','11','2'… textual sort scrambles it. CAST([key] AS INT) restores numeric order. No randomization (b), truncation (c), or ORDER BY suppression (d) exists." },
+      "example": { "en": "SELECT value FROM OPENJSON(@arr) ORDER BY CAST([key] AS INT);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/openjson-transact-sql"]
+    },
+    {
+      "id": "d1-jsonfn-0043",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-json-functions",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "The study guide groups JSON functions under which skill area?" },
+      "options": [
+        { "id": "a", "text": { "en": "Write advanced T-SQL code (Domain 1)" } },
+        { "id": "b", "text": { "en": "Implement AI capabilities (Domain 3)" } },
+        { "id": "c", "text": { "en": "Optimize database performance (Domain 2)" } },
+        { "id": "d", "text": { "en": "They are not in the study guide" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The 'Write advanced T-SQL code' skill lists queries with JSON functions explicitly (JSON_OBJECT, JSON_ARRAY, JSON_ARRAYAGG, JSON_CONTAINS, OPENJSON, JSON_VALUE). JSON also supports RAG in Domain 3 ('convert structured data to JSON'), but the function skill itself lives in Domain 1." },
+      "example": { "en": "Meta-knowledge of the blueprint helps triage study time." },
+      "sources": ["https://learn.microsoft.com/en-us/credentials/certifications/resources/study-guides/dp-800"]
+    },
+    {
+      "id": "d1-jsonfn-0044",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-json-functions",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which statement inserts rows into a two-column table from a JSON array of objects?" },
+      "options": [
+        { "id": "a", "text": { "en": "INSERT INTO T (A, B) SELECT A, B FROM OPENJSON(@j) WITH (A INT, B NVARCHAR(50));" } },
+        { "id": "b", "text": { "en": "INSERT INTO T VALUES (OPENJSON(@j));" } },
+        { "id": "c", "text": { "en": "INSERT INTO T SELECT @j;" } },
+        { "id": "d", "text": { "en": "BULK INSERT T FROM @j;" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "OPENJSON WITH makes the array a typed SELECT source — the standard JSON-ingestion insert. OPENJSON can't appear in VALUES (b); inserting the raw string (c) targets one column with the whole document; BULK INSERT reads files, not variables (d)." },
+      "example": { "en": "Pair with EXISTS checks or MERGE for idempotent imports." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/json/import-json-documents-into-sql-server"]
+    },
+    {
+      "id": "d1-jsonfn-0045",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-json-functions",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "JSON output of FOR JSON is returned to clients as:" },
+      "options": [
+        { "id": "a", "text": { "en": "A single-column result (potentially split across rows for large output) that clients concatenate — data access libraries handle this automatically" } },
+        { "id": "b", "text": { "en": "One row per JSON property" } },
+        { "id": "c", "text": { "en": "A binary stream requiring special drivers" } },
+        { "id": "d", "text": { "en": "A file on the server" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Large FOR JSON results stream in ~2KB chunks of a single nvarchar column; naive consumers that read only the first row/chunk truncate the document — concatenate all chunks (ADO.NET/EF handle it). Not per-property rows (b), not binary (c), no files (d)." },
+      "example": { "en": "In C#: use ExecuteScalar-style readers carefully; loop reader rows appending chunks, or use provider JSON support." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/json/format-query-results-as-json-with-for-json-sql-server"]
+    },
+    {
+      "id": "d1-jsonfn-0046",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-json-functions",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "To validate incoming documents have a numeric total AND a non-empty items array before accepting them, which WHERE clause is right?" },
+      "options": [
+        { "id": "a", "text": { "en": "WHERE TRY_CAST(JSON_VALUE(@d,'$.total') AS DECIMAL(12,2)) IS NOT NULL AND EXISTS (SELECT 1 FROM OPENJSON(@d,'$.items'))" } },
+        { "id": "b", "text": { "en": "WHERE ISJSON(@d) = 1" } },
+        { "id": "c", "text": { "en": "WHERE JSON_QUERY(@d,'$.total') IS NOT NULL" } },
+        { "id": "d", "text": { "en": "WHERE @d LIKE '%total%items%'" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Numeric-ness via TRY_CAST of the extracted scalar; non-emptiness via EXISTS over the shredded array. ISJSON (b) only proves well-formedness. JSON_QUERY on a scalar returns NULL always (c). LIKE (d) matches substrings, not structure." },
+      "example": { "en": "Layer checks: ISJSON → structural strict paths → semantic TRY_CAST/EXISTS." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/openjson-transact-sql"]
+    },
+    {
+      "id": "d1-jsonfn-0047",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-json-functions",
+      "type": "yesno", "difficulty": "easy",
+      "text": { "en": "Which function would you reach for? Answer Yes if JSON_VALUE is the right tool." },
+      "statements": [
+        { "id": "s1", "text": { "en": "Read $.customer.email (a string)" } },
+        { "id": "s2", "text": { "en": "Read the whole $.address object" } },
+        { "id": "s3", "text": { "en": "Read $.scores[2] (a number)" } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "no", "s3": "yes" },
+      "explanation": { "en": "Scalars — strings, numbers, booleans, including array elements that are scalars — are JSON_VALUE territory. Whole objects/arrays need JSON_QUERY. The scalar-vs-fragment decision is the most repeated micro-choice in JSON T-SQL." },
+      "example": { "en": "JSON_VALUE(Doc,'$.scores[2]') works; JSON_VALUE(Doc,'$.scores') returns NULL." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/json-value-transact-sql"]
+    },
+    {
+      "id": "d1-jsonfn-0048",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-json-functions",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A query must output EXACTLY this shape per row: {\"meta\":{\"v\":1},\"payload\":<original document>}. Doc is a json column. Which expression?" },
+      "options": [
+        { "id": "a", "text": { "en": "JSON_OBJECT('meta': JSON_OBJECT('v': 1), 'payload': JSON_QUERY(Doc))" } },
+        { "id": "b", "text": { "en": "JSON_OBJECT('meta.v': 1, 'payload': Doc)" } },
+        { "id": "c", "text": { "en": "CONCAT('{\"meta\":{\"v\":1},\"payload\":', Doc, '}')" } },
+        { "id": "d", "text": { "en": "FOR JSON AUTO" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Nested constructors + JSON_QUERY-embedding produce guaranteed-valid output. Dotted keys in JSON_OBJECT (b) create a literal \"meta.v\" key, not nesting (that's a FOR JSON PATH convention). String CONCAT (c) works until Doc is NULL or you forget an edge case — fragile by design. AUTO (d) doesn't build arbitrary envelopes." },
+      "example": { "en": "Envelope patterns like this feed message queues and model endpoints." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/json-object-transact-sql"]
+    },
+    {
+      "id": "d1-jsonfn-0049",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-json-functions",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "STRING_ESCAPE(@s, 'json') is used when:" },
+      "options": [
+        { "id": "a", "text": { "en": "Manually assembling JSON text and a raw string value must be safely escaped" } },
+        { "id": "b", "text": { "en": "Decoding escaped JSON" } },
+        { "id": "c", "text": { "en": "Validating documents" } },
+        { "id": "d", "text": { "en": "It is required before every JSON_VALUE call" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "STRING_ESCAPE escapes quotes/control characters for hand-built JSON (constructors and FOR JSON escape automatically, making manual assembly mostly obsolete). It doesn't unescape (b), validate (c), and extractors need no pre-escaping (d)." },
+      "example": { "en": "Prefer JSON_OBJECT over CONCAT + STRING_ESCAPE — correctness by construction." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/string-escape-transact-sql"]
+    },
+    {
+      "id": "d1-jsonfn-0050",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-json-functions",
+      "type": "dragdrop-order", "difficulty": "medium",
+      "text": { "en": "Order the transformation pipeline: relational order rows → nested JSON for an API." },
+      "items": [
+        { "id": "i1", "text": { "en": "Join Orders to OrderLines" } },
+        { "id": "i2", "text": { "en": "Group per order, aggregating lines with JSON_ARRAYAGG(JSON_OBJECT(...))" } },
+        { "id": "i3", "text": { "en": "Wrap order fields + lines array with JSON_OBJECT" } },
+        { "id": "i4", "text": { "en": "Return/aggregate the per-order documents to the caller" } }
+      ],
+      "answer": ["i1", "i2", "i3", "i4"],
+      "explanation": { "en": "Relational joins first, then aggregate the child rows into arrays, then construct the parent object, then emit. Reversing steps 2 and 3 is impossible — the array must exist before it's embedded." },
+      "example": { "en": "SELECT JSON_OBJECT('id': o.Id, 'lines': JSON_ARRAYAGG(JSON_OBJECT('sku': l.Sku, 'qty': l.Qty))) FROM Orders o JOIN Lines l ON ... GROUP BY o.Id;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/json-arrayagg-transact-sql"]
+    }
+  ]
+}

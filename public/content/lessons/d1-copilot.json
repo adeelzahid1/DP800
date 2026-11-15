@@ -1,0 +1,60 @@
+{
+  "subtopic": "d1-copilot",
+  "title": { "en": "GitHub Copilot & Copilot in Fabric" },
+  "prerequisiteRecap": [
+    {
+      "heading": { "en": "What AI-assisted SQL development means" },
+      "body": {
+        "en": "AI assistants now sit inside the SQL developer's tools: **GitHub Copilot** in VS Code (with the MSSQL extension) suggests and explains T-SQL, scaffolds schemas and fixes errors; **Copilot in Microsoft Fabric** helps inside Fabric experiences (SQL database in Fabric, warehouses, notebooks). The exam tests how to ENABLE them, how to CONFIGURE them, and — heavily — how to reason about their SECURITY impact."
+      }
+    }
+  ],
+  "sections": [
+    {
+      "heading": { "en": "Enabling GitHub Copilot for SQL work" },
+      "body": {
+        "en": "Requirements: a GitHub account with a Copilot subscription (Free tier with limits, Pro, Business or Enterprise), the **GitHub Copilot extension** in VS Code, and for database-aware help the **MSSQL extension for VS Code**, which integrates Copilot with your connected database: schema-aware chat (`@mssql`), query generation against real table definitions, and connection-aware suggestions. Sign in to GitHub inside VS Code; organizations using Copilot Business control enablement by policy. Copilot Chat offers **ask**, **edit** and **agent** modes — agent mode can take multi-step actions (run tools, iterate) rather than just answering."
+      }
+    },
+    {
+      "heading": { "en": "Enabling Copilot in Fabric" },
+      "body": {
+        "en": "Copilot in Fabric is enabled by a **tenant admin** in the Fabric admin portal (tenant settings → Copilot and Azure OpenAI Service). It requires a **paid Fabric capacity** (F-SKU or P-SKU); Copilot consumption bills against that capacity. Admins can scope enablement to specific security groups, and a separate setting governs whether data can be processed across geographic boundaries for Azure OpenAI. In a SQL database in Fabric, Copilot provides chat, code completions, quick actions (fix/explain) — all grounded in the database schema, not your row data (it sends schema/metadata, and only data you explicitly include)."
+      }
+    },
+    {
+      "heading": { "en": "Security impact of AI-assisted tools" },
+      "body": {
+        "en": "The study guide's first bullet is 'interpret security impact'. Key dimensions:\n- **Data exposure**: what leaves your machine? Prompts, open-file context, schema metadata. Copilot Business/Enterprise exclude your prompts/code from model training and offer content exclusions (`.copilotignore`-style rules via policy) for sensitive files (connection strings, migration data).\n- **Generated-code risk**: Copilot can hallucinate columns, write non-SARGable or subtly wrong queries, suggest insecure patterns (string-concatenated dynamic SQL → SQL injection). ALL generated SQL needs human review and testing before production — treat it like code from an unknown contributor.\n- **Permissions**: the assistant acts with YOUR database permissions. Running agent-mode tools against production with a sysadmin login is the anti-pattern; use least-privileged dev connections.\n- **Prompt injection**: content the agent reads (comments, data, web pages) can embed hostile instructions; agent mode with write-capable tools raises the stakes — require confirmations for destructive actions.\n- **Compliance**: review organizational/regulatory rules before sending schema or data fragments to cloud AI services; Fabric's cross-geo processing setting exists for this reason."
+      }
+    },
+    {
+      "heading": { "en": "Copilot instruction files" },
+      "body": {
+        "en": "Instruction files give Copilot persistent, versioned project context:\n- **`.github/copilot-instructions.md`** — repository-wide custom instructions automatically included in chat requests for that repo.\n- **`.instructions.md` files** (e.g. in `.github/instructions/`) with `applyTo:` glob frontmatter — scoped instructions (say, rules that apply only to `**/*.sql`).\nTypical SQL team content: naming conventions, 'always use schema-qualified names', 'prefer inline TVFs', error-handling templates, forbidden patterns (SELECT *, NOLOCK). Benefits: consistent suggestions across the team, no per-prompt repetition, reviewable in pull requests like any code."
+      },
+      "code": "-- .github/copilot-instructions.md (excerpt)\n# SQL conventions\n- Use schema-qualified two-part names (dbo.Orders).\n- Every stored procedure: SET NOCOUNT ON; SET XACT_ABORT ON; TRY/CATCH with THROW.\n- Never suggest NOLOCK; use RCSI assumptions instead.\n- All new tables need explicit PK names: PK_<Table>.",
+      "codeLang": "text"
+    },
+    {
+      "heading": { "en": "What Copilot is good and bad at (exam framing)" },
+      "body": {
+        "en": "Strong: boilerplate DDL, translating requirements to first-draft queries, explaining unfamiliar code, writing tests, regex patterns, documentation. Weak/dangerous: schema facts it can't see (hallucinated columns), performance subtleties (SARGability, index design), security-sensitive code, business rules it was never told. The intended workflow is ALWAYS assistant-drafts-human-reviews: questions that let Copilot deploy unreviewed SQL to production are wrong answers."
+      }
+    }
+  ],
+  "examTips": [
+    { "en": "Copilot in Fabric: tenant-admin enablement + paid Fabric capacity (F/P SKU); consumption bills to the capacity." },
+    { "en": "GitHub Copilot for DB work: Copilot extension + MSSQL extension in VS Code; @mssql chat is schema-aware." },
+    { "en": ".github/copilot-instructions.md = repo-wide; *.instructions.md with applyTo globs = scoped. Both are version-controlled." },
+    { "en": "Security impact pillars: data leaving the boundary, hallucinated/insecure code needing review, assistant inherits YOUR permissions, prompt injection in agent mode." },
+    { "en": "Business/Enterprise plans: prompts excluded from training + content-exclusion policies — the answer to 'protect proprietary code'." },
+    { "en": "Any option implying 'auto-apply AI SQL to production without review' is wrong." }
+  ],
+  "sources": [
+    "https://learn.microsoft.com/en-us/sql/tools/visual-studio-code-extensions/mssql/mssql-copilot",
+    "https://learn.microsoft.com/en-us/fabric/fundamentals/copilot-fabric-overview",
+    "https://docs.github.com/en/copilot/customizing-copilot/adding-repository-custom-instructions-for-github-copilot",
+    "https://learn.microsoft.com/en-us/fabric/admin/service-admin-portal-copilot"
+  ]
+}

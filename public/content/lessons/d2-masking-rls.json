@@ -1,0 +1,65 @@
+{
+  "subtopic": "d2-masking-rls",
+  "title": { "en": "Dynamic Data Masking & Row-Level Security" },
+  "prerequisiteRecap": [
+    {
+      "heading": { "en": "Two different axes of hiding" },
+      "body": {
+        "en": "**Dynamic Data Masking (DDM)** hides parts of COLUMN VALUES in results (vertical obfuscation at display level). **Row-Level Security (RLS)** hides entire ROWS depending on who is querying (horizontal filtering). Both work without changing application queries, both are access-control-style features — NOT encryption. They're frequently combined: RLS decides which rows you get; DDM decides how much of each sensitive value you see."
+      }
+    }
+  ],
+  "sections": [
+    {
+      "heading": { "en": "DDM: masking functions" },
+      "body": {
+        "en": "Masks are declared per column with `MASKED WITH (FUNCTION = '…')`:\n- `default()` — full mask by type: 'xxxx' for strings, 0 for numbers, 1900-01-01 for dates.\n- `email()` — aXXX@XXXX.com (first letter kept).\n- `partial(prefix, 'padding', suffix)` — keep first/last characters: `partial(0,\"XXX-XX-\",4)` → XXX-XX-1234.\n- `random(low, high)` — random number in range (numeric types).\n- `datetime('part')` — masks datetime parts (newer addition).\nUsers WITH the **UNMASK** permission see real data; everyone else sees masks. UNMASK is grantable at database, schema, table and even column granularity (modern versions). Masking applies on read — the stored data is plaintext and unaffected."
+      },
+      "code": "CREATE TABLE dbo.Customers (\n    CustomerId INT IDENTITY PRIMARY KEY,\n    Name  NVARCHAR(100),\n    Email VARCHAR(320) MASKED WITH (FUNCTION = 'email()'),\n    Phone VARCHAR(20)  MASKED WITH (FUNCTION = 'partial(0,\"***-***-\",4)'),\n    CreditLimit DECIMAL(12,2) MASKED WITH (FUNCTION = 'random(1, 9)')\n);\n\nGRANT UNMASK ON dbo.Customers(Email) TO SupportRole;  -- column-granular unmask"
+    },
+    {
+      "heading": { "en": "DDM: what it is NOT" },
+      "body": {
+        "en": "DDM is a convenience/exposure-reduction feature, not a security boundary:\n- Data at rest is UNCHANGED (not encryption).\n- Users with ad-hoc query ability can INFER values: `WHERE Salary > 99999` returns matching rows even though Salary displays masked — brute-forceable.\n- Predicates, joins and functions operate on REAL values (masking happens at result output).\nUse it to reduce casual/accidental exposure (support screens, call centers), not against determined attackers with query access. Administrators effectively see unmasked data."
+      }
+    },
+    {
+      "heading": { "en": "RLS: security policies and predicates" },
+      "body": {
+        "en": "RLS attaches predicate logic to a table through two objects:\n1. An **inline table-valued function** (the predicate function) returning 1 for allowed rows — typically comparing a row column to `USER_NAME()`, `SESSION_CONTEXT(N'TenantId')`, or membership checks.\n2. A **SECURITY POLICY** binding the function to tables:\n- **FILTER predicates** silently filter rows from SELECT/UPDATE/DELETE (reads don't see others' rows).\n- **BLOCK predicates** prevent writes violating the rule: AFTER INSERT/AFTER UPDATE (can't create/modify rows outside your slice), BEFORE UPDATE/BEFORE DELETE (can't touch rows you shouldn't).\nFilter alone does NOT stop a user from INSERTing rows for another tenant — add AFTER INSERT block predicates for full containment."
+      },
+      "code": "CREATE SCHEMA Security;\nGO\nCREATE FUNCTION Security.fn_TenantPredicate (@TenantId INT)\nRETURNS TABLE\nWITH SCHEMABINDING\nAS RETURN\n    SELECT 1 AS fn_result\n    WHERE @TenantId = CAST(SESSION_CONTEXT(N'TenantId') AS INT);\nGO\nCREATE SECURITY POLICY Security.TenantIsolation\n    ADD FILTER PREDICATE Security.fn_TenantPredicate(TenantId) ON dbo.Orders,\n    ADD BLOCK  PREDICATE Security.fn_TenantPredicate(TenantId) ON dbo.Orders AFTER INSERT\nWITH (STATE = ON);"
+    },
+    {
+      "heading": { "en": "SESSION_CONTEXT for app-tenancy" },
+      "body": {
+        "en": "Apps using one shared SQL login (connection pooling) can't rely on USER_NAME(). The pattern: after opening a connection, the app calls `EXEC sp_set_session_context @key = N'TenantId', @value = @tenant, @read_only = 1;` and RLS predicates read `SESSION_CONTEXT(N'TenantId')`. `@read_only = 1` prevents the value changing for the rest of the session — important so a hijacked query can't switch tenants. This SESSION_CONTEXT pattern is also exactly how middle-tier apps pass user identity for auditing."
+      }
+    },
+    {
+      "heading": { "en": "RLS gotchas" },
+      "body": {
+        "en": "- Predicate functions must be inline TVFs WITH SCHEMABINDING; they run on EVERY query against the table — keep them cheap (avoid joins to big tables; index the columns they use).\n- **Side-channel leakage**: carefully crafted queries (divide-by-zero per row, timing) can probe filtered rows; RLS is robust but not absolute against hostile ad-hoc query authors.\n- Admins/db_owner can ALTER the policy — RLS protects against application-level and ordinary-user access, not against those who can change the policy.\n- SELECT over a view + RLS on base table: predicate still applies (it's bound to the table).\n- Watch interactions: bulk loads (block predicates apply), temporal history tables, and columnstore all work but need testing."
+      }
+    },
+    {
+      "heading": { "en": "Choosing and combining" },
+      "body": {
+        "en": "- 'Users may only see their department's/tenant's rows' → **RLS**.\n- 'Call-center staff shouldn't see full card numbers on screen' → **DDM**.\n- 'Values must be unreadable even to DBAs' → **Always Encrypted** (previous subtopic), NOT DDM.\n- 'Specific users can see full values' → GRANT UNMASK (optionally column-level).\n- Multi-tenant SaaS on shared schema → RLS with SESSION_CONTEXT + block predicates (+ tenant column indexed first in keys)."
+      }
+    }
+  ],
+  "examTips": [
+    { "en": "DDM functions: default(), email(), partial(prefix,'pad',suffix), random(), datetime(). UNMASK permission reveals; grantable down to column level." },
+    { "en": "DDM does not change stored data and can be inferred around via predicates — never the answer for 'protect from attackers/DBAs'." },
+    { "en": "RLS = inline TVF (schemabound) + SECURITY POLICY. FILTER hides rows on read; BLOCK stops writes (AFTER INSERT etc.)." },
+    { "en": "Filter-only RLS still allows inserting rows for other tenants — the AFTER INSERT block predicate question is a classic." },
+    { "en": "Shared-login apps: sp_set_session_context (@read_only=1) + SESSION_CONTEXT in the predicate." },
+    { "en": "RLS predicate functions execute per query — performance questions point at indexing predicate columns and keeping functions simple." }
+  ],
+  "sources": [
+    "https://learn.microsoft.com/en-us/sql/relational-databases/security/dynamic-data-masking",
+    "https://learn.microsoft.com/en-us/sql/relational-databases/security/row-level-security",
+    "https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-set-session-context-transact-sql"
+  ]
+}

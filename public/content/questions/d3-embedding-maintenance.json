@@ -1,0 +1,858 @@
+{
+  "subtopic": "d3-embedding-maintenance",
+  "cases": [
+    {
+      "id": "case-em-catalog",
+      "title": { "en": "Fabrikam catalog embeddings" },
+      "scenario": {
+        "en": "Fabrikam's Azure SQL Database holds 2 million products. Embeddings live in `dbo.ProductEmbeddings(ProductId, Embedding VECTOR(1536), TextHash, ModelVersion)`.\n- About 20,000 description edits per day must be searchable within **5 minutes**.\n- A pricing job updates 500,000 prices per day (prices aren't embedded).\n- The team writes .NET and wants minimal extra load inside the database.\n- Operations warns that any processing service might be down for up to 3 days during incidents.\n- Next quarter the team will move to a new embedding model."
+      }
+    }
+  ],
+  "questions": [
+    {
+      "id": "d3-em-0001",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-maintenance",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Why isn't generating embeddings a one-time task?" },
+      "options": [
+        { "id": "a", "text": { "en": "When source text is inserted, updated or deleted, or the model changes, stored vectors stop reflecting the current data" } },
+        { "id": "b", "text": { "en": "Vectors expire automatically after 24 hours" } },
+        { "id": "c", "text": { "en": "The vector type loses precision over time" } },
+        { "id": "d", "text": { "en": "Vector indexes delete old vectors" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Embeddings are snapshots of text; data and model changes make them stale. Vectors don't expire, lose precision or get deleted by indexes." },
+      "example": { "en": "A product renamed from 'trail shoe' to 'hiking boot' keeps matching 'trail shoe' until re-embedded." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-models-embeddings-with-sql/05-generate-maintain-embeddings-sql-database-workloads"]
+    },
+    {
+      "id": "d3-em-0002",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-maintenance",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "You must generate embeddings for 3 million existing rows. Which approach is best?" },
+      "options": [
+        { "id": "a", "text": { "en": "Loop over small batches (e.g., UPDATE TOP (500) … WHERE Embedding IS NULL) committing each batch, with retries and pacing" } },
+        { "id": "b", "text": { "en": "One UPDATE of all 3 million rows inside a single explicit transaction" } },
+        { "id": "c", "text": { "en": "A trigger that fires when you SELECT the rows" } },
+        { "id": "d", "text": { "en": "Wait for users to edit each row" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Batching keeps transactions short, limits lock and log impact, survives throttling and can resume. One huge transaction risks long blocking, log growth and total rollback on a single failure. Triggers don't fire on SELECT, and waiting for edits never finishes." },
+      "example": { "en": "WHILE 1=1 BEGIN UPDATE TOP (500) …; IF @@ROWCOUNT = 0 BREAK; END" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/ai-generate-embeddings-transact-sql"]
+    },
+    {
+      "id": "d3-em-0003",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-maintenance",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What's the main trade-off of using table triggers to maintain embeddings?" },
+      "options": [
+        { "id": "a", "text": { "en": "Changes are reflected quickly, but the trigger adds work to every write operation" } },
+        { "id": "b", "text": { "en": "Triggers can't detect updates" } },
+        { "id": "c", "text": { "en": "Triggers run only once a day" } },
+        { "id": "d", "text": { "en": "Triggers require CDC" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Triggers run inside the write transaction: fresh results, but extra latency and resource use for writers. They fire on inserts/updates immediately and don't depend on CDC." },
+      "example": { "en": "Fine for an internal table with a few writes per minute." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-models-embeddings-with-sql/05-generate-maintain-embeddings-sql-database-workloads"]
+    },
+    {
+      "id": "d3-em-0004",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-maintenance",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "An AFTER UPDATE trigger calls AI_GENERATE_EMBEDDINGS for each changed row on a busy orders table. During an Azure OpenAI slowdown, order updates time out. Why, and what's a better design?" },
+      "options": [
+        { "id": "a", "text": { "en": "The model call runs inside the user's transaction, holding locks while waiting; have the trigger only mark rows (queue/flag) and embed them asynchronously" } },
+        { "id": "b", "text": { "en": "Triggers can't call external models; use INSTEAD OF triggers" } },
+        { "id": "c", "text": { "en": "Add NOLOCK hints to the trigger" } },
+        { "id": "d", "text": { "en": "Increase the vector dimensions" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Synchronous network calls inside triggers tie write latency and success to the endpoint. Marking rows keeps the transaction short and lets a background process (job, Function) handle embeddings. INSTEAD OF triggers have the same problem, NOLOCK doesn't apply to the writes, and dimensions are unrelated." },
+      "example": { "en": "INSERT INTO dbo.EmbeddingQueue (ProductId) SELECT ProductId FROM inserted;" },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-models-embeddings-with-sql/05-generate-maintain-embeddings-sql-database-workloads", "https://devblogs.microsoft.com/azure-sql/database-and-ai-solutions-for-keeping-embeddings-updated/"]
+    },
+    {
+      "id": "d3-em-0005",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-maintenance",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Complete a lightweight trigger that queues products for re-embedding only when Description changes." },
+      "code": "CREATE OR ALTER TRIGGER dbo.trg_Products_QueueEmbedding\nON dbo.Products\n[BLANK1] INSERT, UPDATE\nAS\nBEGIN\n    SET NOCOUNT ON;\n    IF [BLANK2](Description)\n        INSERT INTO dbo.EmbeddingQueue (ProductId, QueuedAt)\n        SELECT ProductId, SYSUTCDATETIME()\n        FROM [BLANK3];\nEND;",
+      "blanks": [
+        { "id": "b1", "label": { "en": "BLANK1" }, "choices": [
+          { "id": "c1", "text": { "en": "AFTER" } },
+          { "id": "c2", "text": { "en": "BEFORE" } },
+          { "id": "c3", "text": { "en": "INSTEAD OF SELECT," } }
+        ] },
+        { "id": "b2", "label": { "en": "BLANK2" }, "choices": [
+          { "id": "c1", "text": { "en": "UPDATE" } },
+          { "id": "c2", "text": { "en": "CHANGED" } },
+          { "id": "c3", "text": { "en": "COLUMNS_UPDATED" } }
+        ] },
+        { "id": "b3", "label": { "en": "BLANK3" }, "choices": [
+          { "id": "c1", "text": { "en": "deleted" } },
+          { "id": "c2", "text": { "en": "inserted" } },
+          { "id": "c3", "text": { "en": "dbo.Products" } }
+        ] }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1", "b3": "c2" },
+      "explanation": { "en": "SQL Server has AFTER and INSTEAD OF DML triggers (no BEFORE, and none on SELECT). UPDATE(column) tests whether the column was in the statement's SET list (always true for INSERT). The inserted pseudo-table holds the new rows." },
+      "example": { "en": "A Function or job drains dbo.EmbeddingQueue and calls the model outside the user's transaction." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-trigger-transact-sql"]
+    },
+    {
+      "id": "d3-em-0006",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-maintenance",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "How does a Change Tracking-based embedding refresh work?" },
+      "options": [
+        { "id": "a", "text": { "en": "A background job asks CHANGETABLE which rows changed since its last version and re-embeds them in batches" } },
+        { "id": "b", "text": { "en": "Change Tracking calls the embedding model automatically" } },
+        { "id": "c", "text": { "en": "Change Tracking stores the new embeddings" } },
+        { "id": "d", "text": { "en": "It requires a trigger on every table" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Change Tracking only records which rows changed; your process reads those keys, fetches current text and generates embeddings. It never calls models or stores vectors, and needs no triggers." },
+      "example": { "en": "SELECT ct.ProductId FROM CHANGETABLE(CHANGES dbo.Products, @last) AS ct;" },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-models-embeddings-with-sql/05-generate-maintain-embeddings-sql-database-workloads"]
+    },
+    {
+      "id": "d3-em-0007",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-maintenance",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "The embedding refresh job may be paused for up to 5 days during maintenance. Change Tracking retention is 2 days. What's the risk and fix?" },
+      "options": [
+        { "id": "a", "text": { "en": "Changes older than 2 days are cleaned up, so the job would miss them; set CHANGE_RETENTION above the longest expected pause (or reinitialize when the version is too old)" } },
+        { "id": "b", "text": { "en": "No risk; Change Tracking keeps changes until read" } },
+        { "id": "c", "text": { "en": "The job will re-embed every row twice" } },
+        { "id": "d", "text": { "en": "Change Tracking stops recording while the job is paused" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Cleanup removes change information older than retention regardless of whether it was consumed; CHANGE_TRACKING_MIN_VALID_VERSION tells you if you fell behind. Recording continues during pauses." },
+      "example": { "en": "ALTER DATABASE CURRENT SET CHANGE_TRACKING (CHANGE_RETENTION = 7 DAYS);" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-functions/functions-bindings-azure-sql-trigger"]
+    },
+    {
+      "id": "d3-em-0008",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-maintenance",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A Change Tracking job re-embeds products whenever any column changes, wasting calls on price-only updates. How can it detect whether Description changed?" },
+      "options": [
+        { "id": "a", "text": { "en": "Enable TRACK_COLUMNS_UPDATED and test SYS_CHANGE_COLUMNS with CHANGE_TRACKING_IS_COLUMN_IN_MASK (or compare a stored text hash)" } },
+        { "id": "b", "text": { "en": "Use UPDATE(Description) inside the job" } },
+        { "id": "c", "text": { "en": "Read the old Description from CHANGETABLE" } },
+        { "id": "d", "text": { "en": "It's impossible with Change Tracking" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "With column tracking on, SYS_CHANGE_COLUMNS records which columns changed, and CHANGE_TRACKING_IS_COLUMN_IN_MASK checks a specific column. A hash comparison also works. UPDATE() only works inside triggers, and Change Tracking doesn't store old values." },
+      "example": { "en": "WHERE CHANGE_TRACKING_IS_COLUMN_IN_MASK(COLUMNPROPERTY(OBJECT_ID('dbo.Products'), 'Description', 'ColumnId'), ct.SYS_CHANGE_COLUMNS) = 1" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-functions/change-tracking-is-column-in-mask-transact-sql"]
+    },
+    {
+      "id": "d3-em-0009",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-maintenance",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Why might a team use CDC rather than Change Tracking to drive embedding maintenance?" },
+      "options": [
+        { "id": "a", "text": { "en": "CDC records before and after values asynchronously from the log, suiting high-volume tables and letting the process skip changes where the text didn't change" } },
+        { "id": "b", "text": { "en": "CDC generates embeddings automatically" } },
+        { "id": "c", "text": { "en": "CDC adds no storage" } },
+        { "id": "d", "text": { "en": "CDC works without any capture process" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "CDC's change tables carry old and new values, captured asynchronously, which suits high volume and selective re-embedding. It doesn't call models, it uses change tables (storage), and it relies on a capture process (Agent or the Azure SQL scheduler)." },
+      "example": { "en": "Compare __$operation 3 (before) and 4 (after) Description values." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-models-embeddings-with-sql/05-generate-maintain-embeddings-sql-database-workloads"]
+    },
+    {
+      "id": "d3-em-0010",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-maintenance",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What's the key benefit of the Azure Functions SQL trigger binding for embedding maintenance?" },
+      "options": [
+        { "id": "a", "text": { "en": "Embedding work runs outside the database engine, reacting to changes and scaling independently" } },
+        { "id": "b", "text": { "en": "It runs inside the user's transaction for instant consistency" } },
+        { "id": "c", "text": { "en": "It doesn't need Change Tracking" } },
+        { "id": "d", "text": { "en": "It stores embeddings in Azure Storage automatically" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The binding polls Change Tracking and invokes your code in Functions, offloading model calls from SQL. It doesn't run in the user's transaction, it requires Change Tracking, and you decide where to write vectors." },
+      "example": { "en": "[SqlTrigger(\"[dbo].[Products]\", \"SqlConnectionString\")] IReadOnlyList<SqlChange<Product>> changes" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-functions/functions-bindings-azure-sql-trigger"]
+    },
+    {
+      "id": "d3-em-0011",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-maintenance",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A SQL-triggered function on dbo.Products computes an embedding and writes it to dbo.Products.Embedding. CPU and model costs climb steadily. What's wrong?" },
+      "options": [
+        { "id": "a", "text": { "en": "Writing the embedding updates the tracked table, which produces a new change that triggers the function again — a loop; write to a separate table or skip unchanged text" } },
+        { "id": "b", "text": { "en": "The function's batch size is too small" } },
+        { "id": "c", "text": { "en": "Vector columns can't be updated" } },
+        { "id": "d", "text": { "en": "The polling interval is too long" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Any update to a Change Tracking-enabled table is a change, including the function's own write. Store embeddings in an untracked table, or compare a text hash and skip rows whose text didn't change. Batch size and polling don't remove the feedback loop." },
+      "example": { "en": "Write to dbo.ProductEmbeddings (no Change Tracking) keyed by ProductId." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-functions/functions-bindings-azure-sql-trigger"]
+    },
+    {
+      "id": "d3-em-0012",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-maintenance",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which maintenance option is described as low-code orchestration that integrates well with other Azure services?" },
+      "options": [
+        { "id": "a", "text": { "en": "Azure Logic Apps" } },
+        { "id": "b", "text": { "en": "Table triggers" } },
+        { "id": "c", "text": { "en": "CDC" } },
+        { "id": "d", "text": { "en": "Change Tracking" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Logic Apps workflows can detect changed rows, call an embedding service and write results with connectors and little code. Triggers, CDC and Change Tracking are database features that need code around them." },
+      "example": { "en": "Recurrence (5 min) → SQL query changed rows → HTTP call to embeddings → SQL update." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-models-embeddings-with-sql/05-generate-maintain-embeddings-sql-database-workloads"]
+    },
+    {
+      "id": "d3-em-0013",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-maintenance",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which maintenance option streams DML changes to Azure Event Hubs in near real time without adding work to database transactions, and supports multiple consumers?" },
+      "options": [
+        { "id": "a", "text": { "en": "Change event streaming (CES)" } },
+        { "id": "b", "text": { "en": "Table triggers" } },
+        { "id": "c", "text": { "en": "Logic Apps recurrence" } },
+        { "id": "d", "text": { "en": "Manual re-embedding" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "CES publishes inserts, updates and deletes as CloudEvents to Event Hubs or Fabric Eventstream; consumers regenerate embeddings, decoupled from the database. Triggers add transaction work; recurrence and manual processes aren't streaming." },
+      "example": { "en": "Event Hubs → Function (Event Hubs trigger) → embeddings → ProductEmbeddings." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-models-embeddings-with-sql/05-generate-maintain-embeddings-sql-database-workloads"]
+    },
+    {
+      "id": "d3-em-0014",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-maintenance",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "You enable CES on dbo.Articles to drive embedding updates. Existing articles have no embeddings yet. What else is needed?" },
+      "options": [
+        { "id": "a", "text": { "en": "A separate backfill for existing rows, because CES streams only changes made after it's enabled" } },
+        { "id": "b", "text": { "en": "Nothing; CES sends a snapshot of all rows first" } },
+        { "id": "c", "text": { "en": "Enable CDC as well so CES can read the snapshot" } },
+        { "id": "d", "text": { "en": "TRUNCATE and reload the table so every row produces an event" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "CES doesn't seed existing data. Backfill with a batch job. CES isn't supported alongside CDC, and TRUNCATE isn't supported on CES-enabled tables." },
+      "example": { "en": "Run a one-time batched AI_GENERATE_EMBEDDINGS update, then rely on CES for changes." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/track-changes/change-event-streaming/configure"]
+    },
+    {
+      "id": "d3-em-0015",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-maintenance",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What role does Microsoft Foundry typically play in embedding maintenance?" },
+      "options": [
+        { "id": "a", "text": { "en": "It manages, evaluates and hosts the embedding models, while another process detects changes and updates the database" } },
+        { "id": "b", "text": { "en": "It detects row changes in SQL by reading the transaction log" } },
+        { "id": "c", "text": { "en": "It replaces the vector data type" } },
+        { "id": "d", "text": { "en": "It creates vector indexes" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Foundry centralizes model management (selection, deployments, versions, evaluation). Change detection comes from triggers, Change Tracking, CDC, CES, Functions or Logic Apps. Foundry doesn't read SQL logs, replace types or build SQL indexes." },
+      "example": { "en": "Deploy text-embedding-3-small in Foundry; the external model points to that deployment." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-models-embeddings-with-sql/05-generate-maintain-embeddings-sql-database-workloads"]
+    },
+    {
+      "id": "d3-em-0016",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-maintenance",
+      "type": "dragdrop-match", "difficulty": "medium",
+      "text": { "en": "Match each maintenance method to its defining characteristic." },
+      "items": [
+        { "id": "i1", "text": { "en": "Table trigger" } },
+        { "id": "i2", "text": { "en": "Change Tracking" } },
+        { "id": "i3", "text": { "en": "CDC" } },
+        { "id": "i4", "text": { "en": "Azure Functions SQL trigger" } },
+        { "id": "i5", "text": { "en": "Change event streaming" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "Runs inside the write transaction; fastest but adds write overhead" } },
+        { "id": "t2", "text": { "en": "Records which rows changed; batch processing balances latency and load" } },
+        { "id": "t3", "text": { "en": "Before/after values from the log; suits high volume" } },
+        { "id": "t4", "text": { "en": "Code outside the engine reacting to changes, scaling independently" } },
+        { "id": "t5", "text": { "en": "Pushes events to Event Hubs for multiple consumers" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4", "i5": "t5" },
+      "explanation": { "en": "These are the trade-offs Microsoft Learn describes for each option; choose by volume, latency, where compute runs and how many consumers need changes." },
+      "example": { "en": "Logic Apps (low-code) and Foundry (model management) complete the list." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-models-embeddings-with-sql/05-generate-maintain-embeddings-sql-database-workloads"]
+    },
+    {
+      "id": "d3-em-0017",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-maintenance",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "An internal FAQ table gets about 20 edits a day, and edits must be searchable immediately. Which method is simplest?" },
+      "options": [
+        { "id": "a", "text": { "en": "A table trigger that regenerates (or marks and immediately processes) the edited rows" } },
+        { "id": "b", "text": { "en": "Change event streaming with an Event Hubs cluster" } },
+        { "id": "c", "text": { "en": "A nightly full re-embedding job" } },
+        { "id": "d", "text": { "en": "CDC with a custom ETL pipeline" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "At very low volume, the overhead of a trigger is acceptable and gives immediate freshness. CES and CDC pipelines are heavier than needed, and a nightly job misses the 'immediately' requirement." },
+      "example": { "en": "AFTER INSERT, UPDATE trigger on dbo.Faq." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-models-embeddings-with-sql/05-generate-maintain-embeddings-sql-database-workloads"]
+    },
+    {
+      "id": "d3-em-0018",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-maintenance",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A table receives 50,000 description updates per hour; embeddings may lag a few minutes; the team writes C# and wants model calls out of the database. Which method fits?" },
+      "options": [
+        { "id": "a", "text": { "en": "Azure Functions with the SQL trigger binding" } },
+        { "id": "b", "text": { "en": "A trigger that calls the model synchronously" } },
+        { "id": "c", "text": { "en": "Re-embedding all rows nightly" } },
+        { "id": "d", "text": { "en": "Manual re-embedding on request" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The SQL trigger binding processes Change Tracking batches in C# outside the engine and scales with load. Synchronous triggers would slow writers, nightly full runs miss the freshness target and waste calls, and manual processes don't scale." },
+      "example": { "en": "Tune MaxBatchSize and enable runtime scale monitoring on Premium plans." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-functions/functions-bindings-azure-sql-trigger"]
+    },
+    {
+      "id": "d3-em-0019",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-maintenance",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Product changes must update a search index, a recommendation service and an analytics store, each owned by a different team, in near real time. Which method fits best?" },
+      "options": [
+        { "id": "a", "text": { "en": "Change event streaming to Event Hubs, with each team's consumer (one of which regenerates embeddings)" } },
+        { "id": "b", "text": { "en": "Three separate triggers on the table" } },
+        { "id": "c", "text": { "en": "A shared Change Tracking job that calls all three services" } },
+        { "id": "d", "text": { "en": "Logic Apps recurrence every 24 hours" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "CES decouples producers from consumers and supports multiple consumers of the same stream. Triggers would put three integrations in every write, a shared job couples teams, and daily recurrence isn't near real time." },
+      "example": { "en": "Separate consumer groups per team on the 'products' event hub." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/track-changes/change-event-streaming/overview"]
+    },
+    {
+      "id": "d3-em-0020",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-maintenance",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Business analysts want to build, without code, a workflow that re-embeds new knowledge-base rows and notifies a Teams channel. Which option fits?" },
+      "options": [
+        { "id": "a", "text": { "en": "Azure Logic Apps" } },
+        { "id": "b", "text": { "en": "CDC with Debezium" } },
+        { "id": "c", "text": { "en": "A CLR trigger" } },
+        { "id": "d", "text": { "en": "SQL Server Agent jobs" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Logic Apps provides designer-based workflows with SQL, HTTP/AI and Teams connectors. The other options require code or DBA tooling (and Agent isn't available in Azure SQL Database)." },
+      "example": { "en": "Trigger: When an item is created (V2) → Action: HTTP embeddings → Action: Update row → Post to Teams." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-models-embeddings-with-sql/05-generate-maintain-embeddings-sql-database-workloads"]
+    },
+    {
+      "id": "d3-em-0021",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-maintenance",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A high-volume system already uses CDC for its warehouse ETL and must re-embed only rows whose text actually changed. Which approach fits?" },
+      "options": [
+        { "id": "a", "text": { "en": "Read the CDC change tables asynchronously and compare before/after Description values before re-embedding" } },
+        { "id": "b", "text": { "en": "Add a synchronous trigger that calls the model" } },
+        { "id": "c", "text": { "en": "Enable CES alongside CDC on the same database" } },
+        { "id": "d", "text": { "en": "Re-embed every changed row regardless of column" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "CDC provides old and new values, so the process can skip non-text changes. Synchronous triggers add write overhead, CES isn't supported with CDC in the same database, and re-embedding everything wastes calls." },
+      "example": { "en": "WHERE __$operation = 4 AND before.Description <> after.Description" },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-models-embeddings-with-sql/05-generate-maintain-embeddings-sql-database-workloads", "https://learn.microsoft.com/en-us/sql/relational-databases/track-changes/change-event-streaming/configure"]
+    },
+    {
+      "id": "d3-em-0022",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-maintenance",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "You're replacing text-embedding-ada-002 with text-embedding-3-small for 5 million rows while search stays online. What's a sound plan?" },
+      "options": [
+        { "id": "a", "text": { "en": "Add the new vectors with a ModelVersion marker in background batches, keep querying old vectors with the old model until complete, then switch query embedding and drop/recreate the vector index on the new data" } },
+        { "id": "b", "text": { "en": "ALTER the external model and keep the old vectors" } },
+        { "id": "c", "text": { "en": "Re-embed half the rows and mix both models in results" } },
+        { "id": "d", "text": { "en": "Normalize the old vectors so they match the new model" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Query and stored vectors must come from the same model, so migrate fully before switching, tracking which rows are done. After a near-complete replacement, Microsoft recommends recreating the vector index. Mixing models or normalizing doesn't make spaces compatible." },
+      "example": { "en": "Shadow column or table: Embedding_v2 VECTOR(1536), then swap." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-vector-index-transact-sql"]
+    },
+    {
+      "id": "d3-em-0023",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-maintenance",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "After re-embedding nearly all rows with a new model, what does Microsoft recommend for the existing vector index?" },
+      "options": [
+        { "id": "a", "text": { "en": "Drop and recreate it so it reflects the new embedding distribution" } },
+        { "id": "b", "text": { "en": "Nothing; latest indexes adapt instantly with no quality impact" } },
+        { "id": "c", "text": { "en": "Switch its metric to dot" } },
+        { "id": "d", "text": { "en": "Disable it permanently" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Latest indexes support DML, but after near-complete replacement, recall and ranking may degrade because the structure was built for different data; recreating restores predictable behavior. Changing the metric or disabling the index isn't the recommendation." },
+      "example": { "en": "DROP INDEX vec_idx ON dbo.ProductEmbeddings; CREATE VECTOR INDEX vec_idx ON dbo.ProductEmbeddings(Embedding) WITH (METRIC = 'cosine');" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-vector-index-transact-sql"]
+    },
+    {
+      "id": "d3-em-0024",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-maintenance",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Products are deleted from dbo.Products. How do you keep dbo.ProductChunks from returning deleted products?" },
+      "options": [
+        { "id": "a", "text": { "en": "Define the foreign key with ON DELETE CASCADE (or delete chunk rows in the maintenance process)" } },
+        { "id": "b", "text": { "en": "Nothing; vector search skips deleted parents automatically" } },
+        { "id": "c", "text": { "en": "Set the deleted product's embedding to all zeros" } },
+        { "id": "d", "text": { "en": "Rebuild the vector index nightly" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Chunk rows are independent rows; remove them with the parent via cascade or your processor. Search doesn't know about parents, zero vectors corrupt similarity, and index rebuilds don't delete rows." },
+      "example": { "en": "ProductId INT NOT NULL REFERENCES dbo.Products(ProductId) ON DELETE CASCADE" },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-models-embeddings-with-sql/05-generate-maintain-embeddings-sql-database-workloads"]
+    },
+    {
+      "id": "d3-em-0025",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-maintenance",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "In a SQL-triggered C# function, a SqlChange<Product> arrives with Operation = Delete. What should the function do?" },
+      "options": [
+        { "id": "a", "text": { "en": "Delete the product's rows from the embeddings table instead of calling the model" } },
+        { "id": "b", "text": { "en": "Embed the deleted product's text" } },
+        { "id": "c", "text": { "en": "Ignore it; deletes can't be detected" } },
+        { "id": "d", "text": { "en": "Re-insert the product" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The trigger reports Insert, Update and Delete operations. Deletes mean the vector should go away; there's nothing to embed, and resurrecting data would be wrong." },
+      "example": { "en": "if (c.Operation == SqlChangeOperation.Delete) await DeleteEmbeddingAsync(c.Item.ProductId);" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-functions/functions-bindings-azure-sql-trigger"]
+    },
+    {
+      "id": "d3-em-0026",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-maintenance",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "For each statement about embedding maintenance, answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "Changing the embedding model requires re-embedding stored data." } },
+        { "id": "s2", "text": { "en": "A price-only update should always trigger re-embedding of the product description." } },
+        { "id": "s3", "text": { "en": "Asynchronous methods trade a little freshness for less impact on writes." } },
+        { "id": "s4", "text": { "en": "There's a single correct maintenance method for every workload." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "no", "s3": "yes", "s4": "no" },
+      "explanation": { "en": "New models mean new vector spaces. Only changes to embedded text matter. Async approaches offload work at the cost of some lag. Microsoft stresses there's no single correct way: choose by volume, frequency, latency and architecture." },
+      "example": { "en": "Document the chosen method and its freshness SLA." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-models-embeddings-with-sql/05-generate-maintain-embeddings-sql-database-workloads"]
+    },
+    {
+      "id": "d3-em-0027",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-maintenance",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "How can a maintenance process cheaply tell whether a row's embedded text really changed?" },
+      "options": [
+        { "id": "a", "text": { "en": "Store a hash of the embedded text (e.g., HASHBYTES('SHA2_256', text)) and compare it before calling the model" } },
+        { "id": "b", "text": { "en": "Compare the vectors with VECTOR_DISTANCE before embedding" } },
+        { "id": "c", "text": { "en": "Call the model and compare the new vector to the old one" } },
+        { "id": "d", "text": { "en": "Check the row's IDENTITY value" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "A stored hash is a fast, local check that avoids unnecessary model calls. Comparing vectors requires a new vector first (the call you wanted to avoid), and IDENTITY values don't change on update." },
+      "example": { "en": "WHERE e.TextHash <> HASHBYTES('SHA2_256', p.Description)" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/hashbytes-transact-sql"]
+    },
+    {
+      "id": "d3-em-0028",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-maintenance",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Complete the batched backfill loop that embeds rows still missing vectors." },
+      "code": "WHILE 1 = 1\nBEGIN\n    UPDATE [BLANK1] (500) e\n    SET    e.Embedding = AI_GENERATE_EMBEDDINGS(p.Description USE MODEL ProductEmbedder)\n    FROM   dbo.ProductEmbeddings AS e\n    JOIN   dbo.Products AS p ON p.ProductId = e.ProductId\n    WHERE  e.Embedding [BLANK2];\n\n    IF [BLANK3] = 0 BREAK;\nEND;",
+      "blanks": [
+        { "id": "b1", "label": { "en": "BLANK1" }, "choices": [
+          { "id": "c1", "text": { "en": "TOP" } },
+          { "id": "c2", "text": { "en": "LIMIT" } },
+          { "id": "c3", "text": { "en": "FIRST" } }
+        ] },
+        { "id": "b2", "label": { "en": "BLANK2" }, "choices": [
+          { "id": "c1", "text": { "en": "= NULL" } },
+          { "id": "c2", "text": { "en": "IS NULL" } },
+          { "id": "c3", "text": { "en": "IS NOT NULL" } }
+        ] },
+        { "id": "b3", "label": { "en": "BLANK3" }, "choices": [
+          { "id": "c1", "text": { "en": "@@ROWCOUNT" } },
+          { "id": "c2", "text": { "en": "@@ERROR" } },
+          { "id": "c3", "text": { "en": "@@IDENTITY" } }
+        ] }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c2", "b3": "c1" },
+      "explanation": { "en": "T-SQL limits updated rows with TOP (n). NULL checks use IS NULL. @@ROWCOUNT is 0 when no rows remain, ending the loop; @@ERROR and @@IDENTITY don't count affected rows." },
+      "example": { "en": "Add WAITFOR DELAY '00:00:01' between batches to stay under the deployment's quota." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/ai-generate-embeddings-transact-sql"]
+    },
+    {
+      "id": "d3-em-0029",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-maintenance",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "During a backfill, many AI_GENERATE_EMBEDDINGS calls fail with HTTP 429 (rate limited). Which combination helps most?" },
+      "options": [
+        { "id": "a", "text": { "en": "Set retry_count on the model or call, use smaller batches with pauses, and request more quota if needed" } },
+        { "id": "b", "text": { "en": "Run 50 parallel sessions to finish faster" } },
+        { "id": "c", "text": { "en": "Switch to float16 vectors" } },
+        { "id": "d", "text": { "en": "Disable the vector index" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "429 means you're exceeding the deployment's throughput. Retries absorb transient throttling, pacing keeps you under the limit, and quota increases raise it. More parallelism worsens throttling; vector precision and indexes are unrelated." },
+      "example": { "en": "PARAMETERS = '{\"sql_rest_options\":{\"retry_count\":5}}'" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/ai-generate-embeddings-transact-sql"]
+    },
+    {
+      "id": "d3-em-0030",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-maintenance",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A .NET worker generates embeddings with the OpenAI SDK and writes them to Azure SQL. What's the most efficient way to send the vectors?" },
+      "options": [
+        { "id": "a", "text": { "en": "Use Microsoft.Data.SqlClient 6.1+ with SqlVector<float> parameters (SqlDbTypeExtensions.Vector) so vectors travel in binary" } },
+        { "id": "b", "text": { "en": "Convert each vector to XML" } },
+        { "id": "c", "text": { "en": "Store vectors as comma-separated text in nvarchar and cast later" } },
+        { "id": "d", "text": { "en": "Send vectors through Entity Framework migrations" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Newer drivers use the TDS vector enhancements to send binary vectors, reducing payload and parsing and preserving precision. Older drivers can send JSON arrays. XML, CSV text and migrations are inefficient or unrelated." },
+      "example": { "en": "param.Value = new SqlVector<float>(embedding.ToFloats().ToArray());" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/data-types/vector-data-type"]
+    },
+    {
+      "id": "d3-em-0031",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-maintenance",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A developer embeds 1 million rows inside one BEGIN TRAN … COMMIT. What problems should you expect?" },
+      "options": [
+        { "id": "a", "text": { "en": "Long-held locks, large transaction log usage, and a full rollback if any call fails near the end" } },
+        { "id": "b", "text": { "en": "Faster completion because of fewer commits" } },
+        { "id": "c", "text": { "en": "No impact; AI calls are outside the transaction" } },
+        { "id": "d", "text": { "en": "The vector index rebuilds after every row" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "A single long transaction blocks other work, can't truncate the log, and loses all progress on failure. Calls made inside the statement are part of its execution time. Indexes don't rebuild per row." },
+      "example": { "en": "Use batches of a few hundred rows with a commit per batch." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/ai-generate-embeddings-transact-sql"]
+    },
+    {
+      "id": "d3-em-0032",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-maintenance",
+      "type": "dragdrop-order", "difficulty": "medium",
+      "text": { "en": "Order the steps of a Change Tracking-driven embedding refresh run." },
+      "items": [
+        { "id": "i1", "text": { "en": "Read the last synced version from a control table" } },
+        { "id": "i2", "text": { "en": "Capture CHANGE_TRACKING_CURRENT_VERSION() for this run" } },
+        { "id": "i3", "text": { "en": "Query CHANGETABLE(CHANGES …, @last) joined to the source for current text" } },
+        { "id": "i4", "text": { "en": "Delete embeddings for 'D' rows; re-embed changed text for others" } },
+        { "id": "i5", "text": { "en": "Save the captured version as the new last synced version" } }
+      ],
+      "answer": ["i1", "i2", "i3", "i4", "i5"],
+      "explanation": { "en": "Know where you left off, fix the upper bound for this run, fetch changes, apply them, and only then advance the bookmark so failures retry the same window. Run under snapshot isolation for consistency." },
+      "example": { "en": "If @last < CHANGE_TRACKING_MIN_VALID_VERSION(OBJECT_ID('dbo.Products')), do a full re-sync instead." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/track-changes/work-with-change-tracking-sql-server"]
+    },
+    {
+      "id": "d3-em-0033",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-maintenance",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Azure SQL Database has no SQL Server Agent. Which option can schedule a T-SQL Change Tracking refresh every 5 minutes?" },
+      "options": [
+        { "id": "a", "text": { "en": "Elastic Jobs (or a timer-triggered Azure Function / Logic Apps recurrence)" } },
+        { "id": "b", "text": { "en": "A WHILE loop in a trigger" } },
+        { "id": "c", "text": { "en": "Query Store" } },
+        { "id": "d", "text": { "en": "sp_procoption startup procedures" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Elastic Jobs runs scheduled T-SQL against Azure SQL databases; Functions timers and Logic Apps recurrences also work. Looping triggers, Query Store and startup procedures aren't schedulers for this." },
+      "example": { "en": "Elastic job step: EXEC dbo.RefreshProductEmbeddings;" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-sql/database/elastic-jobs-overview"]
+    },
+    {
+      "id": "d3-em-0034",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-maintenance",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Where should a Change Tracking refresh job store its last processed version?" },
+      "options": [
+        { "id": "a", "text": { "en": "In a small control table (e.g., dbo.EmbeddingSync) updated after each successful run" } },
+        { "id": "b", "text": { "en": "In a session variable" } },
+        { "id": "c", "text": { "en": "In tempdb" } },
+        { "id": "d", "text": { "en": "Nowhere; CHANGETABLE remembers it" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The version must survive restarts and be updated only after success. Session variables and tempdb are temporary, and Change Tracking doesn't remember consumers." },
+      "example": { "en": "UPDATE dbo.EmbeddingSync SET LastVersion = @now WHERE TableName = N'Products';" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/track-changes/work-with-change-tracking-sql-server"]
+    },
+    {
+      "id": "d3-em-0035",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-maintenance",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "How can you find products whose embeddings are probably stale?" },
+      "options": [
+        { "id": "a", "text": { "en": "Compare EmbeddedAt with the product's ModifiedAt (or compare text hashes)" } },
+        { "id": "b", "text": { "en": "Find vectors with the highest norm" } },
+        { "id": "c", "text": { "en": "Check sys.vector_indexes" } },
+        { "id": "d", "text": { "en": "Look for vectors with 1,536 dimensions" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Timestamps or hashes reveal rows edited after they were embedded. Vector norms, index metadata and dimension counts say nothing about staleness." },
+      "example": { "en": "SELECT p.ProductId FROM dbo.Products p JOIN dbo.ProductEmbeddings e ON … WHERE e.EmbeddedAt < p.ModifiedAt;" },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-models-embeddings-with-sql/05-generate-maintain-embeddings-sql-database-workloads"]
+    },
+    {
+      "id": "d3-em-0036",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-maintenance",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A Logic App should start whenever a knowledge-base row is inserted or updated, using the SQL Server connector trigger 'When an item is modified (V2)'. What must the table have?" },
+      "options": [
+        { "id": "a", "text": { "en": "A ROWVERSION column" } },
+        { "id": "b", "text": { "en": "A vector index" } },
+        { "id": "c", "text": { "en": "CDC enabled" } },
+        { "id": "d", "text": { "en": "A JSON column" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The modified (V2) trigger requires ROWVERSION and fires on inserts and updates; the created (V2) trigger requires IDENTITY. Vector indexes, CDC and JSON columns aren't connector requirements." },
+      "example": { "en": "ALTER TABLE dbo.KbArticles ADD RowVer ROWVERSION;" },
+      "sources": ["https://learn.microsoft.com/en-us/connectors/sql/"]
+    },
+    {
+      "id": "d3-em-0037",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-maintenance",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "With CES feeding embedding updates, what typically consumes the events and regenerates embeddings?" },
+      "options": [
+        { "id": "a", "text": { "en": "A service such as an Azure Function with an Event Hubs trigger that calls the embedding model and writes the vector back" } },
+        { "id": "b", "text": { "en": "CES itself calls the embedding model" } },
+        { "id": "c", "text": { "en": "SQL Server Agent" } },
+        { "id": "d", "text": { "en": "The vector index" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "CES only publishes change events; downstream consumers do the work. Agent and vector indexes don't read Event Hubs." },
+      "example": { "en": "[EventHubTrigger(\"products\", Connection = \"EhConn\")] string[] events" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/track-changes/change-event-streaming/overview"]
+    },
+    {
+      "id": "d3-em-0038",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-maintenance",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "Embeddings are stored in a vector column on a CES-streamed table. What do CES events contain for that column?" },
+      "options": [
+        { "id": "a", "text": { "en": "Nothing; CES skips vector columns (along with json, xml and some other types)" } },
+        { "id": "b", "text": { "en": "The full vector as a JSON array" } },
+        { "id": "c", "text": { "en": "A hash of the vector" } },
+        { "id": "d", "text": { "en": "CES refuses to stream the table" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "CES documents that vector (and json, xml, geography, and others) columns are skipped. The table still streams its other columns; consumers re-embed from the text values." },
+      "example": { "en": "Keep the text column in the stream; the consumer computes the vector." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/track-changes/change-event-streaming/configure"]
+    },
+    {
+      "id": "d3-em-0039",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-maintenance",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which method adds the least work to the user's write transaction?" },
+      "options": [
+        { "id": "a", "text": { "en": "Change event streaming, which publishes changes asynchronously from the log" } },
+        { "id": "b", "text": { "en": "A trigger that calls the embedding model" } },
+        { "id": "c", "text": { "en": "A trigger that inserts into a queue table" } },
+        { "id": "d", "text": { "en": "Change Tracking, which writes tracking data synchronously" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "CES streams from the log without adding work to transactions. Any trigger runs inside the write (a model call most of all), and Change Tracking adds small synchronous overhead." },
+      "example": { "en": "Monitor log usage: undelivered CES events keep the log from truncating." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-models-embeddings-with-sql/05-generate-maintain-embeddings-sql-database-workloads"]
+    },
+    {
+      "id": "d3-em-0040",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-maintenance",
+      "type": "multiple", "difficulty": "medium", "selectCount": 3,
+      "text": { "en": "Which three factors does Microsoft Learn highlight when choosing an embedding maintenance approach? (Select 3)" },
+      "options": [
+        { "id": "a", "text": { "en": "Data volume and update frequency" } },
+        { "id": "b", "text": { "en": "Latency (freshness) requirements" } },
+        { "id": "c", "text": { "en": "Where embedding generation fits in the architecture" } },
+        { "id": "d", "text": { "en": "The database's collation" } },
+        { "id": "e", "text": { "en": "The number of indexes on unrelated tables" } }
+      ],
+      "answer": ["a", "b", "c"],
+      "explanation": { "en": "The right method depends on how much and how often data changes, how fresh embeddings must be, and where generation should run. Collation and unrelated indexes don't drive this decision." },
+      "example": { "en": "High volume + seconds of freshness + many consumers → CES." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-models-embeddings-with-sql/05-generate-maintain-embeddings-sql-database-workloads"]
+    },
+    {
+      "id": "d3-em-0041",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-maintenance",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which T-SQL statement generates and stores embeddings for existing rows in place?" },
+      "options": [
+        { "id": "a", "text": { "en": "UPDATE dbo.Documents SET embedding = AI_GENERATE_EMBEDDINGS(description USE MODEL my_model);" } },
+        { "id": "b", "text": { "en": "ALTER TABLE dbo.Documents ADD EMBEDDINGS;" } },
+        { "id": "c", "text": { "en": "CREATE VECTOR INDEX … GENERATE;" } },
+        { "id": "d", "text": { "en": "EXEC sp_generate_embeddings 'dbo.Documents';" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "AI_GENERATE_EMBEDDINGS returns a vector for each row's text, which UPDATE stores. The other statements don't exist. For large tables, batch the update." },
+      "example": { "en": "Microsoft Learn shows exactly this pattern for an initial load." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-models-embeddings-with-sql/05-generate-maintain-embeddings-sql-database-workloads"]
+    },
+    {
+      "id": "d3-em-0042",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-maintenance",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A trigger-based design should avoid slowing writes but keep embeddings fresh within a minute. Which hybrid works?" },
+      "options": [
+        { "id": "a", "text": { "en": "The trigger inserts changed keys into a queue table; a Function or job polls the queue frequently and embeds them" } },
+        { "id": "b", "text": { "en": "The trigger calls the model with a 1-second timeout" } },
+        { "id": "c", "text": { "en": "The trigger runs WAITFOR DELAY '00:01:00' then embeds" } },
+        { "id": "d", "text": { "en": "Disable the trigger during business hours" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Mark-and-process keeps the write path cheap and moves model calls out of the transaction. Timeouts still tie writes to the endpoint, WAITFOR in a trigger blocks the user's write, and disabling it loses freshness." },
+      "example": { "en": "dbo.EmbeddingQueue(ProductId, QueuedAt) drained every 30 seconds." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-models-embeddings-with-sql/05-generate-maintain-embeddings-sql-database-workloads"]
+    },
+    {
+      "id": "d3-em-0043",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-maintenance",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "With the default settings, how often and in what batch size does the Azure Functions SQL trigger deliver changes?" },
+      "options": [
+        { "id": "a", "text": { "en": "Polls about every 1 second, up to 100 changes per batch" } },
+        { "id": "b", "text": { "en": "Every 5 minutes, all changes at once" } },
+        { "id": "c", "text": { "en": "Instantly, one change per invocation" } },
+        { "id": "d", "text": { "en": "Hourly, up to 10,000 changes" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "PollingIntervalMs defaults to 1,000 and MaxBatchSize to 100; both are configurable. It's a polling loop, not instant push." },
+      "example": { "en": "\"Sql\": { \"MaxBatchSize\": 50 } to keep embedding batches under rate limits" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-functions/functions-bindings-azure-sql-trigger"]
+    },
+    {
+      "id": "d3-em-0044",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-maintenance",
+      "type": "single", "difficulty": "medium",
+      "caseId": "case-em-catalog",
+      "text": { "en": "Which maintenance method best meets Fabrikam's freshness and load requirements?" },
+      "options": [
+        { "id": "a", "text": { "en": "An Azure Function with the SQL trigger binding on dbo.Products that embeds changed descriptions and writes to dbo.ProductEmbeddings" } },
+        { "id": "b", "text": { "en": "An AFTER UPDATE trigger that calls the model synchronously" } },
+        { "id": "c", "text": { "en": "A nightly job that re-embeds all 2 million products" } },
+        { "id": "d", "text": { "en": "Manual re-embedding when users complain" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The binding reacts within seconds, runs in .NET outside the engine and writes to a separate, untracked table (no loop). A synchronous trigger loads writes, a nightly job misses the 5-minute target and wastes calls, and manual work doesn't scale." },
+      "example": { "en": "Enable Change Tracking on dbo.Products only." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-functions/functions-bindings-azure-sql-trigger"]
+    },
+    {
+      "id": "d3-em-0045",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-maintenance",
+      "type": "single", "difficulty": "hard",
+      "caseId": "case-em-catalog",
+      "text": { "en": "The pricing job's 500,000 daily updates also reach the function. How do you avoid 500,000 unnecessary embedding calls?" },
+      "options": [
+        { "id": "a", "text": { "en": "In the function, hash the Description and skip the model call when it matches ProductEmbeddings.TextHash" } },
+        { "id": "b", "text": { "en": "Disable Change Tracking during the pricing job" } },
+        { "id": "c", "text": { "en": "Increase MaxBatchSize to 10,000" } },
+        { "id": "d", "text": { "en": "Store prices in the embedding text" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The trigger receives every row change, so the function must detect whether embedded text changed; a hash check is cheap. Disabling Change Tracking loses description edits made meanwhile, bigger batches don't reduce calls, and embedding prices is poor design." },
+      "example": { "en": "if (Hash(item.Description) == stored.TextHash) continue;" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-functions/functions-bindings-azure-sql-trigger"]
+    },
+    {
+      "id": "d3-em-0046",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-maintenance",
+      "type": "single", "difficulty": "medium",
+      "caseId": "case-em-catalog",
+      "text": { "en": "The function app might be down for up to 3 days. Which Change Tracking setting protects against missed changes?" },
+      "options": [
+        { "id": "a", "text": { "en": "CHANGE_RETENTION longer than the maximum outage, for example 7 DAYS" } },
+        { "id": "b", "text": { "en": "AUTO_CLEANUP = ON with 1 DAY retention" } },
+        { "id": "c", "text": { "en": "TRACK_COLUMNS_UPDATED = OFF" } },
+        { "id": "d", "text": { "en": "Snapshot isolation off" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "If the function resumes after retention has expired, changes older than the retention window are gone. Retention must exceed worst-case downtime. The other settings don't extend history." },
+      "example": { "en": "ALTER DATABASE CURRENT SET CHANGE_TRACKING (CHANGE_RETENTION = 7 DAYS);" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-functions/functions-bindings-azure-sql-trigger"]
+    },
+    {
+      "id": "d3-em-0047",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-maintenance",
+      "type": "single", "difficulty": "hard",
+      "caseId": "case-em-catalog",
+      "text": { "en": "Next quarter's model switch must not break search. What's the right sequence?" },
+      "options": [
+        { "id": "a", "text": { "en": "Evaluate the new model (e.g., in Foundry), backfill new vectors in batches tagged with ModelVersion while queries use the old model, switch the query model, then recreate the vector index" } },
+        { "id": "b", "text": { "en": "ALTER the external model first, then re-embed over the following month" } },
+        { "id": "c", "text": { "en": "Let the SQL trigger function re-embed products as they're edited" } },
+        { "id": "d", "text": { "en": "Keep old vectors and only embed new products with the new model" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Search must use one model consistently, so complete the backfill before switching queries. Altering first mixes spaces for a month, edit-driven re-embedding never covers untouched products, and mixing models breaks relevance." },
+      "example": { "en": "Embedding_v2 column populated in the background; switch views/procedures when 100% complete." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-models-embeddings-with-sql/05-generate-maintain-embeddings-sql-database-workloads", "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-vector-index-transact-sql"]
+    },
+    {
+      "id": "d3-em-0048",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-maintenance",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "In a Change Tracking refresh query, CHANGETABLE returns ProductId 42 with SYS_CHANGE_OPERATION = 'D'. The LEFT JOIN to dbo.Products returns NULLs. What should the job do?" },
+      "options": [
+        { "id": "a", "text": { "en": "Delete product 42's embedding rows" } },
+        { "id": "b", "text": { "en": "Embed a NULL description" } },
+        { "id": "c", "text": { "en": "Fail the job" } },
+        { "id": "d", "text": { "en": "Ignore the row forever" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "'D' means the row was deleted, so its data is gone and its vectors should be removed. Embedding NULL wastes calls, failing blocks progress, and ignoring leaves ghost results." },
+      "example": { "en": "WHEN MATCHED AND s.op = 'D' THEN DELETE" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-functions/changetable-transact-sql"]
+    },
+    {
+      "id": "d3-em-0049",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-maintenance",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Why are asynchronous maintenance methods (Change Tracking jobs, CDC, CES, Functions) generally preferred for high-volume tables?" },
+      "options": [
+        { "id": "a", "text": { "en": "They keep model calls out of the write path, so write latency and success don't depend on the embedding endpoint" } },
+        { "id": "b", "text": { "en": "They make embeddings more accurate" } },
+        { "id": "c", "text": { "en": "They remove the need for an external model" } },
+        { "id": "d", "text": { "en": "They guarantee zero lag" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Decoupling protects the transactional workload from endpoint latency, throttling and outages. Accuracy depends on the model and text, you still need a model, and asynchronous means some lag." },
+      "example": { "en": "Accept a few seconds of staleness in exchange for stable order processing." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-models-embeddings-with-sql/05-generate-maintain-embeddings-sql-database-workloads"]
+    },
+    {
+      "id": "d3-em-0050",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-embedding-maintenance",
+      "type": "dragdrop-match", "difficulty": "hard",
+      "text": { "en": "Match each scenario to the most appropriate maintenance method." },
+      "items": [
+        { "id": "i1", "text": { "en": "Tiny admin table, edits must be searchable instantly" } },
+        { "id": "i2", "text": { "en": "T-SQL-only team, refresh every 10 minutes is fine" } },
+        { "id": "i3", "text": { "en": "Event-driven platform with several subscribers" } },
+        { "id": "i4", "text": { "en": "Choose, evaluate and version the embedding model centrally" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "Table trigger" } },
+        { "id": "t2", "text": { "en": "Change Tracking scheduled job" } },
+        { "id": "t3", "text": { "en": "Change event streaming" } },
+        { "id": "t4", "text": { "en": "Microsoft Foundry" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "Low volume and instant freshness suit triggers; T-SQL batch jobs suit Change Tracking; multi-consumer events suit CES; model selection, evaluation and versioning belong in Foundry." },
+      "example": { "en": "Combine Foundry with any change-detection method." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-models-embeddings-with-sql/05-generate-maintain-embeddings-sql-database-workloads"]
+    }
+  ]
+}

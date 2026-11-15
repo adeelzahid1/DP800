@@ -1,0 +1,57 @@
+{
+  "subtopic": "d2-config-concurrency",
+  "title": { "en": "Database configuration, isolation levels & concurrency" },
+  "prerequisiteRecap": [
+    {
+      "heading": { "en": "Concurrency problems in plain words" },
+      "body": {
+        "en": "When many sessions read and write the same data at once, four anomalies can occur:\n- **Dirty read**: reading another transaction's uncommitted change (which may roll back).\n- **Non-repeatable read**: reading the same row twice in one transaction and getting different values.\n- **Phantom**: re-running a range query and seeing new rows appear.\n- **Lost update**: two sessions read a value, both update it, and one change silently overwrites the other.\nIsolation levels decide which anomalies are allowed — trading consistency for concurrency."
+      }
+    }
+  ],
+  "sections": [
+    {
+      "heading": { "en": "Isolation levels" },
+      "body": {
+        "en": "- **READ UNCOMMITTED** (≈ NOLOCK): no shared locks; dirty reads allowed. Fast, wrong results possible (even missing/duplicated rows during page splits).\n- **READ COMMITTED** (default): no dirty reads. With locking, readers block on writers. With **READ_COMMITTED_SNAPSHOT (RCSI)** ON, readers see the last committed version from the version store — readers don't block writers and vice versa. **RCSI is ON by default in Azure SQL Database and SQL database in Fabric**; OFF by default on SQL Server.\n- **REPEATABLE READ**: shared locks held until commit — no non-repeatable reads; phantoms still possible.\n- **SNAPSHOT**: transaction-level consistent view as of its start (requires ALLOW_SNAPSHOT_ISOLATION ON); writers that conflict with a concurrent committed change get **update conflict error 3960**.\n- **SERIALIZABLE**: range locks — no phantoms; the most blocking.\nRCSI = statement-level consistency; SNAPSHOT = transaction-level consistency. Both use row versioning (tempdb version store, or the persistent version store with ADR)."
+      },
+      "code": "-- Enable RCSI (SQL Server; already ON in Azure SQL Database)\nALTER DATABASE Sales SET READ_COMMITTED_SNAPSHOT ON WITH ROLLBACK IMMEDIATE;\n\n-- Allow and use SNAPSHOT isolation\nALTER DATABASE Sales SET ALLOW_SNAPSHOT_ISOLATION ON;\nSET TRANSACTION ISOLATION LEVEL SNAPSHOT;\nBEGIN TRAN;\n    SELECT SUM(Total) FROM dbo.Orders;   -- consistent as of transaction start\n    SELECT COUNT(*)   FROM dbo.Orders;   -- same snapshot\nCOMMIT;"
+    },
+    {
+      "heading": { "en": "Locks, escalation and optimized locking" },
+      "body": {
+        "en": "Lock modes: **S** (shared, reads), **X** (exclusive, writes), **U** (update — prevents conversion deadlocks), **IS/IX** intent locks on higher levels. SQL Server may **escalate** many row/page locks to a table lock (around 5,000 locks on one object) to save memory — which can increase blocking. **Optimized locking** (Azure SQL Database, SQL database in Fabric, SQL Server 2025) uses **transaction ID (TID) locking** and **lock after qualification (LAQ)**: rows are locked only after they qualify and locks are released quickly, drastically reducing lock memory, escalation and blocking. It requires **Accelerated Database Recovery (ADR)**, and LAQ benefits most with RCSI."
+      }
+    },
+    {
+      "heading": { "en": "Optimistic concurrency in applications" },
+      "body": {
+        "en": "To prevent lost updates without holding locks across user think-time, use a **rowversion** column: read the row with its version, and update with `WHERE Id = @id AND RowVer = @originalRowVer`. If 0 rows are affected, someone else changed it — reload and retry. Entity Framework's concurrency tokens implement exactly this pattern. Alternatively use `UPDLOCK` hints inside a short transaction when you must read-then-write atomically."
+      },
+      "code": "ALTER TABLE dbo.Products ADD RowVer ROWVERSION;\n\nUPDATE dbo.Products\nSET Price = @newPrice\nWHERE ProductId = @id AND RowVer = @originalRowVer;\n\nIF @@ROWCOUNT = 0\n    THROW 50409, 'The product was modified by another user.', 1;"
+    },
+    {
+      "heading": { "en": "Recommending database configurations" },
+      "body": {
+        "en": "Key settings the exam expects you to recommend:\n- **Compatibility level** (e.g. 160/170): unlocks Intelligent Query Processing features (PSP optimization, DOP feedback, CE feedback) and new T-SQL (REGEXP_LIKE needs 170).\n- **Database scoped configurations**: `MAXDOP`, `LEGACY_CARDINALITY_ESTIMATION`, `PARAMETER_SNIFFING`, `OPTIMIZE_FOR_AD_HOC_WORKLOADS`, `PREVIEW_FEATURES` (SQL Server 2025 preview features such as vector indexes/JSON indexes).\n- **Query Store** ON (default in Azure SQL and new SQL Server 2022+ databases) with capture mode AUTO.\n- **Automatic tuning** in Azure SQL (FORCE_LAST_GOOD_PLAN on by default; CREATE/DROP INDEX optional).\n- **ADR** (on by default in Azure SQL): fast rollback/recovery and prerequisite for optimized locking.\n- **Statistics**: AUTO_CREATE/AUTO_UPDATE_STATISTICS ON, optionally ASYNC.\n- **Service tier / sizing** in Azure SQL: General Purpose vs Business Critical (low-latency local SSD, readable secondary) vs Hyperscale (large databases, fast scaling, named replicas); serverless for intermittent workloads with auto-pause; elastic pools for many databases with varying load."
+      },
+      "code": "ALTER DATABASE CURRENT SET COMPATIBILITY_LEVEL = 170;\nALTER DATABASE SCOPED CONFIGURATION SET MAXDOP = 8;\nALTER DATABASE SCOPED CONFIGURATION SET OPTIMIZE_FOR_AD_HOC_WORKLOADS = ON;\nALTER DATABASE CURRENT SET QUERY_STORE = ON (OPERATION_MODE = READ_WRITE, QUERY_CAPTURE_MODE = AUTO);\nALTER DATABASE CURRENT SET ACCELERATED_DATABASE_RECOVERY = ON;   -- SQL Server"
+    }
+  ],
+  "examTips": [
+    { "en": "RCSI: statement-level versioned reads, default ON in Azure SQL Database/Fabric. SNAPSHOT: transaction-level, needs ALLOW_SNAPSHOT_ISOLATION, can raise update conflict 3960." },
+    { "en": "REPEATABLE READ prevents non-repeatable reads but not phantoms; SERIALIZABLE prevents phantoms." },
+    { "en": "NOLOCK/READ UNCOMMITTED = dirty reads, missing or duplicate rows — never the right fix for correctness-sensitive queries." },
+    { "en": "Optimized locking = TID locking + lock after qualification; requires ADR; reduces blocking and lock escalation." },
+    { "en": "Lost updates → rowversion optimistic concurrency (WHERE RowVer = @orig) or UPDLOCK in a short transaction." },
+    { "en": "Compatibility level gates IQP features and new syntax (REGEXP_LIKE needs 170)." },
+    { "en": "Business Critical = low latency + readable secondary; Hyperscale = very large DBs, fast scale, named replicas; serverless = auto-pause for intermittent use." }
+  ],
+  "sources": [
+    "https://learn.microsoft.com/en-us/sql/t-sql/statements/set-transaction-isolation-level-transact-sql",
+    "https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-transaction-locking-and-row-versioning-guide",
+    "https://learn.microsoft.com/en-us/sql/relational-databases/performance/optimized-locking",
+    "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-database-scoped-configuration-transact-sql",
+    "https://learn.microsoft.com/en-us/azure/azure-sql/database/service-tiers-vcore"
+  ]
+}

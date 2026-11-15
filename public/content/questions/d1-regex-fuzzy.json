@@ -1,0 +1,853 @@
+{
+  "subtopic": "d1-regex-fuzzy",
+  "questions": [
+    {
+      "id": "d1-regex-0001",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-regex-fuzzy",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which function returns true/false depending on whether a string matches a regular expression pattern?" },
+      "options": [
+        { "id": "a", "text": { "en": "REGEXP_LIKE" } },
+        { "id": "b", "text": { "en": "REGEXP_SUBSTR" } },
+        { "id": "c", "text": { "en": "REGEXP_COUNT" } },
+        { "id": "d", "text": { "en": "PATINDEX" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "REGEXP_LIKE is the boolean matcher. REGEXP_SUBSTR extracts the matched text, REGEXP_COUNT counts matches, and PATINDEX is the old LIKE-pattern position function (not real regex)." },
+      "example": { "en": "WHERE REGEXP_LIKE(Sku, '^[A-Z]{2}-\\d{4}$')" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/regexp-like-transact-sql"]
+    },
+    {
+      "id": "d1-regex-0002",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-regex-fuzzy",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "REGEXP_LIKE works in Azure SQL Database but fails with an invalid-function error on your SQL Server 2025 box. What's the most likely cause?" },
+      "options": [
+        { "id": "a", "text": { "en": "The database compatibility level is below 170" } },
+        { "id": "b", "text": { "en": "Regex requires Enterprise edition" } },
+        { "id": "c", "text": { "en": "A missing CLR assembly" } },
+        { "id": "d", "text": { "en": "REGEXP_LIKE is Azure-only" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "REGEXP_LIKE specifically requires compatibility level 170 (the other regex scalar functions don't). No edition gate (b), no CLR involvement (c — these are native), and SQL Server 2025 fully supports it (d)." },
+      "example": { "en": "ALTER DATABASE MyDb SET COMPATIBILITY_LEVEL = 170;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/regexp-like-transact-sql"]
+    },
+    {
+      "id": "d1-regex-0003",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-regex-fuzzy",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which flags string makes a regex match case-insensitively across multiple lines?" },
+      "options": [
+        { "id": "a", "text": { "en": "'im'" } },
+        { "id": "b", "text": { "en": "'cs'" } },
+        { "id": "c", "text": { "en": "'x'" } },
+        { "id": "d", "text": { "en": "'ic' " } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "i = case-insensitive, m = multiline (^/$ match line boundaries). 'cs' mixes case-sensitive with the invalid 's-after-c' intent and would end case-sensitive anyway; 'x' isn't a supported flag (only c, i, s, m); 'ic' ends with c — the LAST flag wins, so it's case-SENSITIVE, the documented trap." },
+      "example": { "en": "REGEXP_LIKE(Notes, '^error', 'im') -- any line starting with error, any case" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/regexp-like-transact-sql"]
+    },
+    {
+      "id": "d1-regex-0004",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-regex-fuzzy",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "EDIT_DISTANCE('kitten', 'sitting') returns 3. What does this number mean?" },
+      "options": [
+        { "id": "a", "text": { "en": "Three single-character edits (substitutions/inserts/deletes) convert one string into the other" } },
+        { "id": "b", "text": { "en": "The strings share 3 characters" } },
+        { "id": "c", "text": { "en": "They are 3% similar" } },
+        { "id": "d", "text": { "en": "3 words differ" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Levenshtein distance counts minimal character-level edits: k→s, e→i, +g = 3. It's not a shared-character count (b), a percentage (c — that's the SIMILARITY variant on 0–100), or word-level (d)." },
+      "example": { "en": "Dedup rule of thumb: distance ≤ 2 on short names ≈ probable typo match." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/edit-distance-transact-sql"]
+    },
+    {
+      "id": "d1-regex-0005",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-regex-fuzzy",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which fuzzy function is specifically designed to weight matching PREFIXES more heavily — ideal for person names?" },
+      "options": [
+        { "id": "a", "text": { "en": "JARO_WINKLER_DISTANCE / JARO_WINKLER_SIMILARITY" } },
+        { "id": "b", "text": { "en": "EDIT_DISTANCE" } },
+        { "id": "c", "text": { "en": "SOUNDEX" } },
+        { "id": "d", "text": { "en": "CHARINDEX" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The Winkler modification boosts scores for strings sharing initial characters — matching how name typos usually preserve the beginning. Edit distance (b) treats all positions equally. SOUNDEX (c) is phonetic coding, no prefix logic. CHARINDEX (d) finds substrings, no similarity at all." },
+      "example": { "en": "'Martha' vs 'Marhta': JW similarity ≈ 0.96 — higher than plain edit-distance-based scoring suggests." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/jaro-winkler-distance-transact-sql"]
+    },
+    {
+      "id": "d1-regex-0006",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-regex-fuzzy",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "For each statement about the scales, answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "EDIT_DISTANCE = 0 means the strings are identical." } },
+        { "id": "s2", "text": { "en": "JARO_WINKLER_DISTANCE = 1 means the strings are identical." } },
+        { "id": "s3", "text": { "en": "EDIT_DISTANCE_SIMILARITY returns 100 for identical strings." } },
+        { "id": "s4", "text": { "en": "Higher JARO_WINKLER_SIMILARITY means more similar." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "no", "s3": "yes", "s4": "yes" },
+      "explanation": { "en": "Distances: 0 = identical (both families). JW distance 1 = maximally DIFFERENT — s2 inverts it. Similarities run the other way: EDIT_DISTANCE_SIMILARITY 0–100 and JARO_WINKLER_SIMILARITY 0–1, higher = closer. Mixing up distance and similarity directions is the designed trap." },
+      "example": { "en": "Identical strings: ED=0, EDS=100, JWD=0, JWS=1." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/edit-distance-similarity-transact-sql"]
+    },
+    {
+      "id": "d1-regex-0007",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-regex-fuzzy",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which REGEXP_LIKE pattern can leverage an index seek on the Username column?" },
+      "options": [
+        { "id": "a", "text": { "en": "'^adm[0-9]+'" } },
+        { "id": "b", "text": { "en": "'admin$'" } },
+        { "id": "c", "text": { "en": "'.*admin.*'" } },
+        { "id": "d", "text": { "en": "'[0-9]+$'" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "SARGability requires a ^ anchor with a literal prefix (quantifiers/ranges may follow) — '^adm…' can seek the 'adm' range. End-anchored (b, d) and floating (c) patterns must scan every row." },
+      "example": { "en": "Same principle as LIKE 'adm%' (seek) vs LIKE '%admin%' (scan)." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/regexp-like-transact-sql"]
+    },
+    {
+      "id": "d1-regex-0008",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-regex-fuzzy",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Complete the CHECK constraint enforcing phone format NNN-NNN-NNNN." },
+      "code": "ALTER TABLE dbo.Contacts ADD CONSTRAINT CK_Phone\n    CHECK ( [BLANK1](Phone, '^(\\d{3})-(\\d{3})-(\\d{4})$') [BLANK2] );",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "REGEXP_LIKE" } },
+            { "id": "c2", "text": { "en": "REGEXP_REPLACE" } },
+            { "id": "c3", "text": { "en": "LIKE" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "(nothing — it returns a boolean usable directly)" } },
+            { "id": "c2", "text": { "en": "= 'YES'" } },
+            { "id": "c3", "text": { "en": "> 0.5" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "REGEXP_LIKE returns a boolean and sits directly in CHECK (the documented pattern-validation use). REGEXP_REPLACE returns a string, LIKE can't express \\d{3} grouping. No comparison suffix is needed — comparing to 'YES' or a number is invalid." },
+      "example": { "en": "The same constraint style validates emails, SKUs, postal codes." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/regexp-like-transact-sql"]
+    },
+    {
+      "id": "d1-regex-0009",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-regex-fuzzy",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which function returns ONE ROW PER MATCH, including the matched substring and its position?" },
+      "options": [
+        { "id": "a", "text": { "en": "REGEXP_MATCHES" } },
+        { "id": "b", "text": { "en": "REGEXP_INSTR" } },
+        { "id": "c", "text": { "en": "REGEXP_SUBSTR" } },
+        { "id": "d", "text": { "en": "REGEXP_COUNT" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "REGEXP_MATCHES is table-valued — all matches as rows. REGEXP_INSTR gives one position (scalar), REGEXP_SUBSTR one substring (scalar, selectable occurrence), REGEXP_COUNT just the total." },
+      "example": { "en": "SELECT m.* FROM REGEXP_MATCHES(@log, '\\d{3}-\\d{4}') AS m;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/regular-expressions/overview"]
+    },
+    {
+      "id": "d1-regex-0010",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-regex-fuzzy",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "You must split 'red, green;blue  yellow' into one color per row, treating commas, semicolons and whitespace runs as delimiters. Which call?" },
+      "options": [
+        { "id": "a", "text": { "en": "SELECT value FROM REGEXP_SPLIT_TO_TABLE('red, green;blue  yellow', '[,;\\s]+')" } },
+        { "id": "b", "text": { "en": "SELECT value FROM STRING_SPLIT('red, green;blue  yellow', ',;')" } },
+        { "id": "c", "text": { "en": "REGEXP_SUBSTR with occurrence 0" } },
+        { "id": "d", "text": { "en": "REGEXP_REPLACE into columns" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "REGEXP_SPLIT_TO_TABLE accepts a regex delimiter — the character class + quantifier handles all three separators and collapses runs. STRING_SPLIT takes a single CHARACTER separator only (b). SUBSTR extracts rather than splits (c); REPLACE outputs one string (d)." },
+      "example": { "en": "Regex split finally solves the multi-delimiter messes STRING_SPLIT couldn't." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/regular-expressions/overview"]
+    },
+    {
+      "id": "d1-regex-0011",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-regex-fuzzy",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "Customer dedup: you need pairs whose names differ by at most 2 edits. The naive query CROSS JOINs 1M rows against themselves with EDIT_DISTANCE. What's the standard mitigation?" },
+      "options": [
+        { "id": "a", "text": { "en": "Pre-block candidate pairs cheaply (same first letters, same SOUNDEX, length within 2) before applying EDIT_DISTANCE to the reduced set" } },
+        { "id": "b", "text": { "en": "An index on EDIT_DISTANCE" } },
+        { "id": "c", "text": { "en": "Run it with NOLOCK" } },
+        { "id": "d", "text": { "en": "Fuzzy functions are O(1) — the query is fine" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "A 1M×1M similarity join is 10¹² comparisons; blocking/banding (cheap pre-filters that can use indexes) shrinks candidates by orders of magnitude — the universal record-linkage pattern. You can't index a two-argument function result (b). NOLOCK (c) doesn't reduce work. (d) is false — edit distance is O(len²) per pair." },
+      "example": { "en": "WHERE LEFT(a.Name,2) = LEFT(b.Name,2) AND ABS(LEN(a.Name)-LEN(b.Name)) <= 2 AND EDIT_DISTANCE(a.Name,b.Name) <= 2" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/edit-distance-transact-sql"]
+    },
+    {
+      "id": "d1-regex-0012",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-regex-fuzzy",
+      "type": "dragdrop-match", "difficulty": "medium",
+      "text": { "en": "Match the requirement to the right function." },
+      "items": [
+        { "id": "i1", "text": { "en": "Validate an IBAN format in a constraint" } },
+        { "id": "i2", "text": { "en": "Replace all digits with #" } },
+        { "id": "i3", "text": { "en": "How many URLs appear in a comment?" } },
+        { "id": "i4", "text": { "en": "Rank candidate name matches for a search-as-you-type box" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "REGEXP_LIKE" } },
+        { "id": "t2", "text": { "en": "REGEXP_REPLACE" } },
+        { "id": "t3", "text": { "en": "REGEXP_COUNT" } },
+        { "id": "t4", "text": { "en": "JARO_WINKLER_SIMILARITY" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "Boolean validation → LIKE; transformation → REPLACE; counting → COUNT; prefix-weighted name similarity → Jaro-Winkler. One function per job — the exam tests exactly this discrimination." },
+      "example": { "en": "ORDER BY JARO_WINKLER_SIMILARITY(Name, @typed) DESC for the search box." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/regular-expressions/overview"]
+    },
+    {
+      "id": "d1-regex-0013",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-regex-fuzzy",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "REGEXP_REPLACE('Order 123 shipped 456', '\\d+', 'N') returns what by default?" },
+      "options": [
+        { "id": "a", "text": { "en": "'Order N shipped N' — all occurrences are replaced by default" } },
+        { "id": "b", "text": { "en": "'Order N shipped 456' — only the first match" } },
+        { "id": "c", "text": { "en": "'N' — the whole string collapses" } },
+        { "id": "d", "text": { "en": "An error — replacement needs an occurrence argument" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Default occurrence is 0 = replace ALL matches. Limiting to the first requires passing occurrence 1 explicitly (b describes that behavior). The pattern matches digit runs, not everything (c), and all extra arguments are optional (d)." },
+      "example": { "en": "REGEXP_REPLACE(s, '\\d+', 'N', 1, 1) -- only the first number" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/regular-expressions/overview"]
+    },
+    {
+      "id": "d1-regex-0014",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-regex-fuzzy",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which legacy T-SQL pair does phonetic ('sounds like') matching?" },
+      "options": [
+        { "id": "a", "text": { "en": "SOUNDEX and DIFFERENCE" } },
+        { "id": "b", "text": { "en": "LIKE and PATINDEX" } },
+        { "id": "c", "text": { "en": "LEFT and RIGHT" } },
+        { "id": "d", "text": { "en": "CHARINDEX and REPLACE" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "SOUNDEX codes a string by English pronunciation (e.g. Smith/Smyth → S530); DIFFERENCE compares two SOUNDEX codes (0–4). The others do pattern position/extraction work, nothing phonetic." },
+      "example": { "en": "WHERE SOUNDEX(LastName) = SOUNDEX('Smith') -- catches Smyth, Smithe" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/soundex-transact-sql"]
+    },
+    {
+      "id": "d1-regex-0015",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-regex-fuzzy",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Why might REGEXP_LIKE and LIKE give different results on a case-insensitive Turkish-collation column for letter 'i' searches?" },
+      "options": [
+        { "id": "a", "text": { "en": "Regex functions ignore collation rules (ordinal matching); LIKE honors the collation's language-specific case mappings" } },
+        { "id": "b", "text": { "en": "LIKE is broken with Turkish collations" } },
+        { "id": "c", "text": { "en": "Regex always lowercases input" } },
+        { "id": "d", "text": { "en": "They never differ" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Documented behavior: REGEXP_* does not honor collations, so Turkish's dotted/dotless i distinctions behave differently than LIKE under Turkish_CI collations. LIKE isn't broken (b); regex only folds case with the i flag, ordinally (c); differences are real and documented (d)." },
+      "example": { "en": "The docs' example F contrasts SARGable vs non-SARGable Turkish scenarios for exactly this reason." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/regexp-like-transact-sql"]
+    },
+    {
+      "id": "d1-regex-0016",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-regex-fuzzy",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "Platform availability — answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "REGEXP functions are available in SQL Server 2022." } },
+        { "id": "s2", "text": { "en": "REGEXP functions are available in SQL database in Fabric." } },
+        { "id": "s3", "text": { "en": "REGEXP_* scalar functions other than REGEXP_LIKE work below compat level 170." } }
+      ],
+      "answerMap": { "s1": "no", "s2": "yes", "s3": "yes" },
+      "explanation": { "en": "Regex arrived with SQL Server 2025 / Azure SQL / Fabric — 2022 and earlier have none. REGEXP_LIKE alone carries the compat-170 requirement; its siblings work at all levels." },
+      "example": { "en": "Version/compat questions on new features are near-guaranteed for a brand-new exam." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/regexp-like-transact-sql"]
+    },
+    {
+      "id": "d1-regex-0017",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-regex-fuzzy",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Extract the third number from 'a1 b22 c333 d4444':" },
+      "options": [
+        { "id": "a", "text": { "en": "REGEXP_SUBSTR('a1 b22 c333 d4444', '\\d+', 1, 3)" } },
+        { "id": "b", "text": { "en": "REGEXP_SUBSTR('a1 b22 c333 d4444', '\\d+', 3)" } },
+        { "id": "c", "text": { "en": "REGEXP_INSTR('a1 b22 c333 d4444', '\\d+', 3)" } },
+        { "id": "d", "text": { "en": "SUBSTRING with CHARINDEX" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Signature: REGEXP_SUBSTR(string, pattern, start, occurrence, …) — start 1, occurrence 3 → '333'. Putting 3 in the start position (b) begins scanning at character 3, not the third match. INSTR (c) returns a position, not text. Manual SUBSTRING/CHARINDEX chains (d) are exactly what regex replaces." },
+      "example": { "en": "Occurrence parameters exist on SUBSTR, INSTR, and REPLACE alike." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/regular-expressions/overview"]
+    },
+    {
+      "id": "d1-regex-0018",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-regex-fuzzy",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "Regex predicates give terrible row estimates in a critical query. Which SQL Server mechanism addresses this specifically?" },
+      "options": [
+        { "id": "a", "text": { "en": "ASSUME_FIXED_MIN/MAX_SELECTIVITY_FOR_REGEXP query hints — and CE feedback can apply them automatically" } },
+        { "id": "b", "text": { "en": "UPDATE STATISTICS WITH FULLSCAN" } },
+        { "id": "c", "text": { "en": "Creating statistics on the pattern string" } },
+        { "id": "d", "text": { "en": "FORCESEEK" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Regex selectivity is opaque to the optimizer; these dedicated USE HINT values set floor/ceiling selectivity, and cardinality-estimation feedback automates them for repeatedly misestimated queries (TF 16268 disables). Statistics (b, c) can't model arbitrary patterns; FORCESEEK (d) forces access method, not estimates." },
+      "example": { "en": "OPTION (USE HINT('ASSUME_FIXED_MIN_SELECTIVITY_FOR_REGEXP'))" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/regexp-like-transact-sql"]
+    },
+    {
+      "id": "d1-regex-0019",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-regex-fuzzy",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Product codes are 'two uppercase letters, hyphen, 4 to 6 digits'. The regex is:" },
+      "options": [
+        { "id": "a", "text": { "en": "^[A-Z]{2}-\\d{4,6}$" } },
+        { "id": "b", "text": { "en": "^[A-Z]2-\\d4,6$" } },
+        { "id": "c", "text": { "en": "[A-Z][A-Z]-[0-9]*" } },
+        { "id": "d", "text": { "en": "^..-\\d+$" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "{2} and {4,6} quantify exactly; ^…$ anchor the whole string. (b) treats quantifiers as literals. (c) lacks anchors and allows zero digits. (d) allows ANY two leading characters and unlimited digits." },
+      "example": { "en": "Anchoring both ends is what turns 'contains a valid code' into 'IS a valid code'." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/regular-expressions/overview"]
+    },
+    {
+      "id": "d1-regex-0020",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-regex-fuzzy",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What is the LOB input limit for REGEXP_* functions on varchar(max)/nvarchar(max) inputs?" },
+      "options": [
+        { "id": "a", "text": { "en": "2 MB of input text" } },
+        { "id": "b", "text": { "en": "2 GB (the full LOB limit)" } },
+        { "id": "c", "text": { "en": "8,000 bytes" } },
+        { "id": "d", "text": { "en": "No LOB support at all" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The documented ceiling for LOB string_expression inputs is 2 MB (patterns cap at 8,000 bytes — the 8K figure belongs to the pattern, a built-in confusion pair). Full 2 GB LOBs are not supported, but LOB types themselves are (d is wrong)." },
+      "example": { "en": "Bigger documents: pre-chunk the text, or process outside the regex layer." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/regexp-like-transact-sql"]
+    },
+    {
+      "id": "d1-regex-0021",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-regex-fuzzy",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Complete the near-duplicate detection query." },
+      "code": "SELECT a.Name, b.Name\nFROM dbo.Customers a\nJOIN dbo.Customers b ON a.Id < b.Id\nWHERE [BLANK1](a.Name, b.Name) <= 2\n   OR [BLANK2](a.Name, b.Name) >= 0.93;",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "EDIT_DISTANCE" } },
+            { "id": "c2", "text": { "en": "EDIT_DISTANCE_SIMILARITY" } },
+            { "id": "c3", "text": { "en": "DIFFERENCE" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "JARO_WINKLER_SIMILARITY" } },
+            { "id": "c2", "text": { "en": "JARO_WINKLER_DISTANCE" } },
+            { "id": "c3", "text": { "en": "SOUNDEX" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "'≤ 2' is a raw edit count → EDIT_DISTANCE (SIMILARITY would need ≥ some percentage; DIFFERENCE caps at 4 with inverse meaning). '≥ 0.93' is a 0–1 higher-is-better score → JARO_WINKLER_SIMILARITY (DISTANCE would need ≤ 0.07; SOUNDEX returns a code, not a number)." },
+      "example": { "en": "Reading the comparison operator and scale tells you which function the blank needs — a recurring dropdown pattern." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/jaro-winkler-similarity-transact-sql"]
+    },
+    {
+      "id": "d1-regex-0022",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-regex-fuzzy",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which requirement should NOT be solved with regular expressions?" },
+      "options": [
+        { "id": "a", "text": { "en": "'Find documents about database security' — meaning-based search" } },
+        { "id": "b", "text": { "en": "Validate postal code structure" } },
+        { "id": "c", "text": { "en": "Extract order numbers from log lines" } },
+        { "id": "d", "text": { "en": "Split a multi-delimiter string into rows" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Semantic/meaning search is vector (or full-text) territory — regex matches character patterns, not concepts. Validation (b), extraction (c) and splitting (d) are regex's exact strengths." },
+      "example": { "en": "Boundary mapping: structure → regex; words → full-text; meaning → vectors." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/regular-expressions/overview"]
+    },
+    {
+      "id": "d1-regex-0023",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-regex-fuzzy",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "REGEXP_COUNT(Description, '\\bAI\\b', 1, 'i') counts what?" },
+      "options": [
+        { "id": "a", "text": { "en": "Occurrences of the standalone word 'AI' (any case) — \\b marks word boundaries" } },
+        { "id": "b", "text": { "en": "All strings containing the letters a and i anywhere" } },
+        { "id": "c", "text": { "en": "Words starting with AI" } },
+        { "id": "d", "text": { "en": "Rows containing AI" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "\\b…\\b bounds a whole word, so 'AI' matches but 'SAID' or 'AIR' don't; flag i folds case. It's per-string occurrences, not a row count (d) — wrap in SUM for totals." },
+      "example": { "en": "SELECT SUM(REGEXP_COUNT(Body, '\\bAI\\b', 1, 'i')) FROM Articles;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/regular-expressions/overview"]
+    },
+    {
+      "id": "d1-regex-0024",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-regex-fuzzy",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A migration must standardize phone values like '(042) 111-2233', '042.111.2233', '0421112233' into '042-111-2233'. Which single expression handles all three?" },
+      "options": [
+        { "id": "a", "text": { "en": "REGEXP_REPLACE(REGEXP_REPLACE(Phone, '[^0-9]', ''), '^(\\d{3})(\\d{3})(\\d{4})$', '\\1-\\2-\\3')" } },
+        { "id": "b", "text": { "en": "REPLACE(Phone, '.', '-')" } },
+        { "id": "c", "text": { "en": "FORMAT(Phone, '###-###-####')" } },
+        { "id": "d", "text": { "en": "LIKE with wildcards" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Strip non-digits first, then re-group with capture references (\\1-\\2-\\3) — the canonical normalize-then-format pipeline. Single REPLACE (b) handles one punctuation style. FORMAT (c) formats numbers/dates, not strings by mask. LIKE (d) matches, never transforms." },
+      "example": { "en": "Group references in the replacement string are what make REGEXP_REPLACE a reshaping tool, not just a deleter." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/regular-expressions/overview"]
+    },
+    {
+      "id": "d1-regex-0025",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-regex-fuzzy",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "DIFFERENCE('Smith', 'Smyth') returns 4. What does 4 signify?" },
+      "options": [
+        { "id": "a", "text": { "en": "The SOUNDEX codes match completely — strongest phonetic similarity on the 0–4 scale" } },
+        { "id": "b", "text": { "en": "Four edits are needed" } },
+        { "id": "c", "text": { "en": "The strings differ in 4 characters" } },
+        { "id": "d", "text": { "en": "No similarity at all" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "DIFFERENCE compares SOUNDEX codes and returns 0 (no match) to 4 (full match) — higher is MORE similar, opposite to edit distance's direction. It's phonetic, not edit- (b) or character-based (c), and 4 is maximum similarity, not none (d)." },
+      "example": { "en": "Scale direction trap: DIFFERENCE 4 ≈ EDIT_DISTANCE 0 in 'very similar' terms." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/difference-transact-sql"]
+    },
+    {
+      "id": "d1-regex-0026",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-regex-fuzzy",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "Answer Yes or No: is the function table-valued (usable in FROM)?" },
+      "statements": [
+        { "id": "s1", "text": { "en": "REGEXP_SPLIT_TO_TABLE" } },
+        { "id": "s2", "text": { "en": "REGEXP_MATCHES" } },
+        { "id": "s3", "text": { "en": "REGEXP_SUBSTR" } },
+        { "id": "s4", "text": { "en": "EDIT_DISTANCE" } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "yes", "s3": "no", "s4": "no" },
+      "explanation": { "en": "SPLIT_TO_TABLE and MATCHES return rowsets (FROM/CROSS APPLY); SUBSTR and the fuzzy functions are scalars (SELECT list/WHERE). Knowing which side of the line each sits on decides query structure." },
+      "example": { "en": "CROSS APPLY REGEXP_SPLIT_TO_TABLE(t.Tags, ',') s — per-row splitting." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/regular-expressions/overview"]
+    },
+    {
+      "id": "d1-regex-0027",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-regex-fuzzy",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Why prefer REGEXP_LIKE in a CHECK constraint over an INSERT trigger doing the same validation?" },
+      "options": [
+        { "id": "a", "text": { "en": "Declarative constraints are enforced uniformly, are simpler, cheaper, and can't be bypassed by forgetting trigger logic paths" } },
+        { "id": "b", "text": { "en": "Triggers can't validate strings" } },
+        { "id": "c", "text": { "en": "CHECK constraints run asynchronously" } },
+        { "id": "d", "text": { "en": "Triggers only fire for single rows" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Constraint-vs-trigger is a recurring design question: declarative wins for pure value rules (optimizer awareness, less code, no ordering or recursion concerns). Triggers CAN validate (b) but shouldn't for this. Constraints are synchronous (c), and triggers fire per statement (d — the opposite myth)." },
+      "example": { "en": "Triggers remain for cross-row/cross-table logic constraints can't express." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/tables/unique-constraints-and-check-constraints"]
+    },
+    {
+      "id": "d1-regex-0028",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-regex-fuzzy",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "REGEXP_INSTR returns 0. What does that mean?" },
+      "options": [
+        { "id": "a", "text": { "en": "No match was found (positions are 1-based, so 0 is the no-match sentinel)" } },
+        { "id": "b", "text": { "en": "The match is at the start of the string" } },
+        { "id": "c", "text": { "en": "An error occurred" } },
+        { "id": "d", "text": { "en": "The pattern was empty" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "T-SQL string positions start at 1 (match at start → 1), so 0 signals absence — same convention as CHARINDEX/PATINDEX. Errors raise, not return 0 (c), and empty patterns are a different (error) case (d)." },
+      "example": { "en": "IF REGEXP_INSTR(Log, 'FATAL') > 0 ... -- presence check (REGEXP_LIKE is cleaner)" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/regular-expressions/overview"]
+    },
+    {
+      "id": "d1-regex-0029",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-regex-fuzzy",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "In the DP-800 study guide, fuzzy matching functions appear under which skill?" },
+      "options": [
+        { "id": "a", "text": { "en": "Write advanced T-SQL code" } },
+        { "id": "b", "text": { "en": "Design and implement intelligent search" } },
+        { "id": "c", "text": { "en": "Optimize database performance" } },
+        { "id": "d", "text": { "en": "Implement data security" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The bullet 'write queries that include fuzzy string matching functions, such as EDIT_DISTANCE, EDIT_DISTANCE_SIMILARITY, and JARO_WINKLER_DISTANCE' sits in Domain 1's advanced T-SQL skill (intelligent search in Domain 3 covers full-text/vector/hybrid instead)." },
+      "example": { "en": "Fuzzy = character-level similarity (D1); semantic = meaning similarity (D3)." },
+      "sources": ["https://learn.microsoft.com/en-us/credentials/certifications/resources/study-guides/dp-800"]
+    },
+    {
+      "id": "d1-regex-0030",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-regex-fuzzy",
+      "type": "dropdown", "difficulty": "hard",
+      "text": { "en": "Complete the log-mining query that extracts every ERROR code line into rows." },
+      "code": "SELECT l.LogId, m.*\nFROM dbo.Logs AS l\nCROSS APPLY [BLANK1](l.Body, 'ERR-\\d{4}') AS m\nWHERE [BLANK2](l.Body, 'ERR-\\d{4}') > 0;",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "REGEXP_MATCHES" } },
+            { "id": "c2", "text": { "en": "REGEXP_LIKE" } },
+            { "id": "c3", "text": { "en": "REGEXP_REPLACE" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "REGEXP_COUNT" } },
+            { "id": "c2", "text": { "en": "REGEXP_SUBSTR" } },
+            { "id": "c3", "text": { "en": "EDIT_DISTANCE" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "All matches as rows → the TVF REGEXP_MATCHES in CROSS APPLY (LIKE/REPLACE are scalars). A numeric '>' guard → REGEXP_COUNT (SUBSTR returns text; EDIT_DISTANCE compares two strings). Technically the COUNT guard is redundant with CROSS APPLY, but as a filter expression only COUNT fits the comparison." },
+      "example": { "en": "TVF-vs-scalar placement is the skill under test in such dropdowns." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/regular-expressions/overview"]
+    },
+    {
+      "id": "d1-regex-0031",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-regex-fuzzy",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "'ERR-12345' is matched by REGEXP_LIKE(x, '^ERR-\\d{4}$')? " },
+      "options": [
+        { "id": "a", "text": { "en": "No — \\d{4} requires exactly four digits before the end anchor; five digits fail the $ anchor" } },
+        { "id": "b", "text": { "en": "Yes — {4} means 'at least 4'" } },
+        { "id": "c", "text": { "en": "Yes — $ is optional" } },
+        { "id": "d", "text": { "en": "Error — invalid pattern" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "{4} is exact; with ^...$ the entire string must fit, so a fifth digit breaks the match. 'At least 4' would be {4,} (b). Anchors are never optional once written (c). The pattern is valid (d)." },
+      "example": { "en": "Exact {n} vs open {n,} vs bounded {n,m} — count carefully in exam patterns." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/regular-expressions/overview"]
+    },
+    {
+      "id": "d1-regex-0032",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-regex-fuzzy",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "To index-accelerate frequent lookups by SOUNDEX of LastName, you should:" },
+      "options": [
+        { "id": "a", "text": { "en": "Add a persisted computed column SOUNDEX(LastName) and index it" } },
+        { "id": "b", "text": { "en": "Index LastName directly — SOUNDEX uses it automatically" } },
+        { "id": "c", "text": { "en": "SOUNDEX results cannot be indexed" } },
+        { "id": "d", "text": { "en": "Use a full-text index" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "SOUNDEX is deterministic → computed column → B-tree index → seeks on phonetic code. A plain LastName index (b) can't seek a function result. (c) is false precisely because of determinism. Full-text (d) does linguistic word search, not phonetic codes." },
+      "example": { "en": "ADD LastNameSoundex AS SOUNDEX(LastName) PERSISTED; CREATE INDEX IX ON T(LastNameSoundex);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/indexes/indexes-on-computed-columns"]
+    },
+    {
+      "id": "d1-regex-0033",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-regex-fuzzy",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "Your fuzzy-search proc compares @input against 5M product names with JARO_WINKLER_SIMILARITY ≥ 0.9 and runs 30 s. Which layered design cuts latency the most while keeping quality?" },
+      "options": [
+        { "id": "a", "text": { "en": "Narrow candidates first with cheap SARGable filters (prefix LIKE, length band, trigram/soundex block), then score only candidates with Jaro-Winkler" } },
+        { "id": "b", "text": { "en": "Raise the threshold to 0.95" } },
+        { "id": "c", "text": { "en": "Compute similarity in a scalar UDF" } },
+        { "id": "d", "text": { "en": "Use NVARCHAR(MAX) for names" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The expensive function must touch fewer rows — candidate generation via indexable predicates is the classic two-phase fuzzy search. Raising the threshold (b) changes results, not the scan. Wrapping in a UDF (c) adds overhead. Type width (d) is irrelevant/worse." },
+      "example": { "en": "WHERE LEFT(Name, 1) = LEFT(@input, 1) AND ABS(LEN(Name) - LEN(@input)) <= 3 AND JARO_WINKLER_SIMILARITY(Name, @input) >= 0.9" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/jaro-winkler-similarity-transact-sql"]
+    },
+    {
+      "id": "d1-regex-0034",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-regex-fuzzy",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which character class matches any single digit in these regex functions?" },
+      "options": [
+        { "id": "a", "text": { "en": "\\d or [0-9]" } },
+        { "id": "b", "text": { "en": "\\n" } },
+        { "id": "c", "text": { "en": "%" } },
+        { "id": "d", "text": { "en": "_" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "\\d and [0-9] are regex digit classes. \\n is a newline escape. % and _ are LIKE wildcards — meaningless (or literal) in regex, a cross-syntax confusion the exam likes." },
+      "example": { "en": "LIKE '___' ≈ regex '^.{3}$' — translating between the two syntaxes is a testable skill." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/regular-expressions/overview"]
+    },
+    {
+      "id": "d1-regex-0035",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-regex-fuzzy",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "Which tasks suit EDIT_DISTANCE? Answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "Catching 'recieve' vs 'receive' typos in product search" } },
+        { "id": "s2", "text": { "en": "Matching 'Bob' to 'Robert' (nickname resolution)" } },
+        { "id": "s3", "text": { "en": "Comparing two 10,000-word documents for plagiarism" } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "no", "s3": "no" },
+      "explanation": { "en": "Transposition/typo distances are tiny for misspellings — perfect fit. Nicknames share few characters ('Bob'/'Robert' distance 4 of 6) — needs alias dictionaries, not edit metrics. Document-scale comparison is computationally prohibitive and semantically wrong — use shingling/embeddings." },
+      "example": { "en": "Fuzzy functions are short-string tools; know their boundaries." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/edit-distance-transact-sql"]
+    },
+    {
+      "id": "d1-regex-0036",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-regex-fuzzy",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "The 's' flag changes which behavior?" },
+      "options": [
+        { "id": "a", "text": { "en": "Makes . match newline characters too" } },
+        { "id": "b", "text": { "en": "Enables case sensitivity" } },
+        { "id": "c", "text": { "en": "Strips whitespace before matching" } },
+        { "id": "d", "text": { "en": "Makes matching single-line only" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "s = 'dot matches all' (including \\n) — for patterns spanning lines. Case sensitivity is c (default) vs i (b). No whitespace stripping exists (c). It extends rather than restricts matching (d)." },
+      "example": { "en": "REGEXP_LIKE(Body, 'BEGIN.*END', 's') -- across line breaks" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/regexp-like-transact-sql"]
+    },
+    {
+      "id": "d1-regex-0037",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-regex-fuzzy",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which statement finds rows where Email is syntactically valid BUT the domain is NOT in the allowed list, combining regex with relational logic?" },
+      "options": [
+        { "id": "a", "text": { "en": "WHERE REGEXP_LIKE(Email, @emailPattern) AND REGEXP_SUBSTR(Email, '@(.+)$', 1, 1, 'c', 1) NOT IN (SELECT Domain FROM dbo.AllowedDomains)" } },
+        { "id": "b", "text": { "en": "WHERE Email NOT IN (SELECT Domain FROM AllowedDomains)" } },
+        { "id": "c", "text": { "en": "WHERE REGEXP_COUNT(Email, '@') = 1" } },
+        { "id": "d", "text": { "en": "WHERE EDIT_DISTANCE(Email, 'allowed') > 5" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Validate shape with REGEXP_LIKE, extract the domain via SUBSTR's group argument, compare relationally. (b) compares whole emails to domains. (c) only counts @ signs. (d) abuses a similarity metric as policy." },
+      "example": { "en": "Regex extracts; SQL decides — composing the two is the realistic skill." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/regular-expressions/overview"]
+    },
+    {
+      "id": "d1-regex-0038",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-regex-fuzzy",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "LIKE 'A%' is equivalent to which regex?" },
+      "options": [
+        { "id": "a", "text": { "en": "^A.*" } },
+        { "id": "b", "text": { "en": "A%" } },
+        { "id": "c", "text": { "en": ".*A" } },
+        { "id": "d", "text": { "en": "^A$" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Starts-with-A = anchor + A + anything. % is a LIKE wildcard, literal in regex (b). .*A (c) means ends with A (unanchored). ^A$ (d) matches exactly the single character A." },
+      "example": { "en": "Translation table: % ↔ .*, _ ↔ ., [list] works in both." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/regular-expressions/overview"]
+    },
+    {
+      "id": "d1-regex-0039",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-regex-fuzzy",
+      "type": "dragdrop-order", "difficulty": "medium",
+      "text": { "en": "Order the layered matching strategy for a customer-data deduplication pipeline, cheapest first." },
+      "items": [
+        { "id": "i1", "text": { "en": "Exact match on normalized email" } },
+        { "id": "i2", "text": { "en": "Blocking: same postcode + name initial" } },
+        { "id": "i3", "text": { "en": "Fuzzy scoring (EDIT_DISTANCE / JARO_WINKLER) within blocks" } },
+        { "id": "i4", "text": { "en": "Human review of borderline scores" } }
+      ],
+      "answer": ["i1", "i2", "i3", "i4"],
+      "explanation": { "en": "Resolve the trivial duplicates exactly, restrict the expensive comparisons to small candidate blocks, score fuzzily inside them, and route only the uncertain band to humans — each layer orders of magnitude costlier per pair than the previous." },
+      "example": { "en": "Score ≥ 0.95 auto-merge, 0.85–0.95 review, below keep separate — typical thresholds." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/edit-distance-transact-sql"]
+    },
+    {
+      "id": "d1-regex-0040",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-regex-fuzzy",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What's wrong with validating emails using LIKE '%@%.%'?" },
+      "options": [
+        { "id": "a", "text": { "en": "It accepts garbage like '@@..@' and rejects nothing meaningful — wildcards can't express structure like character classes and repetition" } },
+        { "id": "b", "text": { "en": "LIKE cannot contain two wildcards" } },
+        { "id": "c", "text": { "en": "It is too strict" } },
+        { "id": "d", "text": { "en": "Nothing — it's equivalent to the regex approach" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "LIKE only checks 'contains @ then a dot somewhere' — '.@.' passes. Real structural rules (allowed characters, TLD length) need regex. Multiple wildcards are fine in LIKE (b); the pattern is too LOOSE, not strict (c); equivalence (d) is exactly the misconception." },
+      "example": { "en": "REGEXP_LIKE(Email, '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$') is the documented upgrade." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/regexp-like-transact-sql"]
+    },
+    {
+      "id": "d1-regex-0041",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-regex-fuzzy",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "EDIT_DISTANCE comparisons on NVARCHAR columns with different cases ('SMITH' vs 'smith') return 5. Why, and what's the fix if case shouldn't matter?" },
+      "options": [
+        { "id": "a", "text": { "en": "The comparison is character-exact; normalize with LOWER()/UPPER() on both arguments first" } },
+        { "id": "b", "text": { "en": "A bug — distance should be 0" } },
+        { "id": "c", "text": { "en": "Add the 'i' flag" } },
+        { "id": "d", "text": { "en": "Change the database collation" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Every differing character counts as an edit — case included; LOWER() both sides for case-insensitive similarity. It's by design, not a bug (b). Flags belong to REGEXP functions, not fuzzy ones (c). Collation doesn't alter these functions' character comparisons (d)." },
+      "example": { "en": "EDIT_DISTANCE(LOWER(a.Name), LOWER(b.Name)) <= 2" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/edit-distance-transact-sql"]
+    },
+    {
+      "id": "d1-regex-0042",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-regex-fuzzy",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A data-quality job must flag rows whose FreeText column contains anything that LOOKS like a credit card number (13–19 digits possibly separated by spaces/dashes). Which detection expression is appropriate?" },
+      "options": [
+        { "id": "a", "text": { "en": "REGEXP_LIKE(FreeText, '(\\d[ -]?){13,19}')" } },
+        { "id": "b", "text": { "en": "FreeText LIKE '%4111111111111111%'" } },
+        { "id": "c", "text": { "en": "EDIT_DISTANCE(FreeText, '4111111111111111') < 5" } },
+        { "id": "d", "text": { "en": "ISNUMERIC(FreeText) = 1" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "A repetition group of digit-plus-optional-separator captures formatted/unformatted PANs generically. Matching one known test number (b) misses everything else. Edit distance against one card (c) is conceptually wrong. ISNUMERIC (d) tests the whole value, not embedded sequences." },
+      "example": { "en": "DLP-style scanning is a realistic REGEXP_LIKE application; follow up with Luhn validation in code." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/regular-expressions/overview"]
+    },
+    {
+      "id": "d1-regex-0043",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-regex-fuzzy",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which alternative should you consider before regex when the requirement is only 'rows where Code starts with ABC'?" },
+      "options": [
+        { "id": "a", "text": { "en": "Code LIKE 'ABC%' — simpler, SARGable, collation-aware" } },
+        { "id": "b", "text": { "en": "REGEXP_MATCHES" } },
+        { "id": "c", "text": { "en": "Full-text CONTAINS" } },
+        { "id": "d", "text": { "en": "JARO_WINKLER_SIMILARITY" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Don't over-tool: LIKE with a leading literal is index-friendly and honors collation. REGEXP_MATCHES (b) is a TVF for extraction. Full-text (c) is for word search in documents. Similarity scoring (d) answers 'how close', not 'starts with'." },
+      "example": { "en": "Exam wisdom: the simplest sufficient tool is usually the right option." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/language-elements/like-transact-sql"]
+    },
+    {
+      "id": "d1-regex-0044",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-regex-fuzzy",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "The pattern parameter of REGEXP functions has what maximum length?" },
+      "options": [
+        { "id": "a", "text": { "en": "8,000 bytes" } },
+        { "id": "b", "text": { "en": "2 MB" } },
+        { "id": "c", "text": { "en": "128 characters" } },
+        { "id": "d", "text": { "en": "Unlimited" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Patterns cap at 8,000 bytes; it's the INPUT string that may reach 2 MB for LOBs (b — the confusion pair). 128 (c) resembles identifier limits; unlimited (d) is wrong." },
+      "example": { "en": "Two limits, two parameters: pattern 8 KB, LOB input 2 MB." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/regexp-like-transact-sql"]
+    },
+    {
+      "id": "d1-regex-0045",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-regex-fuzzy",
+      "type": "yesno", "difficulty": "hard",
+      "text": { "en": "REGEXP_LIKE(x, '^a.*', 'i') on an indexed column — answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "The pattern shape (anchored prefix) is SARGable in principle." } },
+        { "id": "s2", "text": { "en": "Regex matching here will follow the column's collation case rules." } },
+        { "id": "s3", "text": { "en": "Replacing it with LIKE 'a%' could change which rows match on special collations." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "no", "s3": "yes" },
+      "explanation": { "en": "Anchored '^a' patterns are the SARGable class. But regex ignores collation — case folding under flag i is ordinal, so language-specific rules (Turkish I) differ from LIKE's collation-aware matching, meaning the 'equivalent' LIKE can return different rows. Subtle, documented, and exam-worthy." },
+      "example": { "en": "On language-sensitive data, choose regex vs LIKE deliberately — they are not drop-in replacements." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/regexp-like-transact-sql"]
+    },
+    {
+      "id": "d1-regex-0046",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-regex-fuzzy",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which function would dedupe 'Micheal Jordan' against 'Michael Jordan' most directly?" },
+      "options": [
+        { "id": "a", "text": { "en": "EDIT_DISTANCE — the transposition is 2 character edits" } },
+        { "id": "b", "text": { "en": "REGEXP_COUNT" } },
+        { "id": "c", "text": { "en": "JSON_VALUE" } },
+        { "id": "d", "text": { "en": "DATEDIFF" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "'Micheal'→'Michael' is a classic two-edit transposition — edit distance flags it immediately (Jaro-Winkler also works well). Counting pattern matches (b), JSON extraction (c) and date math (d) are category errors." },
+      "example": { "en": "WHERE EDIT_DISTANCE(a.FullName, b.FullName) <= 2" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/edit-distance-transact-sql"]
+    },
+    {
+      "id": "d1-regex-0047",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-regex-fuzzy",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "CE feedback applied a regex selectivity hint automatically and you want to disable that behavior globally. Which trace flag?" },
+      "options": [
+        { "id": "a", "text": { "en": "16268" } },
+        { "id": "b", "text": { "en": "1222" } },
+        { "id": "c", "text": { "en": "3604" } },
+        { "id": "d", "text": { "en": "460" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "TF 16268 disables the automatic CE-feedback application of regex selectivity hints (documented on the REGEXP_LIKE page). 1222 prints deadlock info, 3604 redirects DBCC output, 460 improves truncation messages." },
+      "example": { "en": "Obscure but documented — exactly the kind of detail a hard exam item uses." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/regexp-like-transact-sql"]
+    },
+    {
+      "id": "d1-regex-0048",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-regex-fuzzy",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A REGEXP_LIKE call errors with \"Invalid flag provided. 'x' are not valid flags…\". Which flags ARE valid?" },
+      "options": [
+        { "id": "a", "text": { "en": "c, i, s, m" } },
+        { "id": "b", "text": { "en": "g, i, m, u" } },
+        { "id": "c", "text": { "en": "a, b, c, d" } },
+        { "id": "d", "text": { "en": "Any single letter" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "T-SQL supports exactly {c, i, s, m} — the error message literally lists them. g/u (b) come from JavaScript regex; the rest are noise. Flag 'x' (extended/whitespace mode) from other engines is NOT supported." },
+      "example": { "en": "Porting patterns from app code? Strip unsupported flags first." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/regexp-like-transact-sql"]
+    },
+    {
+      "id": "d1-regex-0049",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-regex-fuzzy",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "Match product names against a user query tolerating typos AND prefix truncation ('galax' → 'Galaxy S24'). Which composite ranking makes sense?" },
+      "options": [
+        { "id": "a", "text": { "en": "Combine a prefix/contains predicate for candidates with JARO_WINKLER_SIMILARITY ordering (it inherently rewards prefix agreement)" } },
+        { "id": "b", "text": { "en": "Pure EDIT_DISTANCE — 'galax' vs 'Galaxy S24' is a small distance" } },
+        { "id": "c", "text": { "en": "REGEXP_LIKE exact pattern" } },
+        { "id": "d", "text": { "en": "SOUNDEX equality" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The truncated query differs from the full name by MANY edits ('galax' vs 'Galaxy S24' = 5+), so raw edit distance (b) scores it poorly — prefix-weighted Jaro-Winkler plus a LIKE 'galax%' candidate filter handles both tolerance types. Exact patterns (c) defeat typo tolerance; SOUNDEX (d) breaks on truncation." },
+      "example": { "en": "Search-as-you-type = prefix candidates + JW ranking; a realistic design synthesis." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/jaro-winkler-similarity-transact-sql"]
+    },
+    {
+      "id": "d1-regex-0050",
+      "domain": "design-develop", "topic": "t-advanced-tsql", "subtopic": "d1-regex-fuzzy",
+      "type": "dragdrop-match", "difficulty": "medium",
+      "text": { "en": "Match each string problem to its best-fit tool." },
+      "items": [
+        { "id": "i1", "text": { "en": "Enforce SKU structure at insert time" } },
+        { "id": "i2", "text": { "en": "'Did you mean?' for misspelled searches" } },
+        { "id": "i3", "text": { "en": "Pull all #hashtags out of posts as rows" } },
+        { "id": "i4", "text": { "en": "Linguistic search with stemming over manuals" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "CHECK + REGEXP_LIKE" } },
+        { "id": "t2", "text": { "en": "EDIT_DISTANCE / JARO_WINKLER" } },
+        { "id": "t3", "text": { "en": "REGEXP_MATCHES (CROSS APPLY)" } },
+        { "id": "t4", "text": { "en": "Full-text search (CONTAINS/FREETEXT)" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "Structure → regex constraint; similarity → fuzzy functions; extraction-to-rows → regex TVF; linguistic retrieval → full-text. The four string-processing pillars of this exam, one scenario each." },
+      "example": { "en": "Add vector search for MEANING and the string-tooling map is complete." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/regular-expressions/overview"]
+    }
+  ]
+}

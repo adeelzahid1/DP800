@@ -1,0 +1,77 @@
+{
+  "subtopic": "f-tsql-refresher",
+  "title": { "en": "T-SQL refresher" },
+  "sections": [
+    {
+      "heading": { "en": "Why this refresher exists" },
+      "body": {
+        "en": "DP-800 assumes you can already read and write T-SQL. As a .NET developer you have probably written queries through Entity Framework or Dapper; this refresher re-anchors the raw SQL skills the exam leans on. Skim what you know, slow down where something feels fuzzy. Every later subtopic builds on this one."
+      }
+    },
+    {
+      "heading": { "en": "SELECT, filtering and sorting" },
+      "body": {
+        "en": "A query names the columns it wants, the table it reads, and the rows it keeps. **Logical processing order** matters for the exam: `FROM` → `WHERE` → `GROUP BY` → `HAVING` → `SELECT` → `ORDER BY`. That order explains two classic traps: you cannot use a column alias defined in `SELECT` inside `WHERE` (it does not exist yet), and `HAVING` filters groups while `WHERE` filters rows before grouping."
+      },
+      "code": "SELECT ProductId, Name, ListPrice,\n       ListPrice * 0.9 AS DiscountPrice\nFROM Production.Product\nWHERE ListPrice > 100          -- row filter (before grouping)\nORDER BY ListPrice DESC;       -- the only place ORDER BY is guaranteed"
+    },
+    {
+      "heading": { "en": "Joins" },
+      "body": {
+        "en": "- `INNER JOIN`: only rows with a match on both sides.\n- `LEFT JOIN`: every row from the left table, `NULL`s where the right side has no match.\n- `RIGHT JOIN` / `FULL JOIN`: mirror image / union of both behaviors.\n- `CROSS JOIN`: every combination (no `ON` clause).\nA common trap: putting a filter on the right table of a `LEFT JOIN` into `WHERE` silently turns it into an `INNER JOIN`, because `NULL` never passes the predicate. Put that filter into the `ON` clause to keep the outer behavior."
+      },
+      "code": "-- Customers with their orders, keeping customers who have none\nSELECT c.CustomerId, c.Name, o.OrderId\nFROM Sales.Customer AS c\nLEFT JOIN Sales.[Order] AS o\n  ON o.CustomerId = c.CustomerId\n AND o.Status = 'Shipped';   -- filter in ON keeps the LEFT JOIN semantics"
+    },
+    {
+      "heading": { "en": "Aggregation" },
+      "body": {
+        "en": "`COUNT`, `SUM`, `AVG`, `MIN`, `MAX` collapse many rows into one per group. Remember: `COUNT(*)` counts rows, `COUNT(col)` counts non-NULL values, and aggregates ignore `NULL` (an `AVG` over {10, NULL, 20} is 15, not 10). Every non-aggregated column in the `SELECT` list must appear in `GROUP BY`."
+      },
+      "code": "SELECT c.Country, COUNT(*) AS Orders, SUM(o.Total) AS Revenue\nFROM Sales.[Order] AS o\nJOIN Sales.Customer AS c ON c.CustomerId = o.CustomerId\nGROUP BY c.Country\nHAVING SUM(o.Total) > 10000;   -- group filter (after grouping)"
+    },
+    {
+      "heading": { "en": "NULL three-valued logic" },
+      "body": {
+        "en": "Any comparison with `NULL` yields UNKNOWN, not true or false. `WHERE Price <> 10` drops rows where Price is `NULL`. Test with `IS NULL` / `IS NOT NULL`, and use `COALESCE(x, fallback)` to substitute. `NOT IN` with a subquery that returns a single `NULL` returns **no rows at all** — one of the most common exam traps; `NOT EXISTS` does not have this problem."
+      }
+    },
+    {
+      "heading": { "en": "Data modification" },
+      "body": {
+        "en": "`INSERT INTO … VALUES` / `INSERT INTO … SELECT` add rows; `UPDATE … SET … WHERE` changes them; `DELETE FROM … WHERE` removes them; `TRUNCATE TABLE` removes all rows faster, is minimally logged, resets identity values, and cannot have a `WHERE`. `MERGE` applies insert/update/delete in one statement from a source to a target. The `OUTPUT` clause returns the affected rows (via the `inserted` and `deleted` pseudo-tables) — handy and exam-relevant."
+      },
+      "code": "UPDATE p\nSET p.ListPrice = p.ListPrice * 1.05\nOUTPUT deleted.ListPrice AS OldPrice, inserted.ListPrice AS NewPrice\nFROM Production.Product AS p\nWHERE p.Category = 'Bikes';"
+    },
+    {
+      "heading": { "en": "Transactions in 60 seconds" },
+      "body": {
+        "en": "A transaction makes several statements succeed or fail as one unit (ACID: atomic, consistent, isolated, durable). `BEGIN TRANSACTION`, then `COMMIT` to keep or `ROLLBACK` to undo. By default every single statement is its own auto-commit transaction. `@@TRANCOUNT` tells you the nesting depth; `XACT_STATE()` tells you whether the current transaction is committable (1), none (0), or doomed (-1). Isolation levels (how much one transaction sees of another) are covered in depth in Domain 2."
+      },
+      "code": "BEGIN TRANSACTION;\nBEGIN TRY\n    UPDATE Accounts SET Balance = Balance - 100 WHERE Id = 1;\n    UPDATE Accounts SET Balance = Balance + 100 WHERE Id = 2;\n    COMMIT TRANSACTION;\nEND TRY\nBEGIN CATCH\n    IF XACT_STATE() <> 0 ROLLBACK TRANSACTION;\n    THROW;   -- rethrow the original error\nEND CATCH;"
+    },
+    {
+      "heading": { "en": "Batches, variables and control flow" },
+      "body": {
+        "en": "`GO` separates batches (it is a client-tool word, not T-SQL). Variables are declared with `DECLARE @name type` and set with `SET` or `SELECT`. `IF`/`ELSE` and `WHILE` give control flow. Table variables (`DECLARE @t TABLE (…)`) and temp tables (`CREATE TABLE #t (…)`) hold intermediate results; temp tables live in tempdb and support statistics and indexes, while table variables are lighter but the optimizer knows less about them."
+      }
+    },
+    {
+      "heading": { "en": "The system catalog" },
+      "body": {
+        "en": "Metadata lives in catalog views: `sys.tables`, `sys.columns`, `sys.indexes`, `sys.objects`. `OBJECT_ID('dbo.T')` resolves a name to an id. You will meet many more (`sys.dm_*` dynamic management views for live state, `sys.external_models` for AI models) in later topics."
+      }
+    }
+  ],
+  "examTips": [
+    { "en": "Memorize the logical query processing order (FROM → WHERE → GROUP BY → HAVING → SELECT → ORDER BY); several question styles test it indirectly." },
+    { "en": "`NOT IN` + a NULL in the subquery = empty result. Prefer `NOT EXISTS`." },
+    { "en": "A WHERE filter on the right table of a LEFT JOIN turns it into an INNER JOIN — move it to ON to preserve outer rows." },
+    { "en": "`COUNT(col)` skips NULLs; `COUNT(*)` does not." },
+    { "en": "TRUNCATE TABLE: no WHERE, minimally logged, resets IDENTITY, needs ALTER permission (DELETE only needs DELETE permission)." }
+  ],
+  "sources": [
+    "https://learn.microsoft.com/en-us/sql/t-sql/queries/select-transact-sql",
+    "https://learn.microsoft.com/en-us/sql/t-sql/language-elements/transactions-transact-sql",
+    "https://learn.microsoft.com/en-us/sql/t-sql/queries/output-clause-transact-sql"
+  ]
+}

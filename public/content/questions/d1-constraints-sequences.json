@@ -1,0 +1,872 @@
+{
+  "subtopic": "d1-constraints-sequences",
+  "questions": [
+    {
+      "id": "d1-constr-0001",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-constraints-sequences",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "How many NULL values does a UNIQUE constraint allow in a nullable column in SQL Server?" },
+      "options": [
+        { "id": "a", "text": { "en": "Exactly one" } },
+        { "id": "b", "text": { "en": "None" } },
+        { "id": "c", "text": { "en": "Unlimited" } },
+        { "id": "d", "text": { "en": "One per distinct non-NULL value" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "SQL Server treats NULL as a value for UNIQUE constraints, so a second NULL violates it — one NULL maximum. 'None' describes PRIMARY KEY behavior. 'Unlimited' is what a filtered unique index (WHERE col IS NOT NULL) achieves, and (d) is nonsense." },
+      "example": { "en": "Need many NULLs? CREATE UNIQUE INDEX UX ON T(Col) WHERE Col IS NOT NULL;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/tables/unique-constraints-and-check-constraints"]
+    },
+    {
+      "id": "d1-constr-0002",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-constraints-sequences",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which constraint guarantees that OrderDate is populated automatically with the current UTC time when an INSERT omits it?" },
+      "options": [
+        { "id": "a", "text": { "en": "DEFAULT (SYSUTCDATETIME())" } },
+        { "id": "b", "text": { "en": "CHECK (OrderDate IS NOT NULL)" } },
+        { "id": "c", "text": { "en": "PRIMARY KEY" } },
+        { "id": "d", "text": { "en": "FOREIGN KEY" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "DEFAULT supplies a value for omitted columns — including from functions like SYSUTCDATETIME(). CHECK only validates values that arrive (and lets NULL pass); it never generates them. PK and FK serve identity and referential integrity, not value generation." },
+      "example": { "en": "CreatedAt DATETIME2 NOT NULL CONSTRAINT DF_T_CreatedAt DEFAULT (SYSUTCDATETIME())" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/tables/specify-default-values-for-columns"]
+    },
+    {
+      "id": "d1-constr-0003",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-constraints-sequences",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A CHECK constraint says (Discount BETWEEN 0 AND 50). A row is inserted with Discount = NULL. What happens?" },
+      "options": [
+        { "id": "a", "text": { "en": "The insert succeeds — NULL evaluates to UNKNOWN, which CHECK does not treat as a violation" } },
+        { "id": "b", "text": { "en": "The insert fails with a constraint violation" } },
+        { "id": "c", "text": { "en": "The insert succeeds and Discount becomes 0" } },
+        { "id": "d", "text": { "en": "The behavior depends on ANSI_NULLS" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "CHECK rejects rows only when the predicate is FALSE; UNKNOWN (from NULL) passes. This is the single most-tested CHECK fact. It doesn't fail (b), nothing substitutes 0 (c — that's DEFAULT's job and only when the column is omitted), and ANSI_NULLS doesn't change CHECK semantics here (d)." },
+      "example": { "en": "To require a valid discount: Discount DECIMAL(5,2) NOT NULL CHECK (Discount BETWEEN 0 AND 50)." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/tables/unique-constraints-and-check-constraints"]
+    },
+    {
+      "id": "d1-constr-0004",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-constraints-sequences",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Deleting a customer must automatically delete all of the customer's orders. Which referential action implements this?" },
+      "options": [
+        { "id": "a", "text": { "en": "ON DELETE CASCADE on the orders table's foreign key" } },
+        { "id": "b", "text": { "en": "ON DELETE NO ACTION" } },
+        { "id": "c", "text": { "en": "ON DELETE SET NULL" } },
+        { "id": "d", "text": { "en": "ON UPDATE CASCADE" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "ON DELETE CASCADE propagates the parent delete to child rows. NO ACTION (b) blocks the delete while orders exist. SET NULL (c) keeps the orders but orphans them logically (CustomerId = NULL). ON UPDATE CASCADE (d) reacts to key *updates*, not deletes." },
+      "example": { "en": "FOREIGN KEY (CustomerId) REFERENCES dbo.Customers(CustomerId) ON DELETE CASCADE" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/tables/primary-and-foreign-key-constraints"]
+    },
+    {
+      "id": "d1-constr-0005",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-constraints-sequences",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What can a FOREIGN KEY reference in the parent table?" },
+      "options": [
+        { "id": "a", "text": { "en": "A PRIMARY KEY or UNIQUE constraint (or unique index) on the parent" } },
+        { "id": "b", "text": { "en": "Any column" } },
+        { "id": "c", "text": { "en": "Only an IDENTITY column" } },
+        { "id": "d", "text": { "en": "Only the clustered index key" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The referenced columns must be guaranteed unique — PK, UNIQUE constraint, or unique index. Arbitrary columns (b) can't anchor referential integrity. IDENTITY (c) is irrelevant to the rule, and the key need not be clustered (d)." },
+      "example": { "en": "FKs can also reference a UNIQUE alternate key: REFERENCES dbo.Products(Sku)." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/tables/primary-and-foreign-key-constraints"]
+    },
+    {
+      "id": "d1-constr-0006",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-constraints-sequences",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which expression retrieves the next value from a sequence?" },
+      "options": [
+        { "id": "a", "text": { "en": "NEXT VALUE FOR dbo.OrderSeq" } },
+        { "id": "b", "text": { "en": "dbo.OrderSeq.NEXTVAL" } },
+        { "id": "c", "text": { "en": "GET NEXT dbo.OrderSeq" } },
+        { "id": "d", "text": { "en": "SELECT SEQUENCE(dbo.OrderSeq)" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "T-SQL uses NEXT VALUE FOR. NEXTVAL (b) is Oracle syntax, and (c)/(d) are invented. NEXT VALUE FOR is valid in SELECT lists, DEFAULT constraints, and SET assignments." },
+      "example": { "en": "DECLARE @id INT = NEXT VALUE FOR dbo.OrderSeq; INSERT ... VALUES (@id, ...);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/next-value-for-transact-sql"]
+    },
+    {
+      "id": "d1-constr-0007",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-constraints-sequences",
+      "type": "multiple", "difficulty": "medium", "selectCount": 3,
+      "text": { "en": "Which three capabilities does SEQUENCE have that IDENTITY lacks? (Select 3)" },
+      "options": [
+        { "id": "a", "text": { "en": "Obtaining the value before the INSERT statement" } },
+        { "id": "b", "text": { "en": "Sharing one number series across multiple tables" } },
+        { "id": "c", "text": { "en": "Cycling back to the minimum after reaching the maximum" } },
+        { "id": "d", "text": { "en": "Guaranteeing gap-free numbering" } },
+        { "id": "e", "text": { "en": "Generating values automatically without any column default" } }
+      ],
+      "answer": ["a", "b", "c"],
+      "explanation": { "en": "Sequences are standalone: fetch values any time (a), feed any number of tables (b), and support CYCLE (c). Neither mechanism is gap-free (d) — rollbacks and caching skip values in both. And IDENTITY is actually the one that generates automatically without a DEFAULT; a sequence needs NEXT VALUE FOR somewhere (e)." },
+      "example": { "en": "CREATE SEQUENCE dbo.S START WITH 1 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 CYCLE;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/sequence-numbers/sequence-numbers"]
+    },
+    {
+      "id": "d1-constr-0008",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-constraints-sequences",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "For each statement about foreign keys, answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "Creating a FOREIGN KEY automatically creates an index on the referencing column." } },
+        { "id": "s2", "text": { "en": "A FOREIGN KEY column can contain NULL." } },
+        { "id": "s3", "text": { "en": "ADD CONSTRAINT ... WITH NOCHECK skips validating existing rows." } },
+        { "id": "s4", "text": { "en": "An untrusted constraint is still enforced for new data." } }
+      ],
+      "answerMap": { "s1": "no", "s2": "yes", "s3": "yes", "s4": "yes" },
+      "explanation": { "en": "No index is auto-created on FK columns — a famous performance gotcha. NULL FK values are allowed (the relationship is simply 'unknown'). WITH NOCHECK skips historical validation, marking the constraint untrusted (is_not_trusted = 1); new modifications are still checked, but the optimizer can't use the constraint for eliminations until revalidated." },
+      "example": { "en": "ALTER TABLE T WITH CHECK CHECK CONSTRAINT FK_T_Parent; -- revalidates and restores trust" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/tables/primary-and-foreign-key-constraints"]
+    },
+    {
+      "id": "d1-constr-0009",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-constraints-sequences",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Complete the sequence that issues invoice numbers starting at 50000, shared via column defaults." },
+      "code": "CREATE SEQUENCE dbo.InvoiceNo AS INT\n    [BLANK1] 50000\n    INCREMENT BY 1\n    CACHE 50;\nGO\nALTER TABLE dbo.Invoices\n    ADD CONSTRAINT DF_Invoices_No\n    DEFAULT ( [BLANK2] ) FOR InvoiceNumber;",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "START WITH" } },
+            { "id": "c2", "text": { "en": "SEED" } },
+            { "id": "c3", "text": { "en": "BEGIN AT" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "NEXT VALUE FOR dbo.InvoiceNo" } },
+            { "id": "c2", "text": { "en": "dbo.InvoiceNo.NEXTVAL" } },
+            { "id": "c3", "text": { "en": "IDENT_CURRENT('dbo.InvoiceNo')" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "CREATE SEQUENCE uses START WITH (SEED belongs to IDENTITY's mental model, BEGIN AT is invented). The default must call NEXT VALUE FOR; NEXTVAL is Oracle and IDENT_CURRENT reads identity metadata of tables, not sequences." },
+      "example": { "en": "The DEFAULT approach gives IDENTITY-like convenience while keeping sequence flexibility." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-sequence-transact-sql"]
+    },
+    {
+      "id": "d1-constr-0010",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-constraints-sequences",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which requirement CANNOT be implemented with a CHECK constraint?" },
+      "options": [
+        { "id": "a", "text": { "en": "OrderTotal must not exceed the customer's CreditLimit stored in another table" } },
+        { "id": "b", "text": { "en": "EndDate must be on or after StartDate in the same row" } },
+        { "id": "c", "text": { "en": "Email must match a regular expression pattern" } },
+        { "id": "d", "text": { "en": "Quantity must be between 1 and 100" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "CHECK constraints see only the current row (and scalar expressions) — they cannot query other tables. Cross-row/cross-table rules need FKs, triggers, or application logic. Same-row column comparison (b), regex via REGEXP_LIKE in SQL Server 2025 (c), and range checks (d) are all standard CHECK use." },
+      "example": { "en": "CONSTRAINT CK_Dates CHECK (EndDate >= StartDate) is table-level because it references two columns." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/tables/unique-constraints-and-check-constraints"]
+    },
+    {
+      "id": "d1-constr-0011",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-constraints-sequences",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "Why would you create an index on dbo.Orders(CustomerId) right after adding FK_Orders_Customers?" },
+      "options": [
+        { "id": "a", "text": { "en": "Joins to Customers and FK checks on parent DELETE/UPDATE scan Orders without one" } },
+        { "id": "b", "text": { "en": "The FK is invalid until an index exists" } },
+        { "id": "c", "text": { "en": "To make the constraint trusted" } },
+        { "id": "d", "text": { "en": "Foreign keys require a clustered index on the child" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "When a parent row is deleted/updated, the engine must find matching children — without an index on the FK column, that's a scan of Orders per parent row; joins suffer identically. The FK itself is valid without any index (b), trust depends on validation not indexing (c), and no clustered requirement exists (d)." },
+      "example": { "en": "Deleting one customer from a 100M-row Orders table without the FK index = one full table scan." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-index-design-guide"]
+    },
+    {
+      "id": "d1-constr-0012",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-constraints-sequences",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which statement adds a named primary key to an existing table?" },
+      "options": [
+        { "id": "a", "text": { "en": "ALTER TABLE dbo.T ADD CONSTRAINT PK_T PRIMARY KEY (Id);" } },
+        { "id": "b", "text": { "en": "CREATE PRIMARY KEY PK_T ON dbo.T(Id);" } },
+        { "id": "c", "text": { "en": "ALTER TABLE dbo.T SET PRIMARY KEY (Id);" } },
+        { "id": "d", "text": { "en": "ADD PRIMARY KEY dbo.T(Id);" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Constraints are added through ALTER TABLE … ADD CONSTRAINT. The other forms are not T-SQL. Naming constraints explicitly (PK_T) matters for database projects and deployments — auto-generated names differ per database and cause schema-drift noise." },
+      "example": { "en": "Id must already be NOT NULL (or made so) before the PK can be added." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-table-transact-sql"]
+    },
+    {
+      "id": "d1-constr-0013",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-constraints-sequences",
+      "type": "dragdrop-match", "difficulty": "easy",
+      "text": { "en": "Match each business rule to the constraint type that implements it." },
+      "items": [
+        { "id": "i1", "text": { "en": "Every order must belong to an existing customer" } },
+        { "id": "i2", "text": { "en": "No two products share the same SKU" } },
+        { "id": "i3", "text": { "en": "Rating must be 1–5" } },
+        { "id": "i4", "text": { "en": "Status is 'pending' unless specified" } },
+        { "id": "i5", "text": { "en": "Each row is uniquely identified by OrderId" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "FOREIGN KEY" } },
+        { "id": "t2", "text": { "en": "UNIQUE" } },
+        { "id": "t3", "text": { "en": "CHECK" } },
+        { "id": "t4", "text": { "en": "DEFAULT" } },
+        { "id": "t5", "text": { "en": "PRIMARY KEY" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4", "i5": "t5" },
+      "explanation": { "en": "Referential integrity → FK; alternate-key uniqueness → UNIQUE; value rules → CHECK; omitted-value filling → DEFAULT; row identity → PK. This one-to-one mapping is the foundation for every constraint scenario question." },
+      "example": { "en": "The five constraint types in the official study guide bullet: PRIMARY KEY, FOREIGN KEY, UNIQUE, CHECK, DEFAULT." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/tables/unique-constraints-and-check-constraints"]
+    },
+    {
+      "id": "d1-constr-0014",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-constraints-sequences",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What does CACHE 100 on a sequence do, and what is the risk?" },
+      "options": [
+        { "id": "a", "text": { "en": "Preallocates 100 values in memory for speed; an unexpected shutdown can skip the unused cached values" } },
+        { "id": "b", "text": { "en": "Caches the last 100 generated values for reuse" } },
+        { "id": "c", "text": { "en": "Limits the sequence to 100 values total" } },
+        { "id": "d", "text": { "en": "Stores 100 values per transaction, rolled back on failure" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "CACHE writes metadata once per 100 values instead of per value — much faster — but a crash loses the unwritten remainder, creating gaps. Values are never 'reused' (b), there is no total cap (c — that's MAXVALUE), and caching is independent of transactions (d)." },
+      "example": { "en": "Gap-sensitive series → NO CACHE (still not gapless — rollbacks remain) or application-level serialization." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-sequence-transact-sql"]
+    },
+    {
+      "id": "d1-constr-0015",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-constraints-sequences",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "An INSERT into Orders fails with 'The INSERT statement conflicted with the FOREIGN KEY constraint'. What does this mean?" },
+      "options": [
+        { "id": "a", "text": { "en": "The CustomerId being inserted does not exist in the referenced Customers table" } },
+        { "id": "b", "text": { "en": "The Orders table is full" } },
+        { "id": "c", "text": { "en": "A duplicate OrderId was inserted" } },
+        { "id": "d", "text": { "en": "The customer already has too many orders" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "FK violations on INSERT mean the child references a non-existent parent key. Capacity (b) produces different errors; duplicates (c) violate PK/UNIQUE, not FK; and no constraint counts rows per parent (d)." },
+      "example": { "en": "Insert the parent first, or wrap both inserts in one transaction parent-then-child." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/tables/primary-and-foreign-key-constraints"]
+    },
+    {
+      "id": "d1-constr-0016",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-constraints-sequences",
+      "type": "yesno", "difficulty": "easy",
+      "text": { "en": "Answer Yes or No for each PRIMARY KEY statement." },
+      "statements": [
+        { "id": "s1", "text": { "en": "A primary key can span multiple columns (composite key)." } },
+        { "id": "s2", "text": { "en": "A primary key column can be nullable." } },
+        { "id": "s3", "text": { "en": "A table can have two primary keys." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "no", "s3": "no" },
+      "explanation": { "en": "Composite PKs are standard (e.g. order id + line number). PK columns must be NOT NULL — the engine enforces it. Exactly one PK per table; additional candidate keys are modeled as UNIQUE constraints." },
+      "example": { "en": "CONSTRAINT PK_OrderLines PRIMARY KEY (OrderId, LineNo)" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/tables/primary-and-foreign-key-constraints"]
+    },
+    {
+      "id": "d1-constr-0017",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-constraints-sequences",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "After ALTER TABLE Orders WITH NOCHECK ADD CONSTRAINT CK_Total CHECK (Total >= 0), what is true?" },
+      "options": [
+        { "id": "a", "text": { "en": "Existing negative totals remain, new rows are checked, and the optimizer treats the constraint as untrusted" } },
+        { "id": "b", "text": { "en": "All existing rows were validated during the ALTER" } },
+        { "id": "c", "text": { "en": "The constraint is disabled until manually enabled" } },
+        { "id": "d", "text": { "en": "Negative totals are silently corrected to 0" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "WITH NOCHECK adds the constraint without scanning existing data — bad rows stay, the constraint is marked not trusted (sys.check_constraints.is_not_trusted = 1), yet future DML is enforced. Validation did NOT occur (b). The constraint is enabled, just untrusted (c). Nothing rewrites data (d)." },
+      "example": { "en": "Restore trust: ALTER TABLE Orders WITH CHECK CHECK CONSTRAINT CK_Total; -- fails if bad rows still exist" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-table-transact-sql"]
+    },
+    {
+      "id": "d1-constr-0018",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-constraints-sequences",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Orders.CustomerId allows NULL for guest checkouts. The FK to Customers exists. What happens when CustomerId is NULL?" },
+      "options": [
+        { "id": "a", "text": { "en": "The row is accepted — NULL foreign keys are not validated against the parent" } },
+        { "id": "b", "text": { "en": "The insert fails the FK check" } },
+        { "id": "c", "text": { "en": "The engine substitutes a default customer" } },
+        { "id": "d", "text": { "en": "The FK must be dropped to allow this" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "FK validation applies only to non-NULL values; NULL means 'no reference'. No failure (b), no substitution (c — that would be SET DEFAULT on parent actions, a different thing), and the FK can stay (d)." },
+      "example": { "en": "To force every order to have a customer, add NOT NULL to the column — the FK alone doesn't." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/tables/primary-and-foreign-key-constraints"]
+    },
+    {
+      "id": "d1-constr-0019",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-constraints-sequences",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Complete the constraint so order lines always reference a product and quantity is at least 1." },
+      "code": "CREATE TABLE dbo.OrderLines (\n    OrderId INT NOT NULL,\n    LineNo  SMALLINT NOT NULL,\n    ProductId INT NOT NULL\n        CONSTRAINT FK_Lines_Product [BLANK1] dbo.Products(ProductId),\n    Qty INT NOT NULL\n        CONSTRAINT CK_Lines_Qty [BLANK2] (Qty >= 1),\n    CONSTRAINT PK_Lines PRIMARY KEY (OrderId, LineNo)\n);",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "FOREIGN KEY REFERENCES" } },
+            { "id": "c2", "text": { "en": "REFERS TO" } },
+            { "id": "c3", "text": { "en": "LINKS" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "CHECK" } },
+            { "id": "c2", "text": { "en": "VERIFY" } },
+            { "id": "c3", "text": { "en": "ASSERT" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "Column-level FK syntax is [FOREIGN KEY] REFERENCES parent(col) — REFERS TO and LINKS aren't T-SQL. Value rules use CHECK; VERIFY/ASSERT don't exist in SQL Server (ASSERTION is unimplemented ANSI)." },
+      "example": { "en": "Note the composite PK (OrderId, LineNo) — a classic header/lines model." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-table-transact-sql"]
+    },
+    {
+      "id": "d1-constr-0020",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-constraints-sequences",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which statement about ON DELETE SET NULL is correct?" },
+      "options": [
+        { "id": "a", "text": { "en": "When the parent row is deleted, matching child FK columns become NULL — the FK column must be nullable" } },
+        { "id": "b", "text": { "en": "The child rows are deleted" } },
+        { "id": "c", "text": { "en": "The parent delete is blocked" } },
+        { "id": "d", "text": { "en": "It only works with composite keys" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "SET NULL detaches children rather than deleting (that's CASCADE, b) or blocking (NO ACTION, c). Naturally the FK column must allow NULL or the action fails. No composite-key requirement exists (d)." },
+      "example": { "en": "Use case: deleting a sales rep keeps the accounts but clears their AssignedRepId." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/tables/primary-and-foreign-key-constraints"]
+    },
+    {
+      "id": "d1-constr-0021",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-constraints-sequences",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "What is the default referential action when a FOREIGN KEY omits ON DELETE?" },
+      "options": [
+        { "id": "a", "text": { "en": "NO ACTION — the parent delete fails if children reference it" } },
+        { "id": "b", "text": { "en": "CASCADE" } },
+        { "id": "c", "text": { "en": "SET NULL" } },
+        { "id": "d", "text": { "en": "SET DEFAULT" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "NO ACTION is the safe default: the engine rejects parent deletions that would orphan children. CASCADE, SET NULL and SET DEFAULT must all be opted into explicitly — a deliberate design, since automatic cascades can silently delete large subtrees." },
+      "example": { "en": "Msg 547: 'The DELETE statement conflicted with the REFERENCE constraint…' is NO ACTION doing its job." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/tables/primary-and-foreign-key-constraints"]
+    },
+    {
+      "id": "d1-constr-0022",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-constraints-sequences",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A sequence with MAXVALUE 999 and NO CYCLE reaches 999. What happens on the next NEXT VALUE FOR?" },
+      "options": [
+        { "id": "a", "text": { "en": "An error is raised (sequence exhausted)" } },
+        { "id": "b", "text": { "en": "It silently restarts at MINVALUE" } },
+        { "id": "c", "text": { "en": "It returns NULL" } },
+        { "id": "d", "text": { "en": "It returns 999 repeatedly" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Without CYCLE, exhausting the range raises an error (Msg 11728). Restarting at MINVALUE (b) is exactly what CYCLE would do. Sequences never return NULL (c) or repeat the max (d)." },
+      "example": { "en": "ALTER SEQUENCE dbo.S RESTART WITH 1; -- manual reset, or declare CYCLE upfront when wraparound is acceptable" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-sequence-transact-sql"]
+    },
+    {
+      "id": "d1-constr-0023",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-constraints-sequences",
+      "type": "multiple", "difficulty": "medium", "selectCount": 2,
+      "text": { "en": "Which two statements about DEFAULT constraints are true? (Select 2)" },
+      "options": [
+        { "id": "a", "text": { "en": "They apply only when the INSERT omits the column (or specifies DEFAULT)" } },
+        { "id": "b", "text": { "en": "They can use functions such as NEWID() or SYSUTCDATETIME()" } },
+        { "id": "c", "text": { "en": "They overwrite explicit NULLs with the default value" } },
+        { "id": "d", "text": { "en": "Only one DEFAULT is allowed per table" } }
+      ],
+      "answer": ["a", "b"],
+      "explanation": { "en": "Defaults fire on omission (or the DEFAULT keyword) and may call niladic/scalar functions. An explicit NULL is a supplied value — the default does NOT replace it (c), a frequent misconception. Each column may have its own default; there's no per-table limit (d)." },
+      "example": { "en": "INSERT INTO T(Col) VALUES (NULL) stores NULL even with DEFAULT 'x' — use NOT NULL to prevent it." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/tables/specify-default-values-for-columns"]
+    },
+    {
+      "id": "d1-constr-0024",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-constraints-sequences",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which design enforces that ReturnDate, when present, is never before CheckoutDate?" },
+      "options": [
+        { "id": "a", "text": { "en": "A table-level CHECK (ReturnDate IS NULL OR ReturnDate >= CheckoutDate)" } },
+        { "id": "b", "text": { "en": "A DEFAULT on ReturnDate" } },
+        { "id": "c", "text": { "en": "A UNIQUE constraint over both columns" } },
+        { "id": "d", "text": { "en": "A FOREIGN KEY from ReturnDate to CheckoutDate" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Multi-column row rules are table-level CHECK constraints; the IS NULL arm admits open loans explicitly. DEFAULT (b) fills omitted values, UNIQUE (c) enforces uniqueness, and FKs (d) relate tables — none expresses an inequality between two columns." },
+      "example": { "en": "CONSTRAINT CK_Loan_Dates CHECK (ReturnDate IS NULL OR ReturnDate >= CheckoutDate)" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/tables/unique-constraints-and-check-constraints"]
+    },
+    {
+      "id": "d1-constr-0025",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-constraints-sequences",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "You must validate email format at the database level on SQL Server 2025. Which is the most direct implementation?" },
+      "options": [
+        { "id": "a", "text": { "en": "CHECK (REGEXP_LIKE(Email, '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$'))" } },
+        { "id": "b", "text": { "en": "CHECK (Email LIKE '%@%')" } },
+        { "id": "c", "text": { "en": "A DEFAULT constraint with a valid email" } },
+        { "id": "d", "text": { "en": "An INSTEAD OF trigger parsing the email in C#" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "SQL Server 2025's REGEXP_LIKE inside a CHECK gives real pattern validation — a scenario Microsoft's own docs showcase. LIKE '%@%' (b) accepts '@@@'. DEFAULT (c) doesn't validate. A trigger (d) adds complexity and still couldn't run C# directly (that would need CLR)." },
+      "example": { "en": "Phone too: CHECK (REGEXP_LIKE(Phone, '^(\\d{3})-(\\d{3})-(\\d{4})$'))" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/regexp-like-transact-sql"]
+    },
+    {
+      "id": "d1-constr-0026",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-constraints-sequences",
+      "type": "dragdrop-order", "difficulty": "medium",
+      "text": { "en": "A migration script must create these objects. Arrange them so all references resolve (parents before children)." },
+      "items": [
+        { "id": "i1", "text": { "en": "CREATE TABLE dbo.Customers (PK)" } },
+        { "id": "i2", "text": { "en": "CREATE TABLE dbo.Orders with FK → Customers" } },
+        { "id": "i3", "text": { "en": "CREATE TABLE dbo.OrderLines with FK → Orders" } },
+        { "id": "i4", "text": { "en": "INSERT seed data into Customers" } },
+        { "id": "i5", "text": { "en": "INSERT seed data into Orders" } }
+      ],
+      "answer": ["i1", "i2", "i3", "i4", "i5"],
+      "explanation": { "en": "DDL order follows the dependency chain Customers → Orders → OrderLines (each FK needs its parent to exist). Seed data likewise: customers before the orders that reference them. Inserting Orders seed before Customers seed would hit FK violations." },
+      "example": { "en": "SQL Database Projects compute this ordering automatically from the model — handwritten scripts must get it right manually." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/tables/primary-and-foreign-key-constraints"]
+    },
+    {
+      "id": "d1-constr-0027",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-constraints-sequences",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which catalog view reveals whether a CHECK constraint is untrusted?" },
+      "options": [
+        { "id": "a", "text": { "en": "sys.check_constraints (is_not_trusted column)" } },
+        { "id": "b", "text": { "en": "sys.dm_exec_sessions" } },
+        { "id": "c", "text": { "en": "sys.trusted_constraints" } },
+        { "id": "d", "text": { "en": "INFORMATION_SCHEMA.TABLES" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "sys.check_constraints (and sys.foreign_keys for FKs) expose is_not_trusted. dm_exec_sessions shows connections; sys.trusted_constraints doesn't exist; INFORMATION_SCHEMA.TABLES lists tables without trust metadata." },
+      "example": { "en": "SELECT name FROM sys.foreign_keys WHERE is_not_trusted = 1; -- candidates for revalidation" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-check-constraints-transact-sql"]
+    },
+    {
+      "id": "d1-constr-0028",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-constraints-sequences",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Two concurrent sessions each call NEXT VALUE FOR dbo.Seq. What is guaranteed?" },
+      "options": [
+        { "id": "a", "text": { "en": "Each session receives a distinct value" } },
+        { "id": "b", "text": { "en": "Both may receive the same value" } },
+        { "id": "c", "text": { "en": "The second session blocks until the first commits" } },
+        { "id": "d", "text": { "en": "Values are assigned in commit order" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Sequences hand out unique values atomically across sessions — no duplicates (b) and no blocking on user transactions (c): a rollback simply wastes the value. Assignment order is request order, not commit order (d), which is one source of gaps and out-of-order ids." },
+      "example": { "en": "This is why sequence/identity values are unique but not chronological or gapless." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/sequence-numbers/sequence-numbers"]
+    },
+    {
+      "id": "d1-constr-0029",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-constraints-sequences",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "Answer Yes or No for each statement about sequences." },
+      "statements": [
+        { "id": "s1", "text": { "en": "A single sequence can supply values to several tables." } },
+        { "id": "s2", "text": { "en": "NEXT VALUE FOR can be used in a WHERE clause." } },
+        { "id": "s3", "text": { "en": "sp_sequence_get_range reserves a contiguous block of values." } },
+        { "id": "s4", "text": { "en": "ALTER SEQUENCE ... RESTART WITH resets the next value." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "no", "s3": "yes", "s4": "yes" },
+      "explanation": { "en": "Cross-table sharing is a headline feature, sp_sequence_get_range serves bulk reservations, and RESTART WITH re-seeds. NEXT VALUE FOR is banned in WHERE/subqueries/CASE and similar contexts — it may appear in SELECT lists, DEFAULTs, SET and VALUES." },
+      "example": { "en": "EXEC sp_sequence_get_range @sequence_name = N'dbo.Seq', @range_size = 1000, @range_first_value = @first OUTPUT;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/next-value-for-transact-sql"]
+    },
+    {
+      "id": "d1-constr-0030",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-constraints-sequences",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A multi-tenant design requires TenantId + Email to be unique together, while Email alone may repeat across tenants. What enforces this?" },
+      "options": [
+        { "id": "a", "text": { "en": "A composite UNIQUE constraint (or unique index) on (TenantId, Email)" } },
+        { "id": "b", "text": { "en": "A UNIQUE constraint on Email" } },
+        { "id": "c", "text": { "en": "Two separate UNIQUE constraints on TenantId and Email" } },
+        { "id": "d", "text": { "en": "A CHECK constraint comparing the columns" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Uniqueness over the combination requires one composite constraint. Email alone (b) wrongly blocks the same address across tenants. Separate constraints (c) are far stricter still — each column individually unique. CHECK (d) cannot see other rows." },
+      "example": { "en": "CONSTRAINT UQ_Users_Tenant_Email UNIQUE (TenantId, Email)" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/tables/unique-constraints-and-check-constraints"]
+    },
+    {
+      "id": "d1-constr-0031",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-constraints-sequences",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Why do SQL Database Projects teams insist on explicitly named constraints (CONSTRAINT PK_Orders PRIMARY KEY …)?" },
+      "options": [
+        { "id": "a", "text": { "en": "Auto-generated names differ between environments, causing false schema diffs and noisy deployments" } },
+        { "id": "b", "text": { "en": "Unnamed constraints are not enforced" } },
+        { "id": "c", "text": { "en": "Named constraints perform faster" } },
+        { "id": "d", "text": { "en": "The engine requires names since SQL Server 2022" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Without a name, the engine invents one (PK__Orders__C3905BAF…) that varies per database — schema-compare then flags phantom differences and generates drop/recreate churn. Enforcement (b) and performance (c) are identical either way, and names remain optional (d)." },
+      "example": { "en": "Naming conventions (PK_, FK_, CK_, DF_, UQ_) make deployment scripts deterministic." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/sql-projects"]
+    },
+    {
+      "id": "d1-constr-0032",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-constraints-sequences",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "DBCC CHECKIDENT('dbo.Orders', RESEED, 500) does what?" },
+      "options": [
+        { "id": "a", "text": { "en": "Sets the identity counter so the next inserted row gets 501 (current value becomes 500)" } },
+        { "id": "b", "text": { "en": "Deletes rows with identity above 500" } },
+        { "id": "c", "text": { "en": "Converts the identity column to a sequence" } },
+        { "id": "d", "text": { "en": "Renumbers existing rows from 1 to 500" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "RESEED repositions the counter only — existing data is untouched (so b and d are wrong). No conversion to sequences exists (c). Beware setting the seed below existing ids: future inserts can collide with the PK." },
+      "example": { "en": "Common after bulk-loading historical rows with SET IDENTITY_INSERT ON." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/database-console-commands/dbcc-checkident-transact-sql"]
+    },
+    {
+      "id": "d1-constr-0033",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-constraints-sequences",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "To insert an explicit value into an IDENTITY column, you must first run:" },
+      "options": [
+        { "id": "a", "text": { "en": "SET IDENTITY_INSERT dbo.T ON" } },
+        { "id": "b", "text": { "en": "ALTER TABLE dbo.T DISABLE IDENTITY" } },
+        { "id": "c", "text": { "en": "DBCC CHECKIDENT('dbo.T', NORESEED)" } },
+        { "id": "d", "text": { "en": "SET ANSI_IDENTITY OFF" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "SET IDENTITY_INSERT table ON permits explicit identity values for that table (one table at a time per session; remember to set it OFF). The other statements don't exist (b, d) or merely report the current identity value (c)." },
+      "example": { "en": "SET IDENTITY_INSERT dbo.T ON; INSERT dbo.T (Id, Name) VALUES (42, 'x'); SET IDENTITY_INSERT dbo.T OFF;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/set-identity-insert-transact-sql"]
+    },
+    {
+      "id": "d1-constr-0034",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-constraints-sequences",
+      "type": "dropdown", "difficulty": "hard",
+      "text": { "en": "Complete the cycling sequence for generating rotating batch slots 1–4." },
+      "code": "CREATE SEQUENCE dbo.BatchSlot AS TINYINT\n    START WITH 1\n    INCREMENT BY 1\n    MINVALUE 1\n    [BLANK1] 4\n    [BLANK2];",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "MAXVALUE" } },
+            { "id": "c2", "text": { "en": "LIMIT" } },
+            { "id": "c3", "text": { "en": "TOP" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "CYCLE" } },
+            { "id": "c2", "text": { "en": "REPEAT" } },
+            { "id": "c3", "text": { "en": "LOOP" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "MAXVALUE caps the range and CYCLE wraps back to MINVALUE after reaching it — producing 1,2,3,4,1,2,… LIMIT/TOP are query keywords, and REPEAT/LOOP are not sequence options." },
+      "example": { "en": "Cycling sequences suit round-robin distribution: partitions, queues, shards." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-sequence-transact-sql"]
+    },
+    {
+      "id": "d1-constr-0035",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-constraints-sequences",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A CHECK constraint must ensure Status is one of 'new', 'active', 'closed'. Which expression is correct?" },
+      "options": [
+        { "id": "a", "text": { "en": "CHECK (Status IN ('new', 'active', 'closed'))" } },
+        { "id": "b", "text": { "en": "CHECK (Status = 'new' OR 'active' OR 'closed')" } },
+        { "id": "c", "text": { "en": "CHECK (Status LIKE ('new', 'active', 'closed'))" } },
+        { "id": "d", "text": { "en": "DEFAULT ('new', 'active', 'closed')" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "IN compares against a value list. (b) is invalid boolean syntax ('active' is not a predicate). LIKE takes one pattern, not a list (c). DEFAULT (d) supplies one omitted value and can't restrict choices. (A lookup table + FK is the more maintainable design when values change often.)" },
+      "example": { "en": "Trade-off: CHECK IN-list is simple; FK to a StatusTypes table lets you add statuses without ALTERing." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/tables/unique-constraints-and-check-constraints"]
+    },
+    {
+      "id": "d1-constr-0036",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-constraints-sequences",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "Why can enabling ON DELETE CASCADE across a deep chain of FKs (A→B→C→D) be risky in production?" },
+      "options": [
+        { "id": "a", "text": { "en": "One parent delete can silently remove huge subtrees, with long locks and surprising data loss" } },
+        { "id": "b", "text": { "en": "Cascades are limited to two levels" } },
+        { "id": "c", "text": { "en": "Cascades bypass the transaction log" } },
+        { "id": "d", "text": { "en": "Cascade requires disabling the PK on children" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Cascades run as one transaction: a single DELETE may fan out to millions of rows — lock escalation, log growth, blocking, and data gone without any explicit statement touching it. Cascades traverse arbitrarily deep chains (b is false — though cycles/multiple paths are restricted at design time). Everything is fully logged (c). PKs remain intact (d)." },
+      "example": { "en": "Many teams prefer NO ACTION + explicit, batched deletes (or soft deletes) for deep hierarchies." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/tables/primary-and-foreign-key-constraints"]
+    },
+    {
+      "id": "d1-constr-0037",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-constraints-sequences",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which statement temporarily disables a CHECK constraint for a bulk load, and what is the catch?" },
+      "options": [
+        { "id": "a", "text": { "en": "ALTER TABLE T NOCHECK CONSTRAINT CK_X — but the constraint becomes untrusted until revalidated with WITH CHECK" } },
+        { "id": "b", "text": { "en": "DROP CONSTRAINT is the only way" } },
+        { "id": "c", "text": { "en": "DISABLE TRIGGER CK_X" } },
+        { "id": "d", "text": { "en": "SET CONSTRAINTS OFF" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "NOCHECK CONSTRAINT pauses enforcement; re-enabling with CHECK CONSTRAINT alone leaves it untrusted — you need WITH CHECK CHECK CONSTRAINT to validate and restore optimizer trust. Dropping (b) loses the definition. CHECKs aren't triggers (c). SET CONSTRAINTS is not T-SQL (d)." },
+      "example": { "en": "ALTER TABLE T NOCHECK CONSTRAINT ALL; -- load --; ALTER TABLE T WITH CHECK CHECK CONSTRAINT ALL;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-table-transact-sql"]
+    },
+    {
+      "id": "d1-constr-0038",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-constraints-sequences",
+      "type": "dragdrop-match", "difficulty": "medium",
+      "text": { "en": "Match the parent-delete behavior to the referential action configured on the child FK." },
+      "items": [
+        { "id": "i1", "text": { "en": "Delete fails with error 547" } },
+        { "id": "i2", "text": { "en": "Child rows are deleted too" } },
+        { "id": "i3", "text": { "en": "Child FK columns become NULL" } },
+        { "id": "i4", "text": { "en": "Child FK columns revert to their DEFAULT value" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "ON DELETE NO ACTION" } },
+        { "id": "t2", "text": { "en": "ON DELETE CASCADE" } },
+        { "id": "t3", "text": { "en": "ON DELETE SET NULL" } },
+        { "id": "t4", "text": { "en": "ON DELETE SET DEFAULT" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "The four referential actions and their observable outcomes map one-to-one. NO ACTION blocks; CASCADE propagates; SET NULL detaches to NULL; SET DEFAULT detaches to the column default (which must itself reference an existing parent or be NULL)." },
+      "example": { "en": "Exam questions describe the outcome and ask for the action, or vice versa — know both directions." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/tables/primary-and-foreign-key-constraints"]
+    },
+    {
+      "id": "d1-constr-0039",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-constraints-sequences",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which constraint type is enforced through an index it creates automatically?" },
+      "options": [
+        { "id": "a", "text": { "en": "PRIMARY KEY and UNIQUE" } },
+        { "id": "b", "text": { "en": "CHECK" } },
+        { "id": "c", "text": { "en": "DEFAULT" } },
+        { "id": "d", "text": { "en": "FOREIGN KEY" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Uniqueness is enforced by unique indexes, so PK and UNIQUE always materialize one. CHECK and DEFAULT are metadata rules with no index. FOREIGN KEY creates no index on either side (the parent side *uses* the existing PK/UNIQUE index)." },
+      "example": { "en": "Dropping a PK also drops its index — and fails if FKs reference it." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/tables/primary-and-foreign-key-constraints"]
+    },
+    {
+      "id": "d1-constr-0040",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-constraints-sequences",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "An app needs the new order's id BEFORE inserting, to stamp related rows written in the same transaction. Which approach is cleanest?" },
+      "options": [
+        { "id": "a", "text": { "en": "Fetch NEXT VALUE FOR dbo.OrderSeq into a variable, then insert all rows using it" } },
+        { "id": "b", "text": { "en": "Insert with IDENTITY, read SCOPE_IDENTITY(), then insert the related rows" } },
+        { "id": "c", "text": { "en": "Guess the next id from MAX(OrderId) + 1" } },
+        { "id": "d", "text": { "en": "Use a GUID computed by the database after insert" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "A sequence hands the id out before any insert — one round trip, no ordering constraints among the inserts. SCOPE_IDENTITY (b) works but forces the parent insert first and is table-bound. MAX+1 (c) breaks under concurrency. (d) contradicts 'before inserting'." },
+      "example": { "en": "DECLARE @id INT = NEXT VALUE FOR dbo.OrderSeq; INSERT Orders(OrderId,…) VALUES (@id,…); INSERT Audit(OrderId,…) VALUES (@id,…);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/sequence-numbers/sequence-numbers"]
+    },
+    {
+      "id": "d1-constr-0041",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-constraints-sequences",
+      "type": "yesno", "difficulty": "hard",
+      "text": { "en": "A column is defined: Qty INT NULL CHECK (Qty > 0). Answer Yes or No for each insert." },
+      "statements": [
+        { "id": "s1", "text": { "en": "INSERT (Qty) VALUES (5) succeeds." } },
+        { "id": "s2", "text": { "en": "INSERT (Qty) VALUES (NULL) succeeds." } },
+        { "id": "s3", "text": { "en": "INSERT (Qty) VALUES (0) succeeds." } },
+        { "id": "s4", "text": { "en": "INSERT (Qty) VALUES (-1) succeeds." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "yes", "s3": "no", "s4": "no" },
+      "explanation": { "en": "5 > 0 is TRUE (passes). NULL > 0 is UNKNOWN — CHECK lets it through. 0 > 0 and -1 > 0 are FALSE — rejected. The NULL row is the trap: a CHECK alone never guarantees a value exists; pair with NOT NULL for that." },
+      "example": { "en": "Qty INT NOT NULL CHECK (Qty > 0) — the airtight version." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/tables/unique-constraints-and-check-constraints"]
+    },
+    {
+      "id": "d1-constr-0042",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-constraints-sequences",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What happens to an ON UPDATE CASCADE child FK when the parent's key value changes from 10 to 99?" },
+      "options": [
+        { "id": "a", "text": { "en": "All child rows referencing 10 are updated to reference 99 automatically" } },
+        { "id": "b", "text": { "en": "Child rows are deleted" } },
+        { "id": "c", "text": { "en": "The update is rejected" } },
+        { "id": "d", "text": { "en": "Child rows keep 10 and become orphans" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "ON UPDATE CASCADE propagates key changes to children — useful for natural keys that occasionally change. Deletion (b) is DELETE CASCADE. Rejection (c) is NO ACTION. Orphans (d) can't occur while the FK is enforced." },
+      "example": { "en": "With surrogate (IDENTITY) keys, parent key updates are rare — natural-key designs are where UPDATE CASCADE earns its keep." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/tables/primary-and-foreign-key-constraints"]
+    },
+    {
+      "id": "d1-constr-0043",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-constraints-sequences",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which statement about constraints on the vector data type is correct?" },
+      "options": [
+        { "id": "a", "text": { "en": "Only NULL / NOT NULL are supported — no DEFAULT, CHECK, PK, FK or UNIQUE" } },
+        { "id": "b", "text": { "en": "All constraint types work normally" } },
+        { "id": "c", "text": { "en": "Only CHECK constraints are allowed" } },
+        { "id": "d", "text": { "en": "Vectors require a UNIQUE constraint" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Vector columns support nullability constraints only; equality and ordering don't apply to vectors, so key and uniqueness constraints are meaningless and DEFAULT/CHECK are unsupported. This cross-feature fact bridges this subtopic to the AI domain." },
+      "example": { "en": "Embedding VECTOR(1536) NOT NULL — the full extent of constraint support." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/data-types/vector-data-type"]
+    },
+    {
+      "id": "d1-constr-0044",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-constraints-sequences",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "The business demands legally gapless invoice numbers. A sequence with NO CACHE is proposed. Is the requirement met?" },
+      "options": [
+        { "id": "a", "text": { "en": "No — rolled-back transactions still consume values, so gaps remain possible; gapless needs serialized application logic" } },
+        { "id": "b", "text": { "en": "Yes — NO CACHE guarantees gapless numbering" } },
+        { "id": "c", "text": { "en": "Yes, if combined with CYCLE" } },
+        { "id": "d", "text": { "en": "No — but switching to IDENTITY fixes it" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "NO CACHE only removes cache-loss gaps; a rollback after NEXT VALUE FOR permanently burns that number. Gapless series require serializing issuance (e.g., a numbers table updated in the same committed transaction) at a concurrency cost. CYCLE (c) is unrelated, and IDENTITY (d) gaps identically." },
+      "example": { "en": "UPDATE dbo.Counter SET LastNo = LastNo + 1 OUTPUT inserted.LastNo ... inside the same transaction as the invoice insert." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/sequence-numbers/sequence-numbers"]
+    },
+    {
+      "id": "d1-constr-0045",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-constraints-sequences",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Dropping a PRIMARY KEY that other tables reference with foreign keys will:" },
+      "options": [
+        { "id": "a", "text": { "en": "Fail until the referencing foreign keys are dropped first" } },
+        { "id": "b", "text": { "en": "Automatically drop the foreign keys" } },
+        { "id": "c", "text": { "en": "Convert the FKs to CHECK constraints" } },
+        { "id": "d", "text": { "en": "Succeed and leave the FKs dangling" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The engine protects referential integrity: you must remove dependent FKs before dropping the referenced PK/UNIQUE. Nothing is dropped implicitly (b), transformed (c), or left dangling (d)." },
+      "example": { "en": "Msg 3725: 'The constraint ... is being referenced by table ..., foreign key constraint ...'" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/tables/primary-and-foreign-key-constraints"]
+    },
+    {
+      "id": "d1-constr-0046",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-constraints-sequences",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Complete the ALTER statements that disable, then properly re-enable (with revalidation) all constraints for a bulk load." },
+      "code": "ALTER TABLE dbo.Staging [BLANK1] CONSTRAINT ALL;\n-- ... bulk load ...\nALTER TABLE dbo.Staging [BLANK2] CHECK CONSTRAINT ALL;",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "NOCHECK" } },
+            { "id": "c2", "text": { "en": "DISABLE" } },
+            { "id": "c3", "text": { "en": "SUSPEND" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "WITH CHECK" } },
+            { "id": "c2", "text": { "en": "WITH NOCHECK" } },
+            { "id": "c3", "text": { "en": "FORCE" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "NOCHECK CONSTRAINT ALL pauses CHECK/FK enforcement. Re-enabling WITH CHECK validates loaded rows and restores trusted status; WITH NOCHECK would re-enable but leave constraints untrusted. DISABLE/SUSPEND/FORCE are not the T-SQL keywords here." },
+      "example": { "en": "The double CHECK in 'WITH CHECK CHECK CONSTRAINT' is correct: option + verb." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-table-transact-sql"]
+    },
+    {
+      "id": "d1-constr-0047",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-constraints-sequences",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "SCOPE_IDENTITY() vs @@IDENTITY: why is SCOPE_IDENTITY() generally recommended?" },
+      "options": [
+        { "id": "a", "text": { "en": "It ignores identities generated by triggers fired from your insert, returning only your scope's value" } },
+        { "id": "b", "text": { "en": "It is faster" } },
+        { "id": "c", "text": { "en": "@@IDENTITY is deprecated" } },
+        { "id": "d", "text": { "en": "SCOPE_IDENTITY() works across all sessions" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "If your insert fires a trigger that inserts into another identity table, @@IDENTITY returns the trigger's value — a subtle bug. SCOPE_IDENTITY() is confined to the current scope. Performance is equivalent (b), @@IDENTITY isn't deprecated (c), and both are session-scoped, not cross-session (d) — IDENT_CURRENT is table-level across sessions." },
+      "example": { "en": "Best of all for multi-row inserts: the OUTPUT clause (OUTPUT inserted.Id)." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/scope-identity-transact-sql"]
+    },
+    {
+      "id": "d1-constr-0048",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-constraints-sequences",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A table stores documents per department, and each department's documents must be numbered independently (1, 2, 3… per department). Which mechanism fits directly?" },
+      "options": [
+        { "id": "a", "text": { "en": "Neither IDENTITY nor a single sequence — compute per-department numbers in the insert logic (e.g. serialized counter per department)" } },
+        { "id": "b", "text": { "en": "IDENTITY on the document id" } },
+        { "id": "c", "text": { "en": "One global sequence" } },
+        { "id": "d", "text": { "en": "A UNIQUE constraint generates the numbers" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "IDENTITY and sequences generate one global series — they cannot restart per group. Per-group numbering needs either one sequence per department (unmanageable at scale) or application/stored-proc logic with a counters table. UNIQUE (d) validates but never generates." },
+      "example": { "en": "UPDATE DeptCounters SET LastNo += 1 OUTPUT inserted.LastNo WHERE DeptId = @d; -- inside the insert transaction" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/sequence-numbers/sequence-numbers"]
+    },
+    {
+      "id": "d1-constr-0049",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-constraints-sequences",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which two tables CAN legitimately share dbo.GlobalDocSeq as the source of their key values?" },
+      "options": [
+        { "id": "a", "text": { "en": "dbo.Invoices and dbo.CreditNotes, so document numbers never collide across both" } },
+        { "id": "b", "text": { "en": "No two tables may share a sequence" } },
+        { "id": "c", "text": { "en": "Only tables with identical schemas" } },
+        { "id": "d", "text": { "en": "Only temporal tables" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Cross-table sharing is a design feature of sequences: one business-wide document series spanning multiple document types. There is no same-schema (c) or temporal (d) requirement, and sharing is explicitly supported (b is false)." },
+      "example": { "en": "DEFAULT (NEXT VALUE FOR dbo.GlobalDocSeq) on both tables' DocNo columns." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/sequence-numbers/sequence-numbers"]
+    },
+    {
+      "id": "d1-constr-0050",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-constraints-sequences",
+      "type": "dragdrop-order", "difficulty": "hard",
+      "text": { "en": "Arrange the safest order of operations to add a NOT NULL column with a default to a huge, busy production table (modern SQL Server / Azure SQL)." },
+      "items": [
+        { "id": "i1", "text": { "en": "Add the column as NULL-able" } },
+        { "id": "i2", "text": { "en": "Backfill existing rows in small batches" } },
+        { "id": "i3", "text": { "en": "Add the DEFAULT constraint for future inserts" } },
+        { "id": "i4", "text": { "en": "ALTER the column to NOT NULL" } }
+      ],
+      "answer": ["i1", "i3", "i2", "i4"],
+      "explanation": { "en": "Safest online pattern: add nullable column (metadata-only), add the DEFAULT so new rows arrive filled, backfill history in batches (small transactions, no long blocking), then enforce NOT NULL once no NULLs remain. Backfilling before the default exists leaves a window where new rows arrive NULL and prolongs the backfill." },
+      "example": { "en": "ADD … NOT NULL DEFAULT in one statement is metadata-only in many modern cases, but the batched pattern remains the dependable answer for huge busy tables." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-table-transact-sql"]
+    }
+  ]
+}

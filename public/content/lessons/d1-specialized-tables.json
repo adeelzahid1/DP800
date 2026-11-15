@@ -1,0 +1,70 @@
+{
+  "subtopic": "d1-specialized-tables",
+  "title": { "en": "Specialized tables (in-memory, temporal, external, ledger, graph)" },
+  "prerequisiteRecap": [
+    {
+      "heading": { "en": "Why special table types exist" },
+      "body": {
+        "en": "Ordinary disk-based rowstore tables solve the general case. Five specialized flavors solve specific problems: **in-memory** for extreme OLTP throughput, **temporal** for automatic history, **external** for querying data that lives outside the database, **ledger** for tamper-evidence, and **graph** for many-to-many relationship traversal. The exam loves 'which table type fits this requirement' questions."
+      }
+    }
+  ],
+  "sections": [
+    {
+      "heading": { "en": "Memory-optimized (In-Memory OLTP) tables" },
+      "body": {
+        "en": "Declared with `MEMORY_OPTIMIZED = ON`, these tables live entirely in memory with lock-free, latch-free structures — built for high-contention OLTP (queues, session state, ingestion). Key facts:\n- `DURABILITY = SCHEMA_AND_DATA` (default; data survives restart via special checkpoint files) or `SCHEMA_ONLY` (data lost on restart — blazing-fast staging/ETL).\n- Indexes: **hash** (fixed `BUCKET_COUNT`, perfect for point lookups by equality) or **memory-optimized nonclustered** (range scans). Indexes are rebuilt in memory at startup, never persisted.\n- **Natively compiled stored procedures** compile T-SQL to machine code for microsecond execution.\n- Limitations to remember: no vector columns, limited cross-feature support, hash index needs a good BUCKET_COUNT estimate (too small → long chains)."
+      },
+      "code": "CREATE TABLE dbo.SessionState (\n    SessionId UNIQUEIDENTIFIER NOT NULL\n        PRIMARY KEY NONCLUSTERED HASH WITH (BUCKET_COUNT = 1000000),\n    Payload   NVARCHAR(4000),\n    ExpiresAt DATETIME2 NOT NULL,\n    INDEX IX_Expires NONCLUSTERED (ExpiresAt)\n)\nWITH (MEMORY_OPTIMIZED = ON, DURABILITY = SCHEMA_AND_DATA);"
+    },
+    {
+      "heading": { "en": "Temporal (system-versioned) tables" },
+      "body": {
+        "en": "A temporal table automatically keeps every historical row version. The engine maintains two `GENERATED ALWAYS AS ROW START/END` datetime2 columns, a `PERIOD FOR SYSTEM_TIME`, and a separate **history table**. Updates and deletes copy the old row into history with its validity interval. Query the past with `FOR SYSTEM_TIME`:\n- `AS OF '2026-01-01T00:00:00'` — state at a point in time\n- `FROM … TO …` / `BETWEEN … AND …` / `CONTAINED IN (…)` — versions in a range\n- `ALL` — current + all history\nUse cases: audit, time travel, slowly changing dimensions, accidental-change recovery. The history table cannot be modified directly while versioning is on; turn versioning off (`SET (SYSTEM_VERSIONING = OFF)`) for maintenance."
+      },
+      "code": "CREATE TABLE dbo.Price (\n    ProductId INT PRIMARY KEY,\n    ListPrice DECIMAL(10,2) NOT NULL,\n    ValidFrom DATETIME2 GENERATED ALWAYS AS ROW START NOT NULL,\n    ValidTo   DATETIME2 GENERATED ALWAYS AS ROW END   NOT NULL,\n    PERIOD FOR SYSTEM_TIME (ValidFrom, ValidTo)\n)\nWITH (SYSTEM_VERSIONING = ON (HISTORY_TABLE = dbo.PriceHistory));\n\n-- What did prices look like on New Year?\nSELECT * FROM dbo.Price FOR SYSTEM_TIME AS OF '2026-01-01T00:00:00';"
+    },
+    {
+      "heading": { "en": "External tables" },
+      "body": {
+        "en": "An external table is a schema definition over data that lives **outside** the database — parquet/CSV files in Azure Data Lake or S3-compatible storage, or another database. Querying it reads the remote data at query time (data virtualization — no copy). Built from three objects: `EXTERNAL DATA SOURCE` (where), `EXTERNAL FILE FORMAT` (how it's encoded, for files) and `EXTERNAL TABLE` (the schema). `CREATE EXTERNAL TABLE AS SELECT` (CETAS) exports query results to files. In SQL Server 2025 and Fabric, OPENROWSET and external tables are the bridge to lakehouse data. Writes are limited: external tables are read-only (CETAS creates new data sets rather than updating)."
+      },
+      "code": "CREATE EXTERNAL DATA SOURCE Lake\nWITH (LOCATION = 'abs://datalake@myaccount.blob.core.windows.net/sales');\n\nCREATE EXTERNAL FILE FORMAT ParquetFF\nWITH (FORMAT_TYPE = PARQUET);\n\nCREATE EXTERNAL TABLE dbo.SalesExt (\n    SaleId BIGINT, Amount DECIMAL(12,2), SoldAt DATE\n)\nWITH (LOCATION = '/2026/', DATA_SOURCE = Lake, FILE_FORMAT = ParquetFF);"
+    },
+    {
+      "heading": { "en": "Ledger tables" },
+      "body": {
+        "en": "Ledger tables make data **tamper-evident** using blockchain-style hash chains — without trusting the DBA. Two flavors:\n- **Updatable ledger table** (`LEDGER = ON`): UPDATE/DELETE allowed, every version kept in a history table, with a **ledger view** showing each operation.\n- **Append-only ledger table** (`LEDGER = ON (APPEND_ONLY = ON)`): INSERT only — UPDATE/DELETE are blocked by the engine.\nBlock hashes form the **database ledger**; periodic **digests** (stored in immutable storage) let `sp_verify_database_ledger` prove nothing was tampered with. Use ledger when auditors/regulators need cryptographic proof of integrity. Note: a database containing a vector column table fails `sp_verify_database_ledger` — a current limitation."
+      },
+      "code": "CREATE TABLE dbo.AuditEvents (\n    EventId BIGINT IDENTITY,\n    EventType NVARCHAR(50) NOT NULL,\n    OccurredAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()\n)\nWITH (LEDGER = ON (APPEND_ONLY = ON));"
+    },
+    {
+      "heading": { "en": "Graph tables" },
+      "body": {
+        "en": "Graph tables model entities and relationships natively: `AS NODE` tables hold entities, `AS EDGE` tables hold relationships (optionally with their own attributes). Each node gets an implicit `$node_id`, edges get `$edge_id`, `$from_id`, `$to_id`. Insert an edge by selecting the two node ids. Querying uses `MATCH` with ASCII-art arrows (covered in the advanced T-SQL subtopic). Choose graph tables when relationships are first-class and traversed ('friends of friends', org charts, recommendation hops); a plain junction table remains fine for simple many-to-many joins."
+      },
+      "code": "CREATE TABLE dbo.Person (Id INT PRIMARY KEY, Name NVARCHAR(100)) AS NODE;\nCREATE TABLE dbo.Follows (Since DATE) AS EDGE;\n\nINSERT INTO dbo.Follows ($from_id, $to_id, Since)\nSELECT p1.$node_id, p2.$node_id, '2026-01-15'\nFROM dbo.Person p1, dbo.Person p2\nWHERE p1.Id = 1 AND p2.Id = 2;"
+    },
+    {
+      "heading": { "en": "Choosing between them" },
+      "body": {
+        "en": "- Latch/lock contention, microsecond OLTP → **memory-optimized**.\n- 'What did the row look like on date X?' / audit trail of changes → **temporal**.\n- Query files in the lake without importing → **external**.\n- Cryptographic tamper-evidence for auditors → **ledger** (append-only if rows must never change).\n- Multi-hop relationship traversal → **graph**.\nTemporal vs ledger trap: temporal gives history, ledger gives *provable* history. Auditing requirement with 'protect from privileged users' → ledger."
+      }
+    }
+  ],
+  "examTips": [
+    { "en": "DURABILITY = SCHEMA_ONLY loses data on restart by design — perfect distractor when the scenario needs durable data." },
+    { "en": "Hash index: equality seeks only, BUCKET_COUNT fixed at create; memory-optimized nonclustered index: range queries." },
+    { "en": "Temporal queries: AS OF = point in time; ALL = everything. The history table is read-only while versioning is ON." },
+    { "en": "Append-only ledger blocks UPDATE/DELETE at the engine level; updatable ledger allows them but records every version." },
+    { "en": "External tables don't import data — queries hit the source. CETAS writes result sets out as files." },
+    { "en": "Graph: AS NODE / AS EDGE at CREATE TABLE; $from_id/$to_id populate edges." }
+  ],
+  "sources": [
+    "https://learn.microsoft.com/en-us/sql/relational-databases/in-memory-oltp/in-memory-oltp-in-memory-optimization",
+    "https://learn.microsoft.com/en-us/sql/relational-databases/tables/temporal-tables",
+    "https://learn.microsoft.com/en-us/sql/relational-databases/tables/create-use-external-tables",
+    "https://learn.microsoft.com/en-us/sql/relational-databases/security/ledger/ledger-overview",
+    "https://learn.microsoft.com/en-us/sql/relational-databases/graphs/sql-graph-overview"
+  ]
+}

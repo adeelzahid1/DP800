@@ -1,0 +1,864 @@
+{
+  "subtopic": "d2-sql-projects",
+  "questions": [
+    {
+      "id": "d2-proj-0001",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-sql-projects",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "What is the build output of a SQL Database Project?" },
+      "options": [
+        { "id": "a", "text": { "en": "A .dacpac file" } },
+        { "id": "b", "text": { "en": "A .bacpac file" } },
+        { "id": "c", "text": { "en": "A .bak backup" } },
+        { "id": "d", "text": { "en": "A .mdf data file" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Building produces a .dacpac — a schema model used for deployment. A .bacpac contains schema plus data (export/import), .bak is a backup, .mdf a data file." },
+      "example": { "en": "dotnet build → bin/Debug/MyDb.dacpac" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/sql-database-projects"]
+    },
+    {
+      "id": "d2-proj-0002",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-sql-projects",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which MSBuild SDK defines SDK-style SQL projects?" },
+      "options": [
+        { "id": "a", "text": { "en": "Microsoft.Build.Sql" } },
+        { "id": "b", "text": { "en": "Microsoft.NET.Sdk.Web" } },
+        { "id": "c", "text": { "en": "Microsoft.EntityFrameworkCore" } },
+        { "id": "d", "text": { "en": "System.Data.SqlClient" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Microsoft.Build.Sql is the SDK for modern SQL projects (cross-platform, dotnet build). The others are web SDK, ORM and a driver." },
+      "example": { "en": "<Project Sdk=\"Microsoft.Build.Sql/1.0.0\"> … </Project>" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/sql-database-projects"]
+    },
+    {
+      "id": "d2-proj-0003",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-sql-projects",
+      "type": "multiple", "difficulty": "medium", "selectCount": 3,
+      "text": { "en": "Which three are advantages of SDK-style SQL projects over original SQL projects? (Select 3)" },
+      "options": [
+        { "id": "a", "text": { "en": "Cross-platform builds with .NET 8+" } },
+        { "id": "b", "text": { "en": "NuGet package references for database references" } },
+        { "id": "c", "text": { "en": "Default globbing of .sql files (no per-file entries in the project file)" } },
+        { "id": "d", "text": { "en": "They require a live database to build" } },
+        { "id": "e", "text": { "en": "They only work in Visual Studio" } }
+      ],
+      "answer": ["a", "b", "c"],
+      "explanation": { "en": "SDK-style projects build anywhere with dotnet, support package references and include .sql files automatically. They don't need a live database, and they're the format used by VS Code and Fabric source control." },
+      "example": { "en": "Globbing reduces merge conflicts in the .sqlproj file." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/sql-database-projects"]
+    },
+    {
+      "id": "d2-proj-0004",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-sql-projects",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A project uses JSON_OBJECT and builds fail with errors about unsupported syntax. The project's target platform is SQL Server 2017 (Sql140). What should you change?" },
+      "options": [
+        { "id": "a", "text": { "en": "Set the target platform (DSP) to the actual target, e.g. Azure SQL Database or SQL Server 2025" } },
+        { "id": "b", "text": { "en": "Disable the build" } },
+        { "id": "c", "text": { "en": "Rename the files to .txt" } },
+        { "id": "d", "text": { "en": "Add NOLOCK" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Build validates syntax against the target platform; newer functions fail on older targets. Align the DSP with where you deploy." },
+      "example": { "en": "<DSP>Microsoft.Data.Tools.Schema.Sql.SqlAzureV12DatabaseSchemaProvider</DSP>" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/target-platform"]
+    },
+    {
+      "id": "d2-proj-0005",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-sql-projects",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A view in the project references a column that doesn't exist in the table definition. What happens at build time?" },
+      "options": [
+        { "id": "a", "text": { "en": "The build fails with an unresolved reference error" } },
+        { "id": "b", "text": { "en": "The build succeeds; the error appears only at runtime" } },
+        { "id": "c", "text": { "en": "The column is created automatically" } },
+        { "id": "d", "text": { "en": "The view is silently skipped" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Reference validation is a core benefit of SQL projects: broken dependencies are caught at build time, long before deployment." },
+      "example": { "en": "SQL71501: View [dbo].[vOrders] has an unresolved reference to object [dbo].[Orders].[Discount]." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/sql-database-projects"]
+    },
+    {
+      "id": "d2-proj-0006",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-sql-projects",
+      "type": "dragdrop-match", "difficulty": "medium",
+      "text": { "en": "Match each SqlPackage action to its purpose." },
+      "items": [
+        { "id": "i1", "text": { "en": "Publish" } },
+        { "id": "i2", "text": { "en": "Script" } },
+        { "id": "i3", "text": { "en": "DeployReport" } },
+        { "id": "i4", "text": { "en": "Extract" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "Apply the dacpac's schema to a target database" } },
+        { "id": "t2", "text": { "en": "Generate the T-SQL deployment script without running it" } },
+        { "id": "t3", "text": { "en": "Produce an XML report of changes a publish would make" } },
+        { "id": "t4", "text": { "en": "Create a dacpac from an existing database" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "These four actions cover the deploy lifecycle; DriftReport (not listed) reports schema changes made outside deployments." },
+      "example": { "en": "Generate Script for review in a PR, then Publish after approval." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sqlpackage/sqlpackage"]
+    },
+    {
+      "id": "d2-proj-0007",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-sql-projects",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A deployment would drop a column containing data. With default publish settings, what happens?" },
+      "options": [
+        { "id": "a", "text": { "en": "The publish is blocked because BlockOnPossibleDataLoss is true by default" } },
+        { "id": "b", "text": { "en": "The column is dropped silently" } },
+        { "id": "c", "text": { "en": "The data is moved to a backup table automatically" } },
+        { "id": "d", "text": { "en": "The deployment ignores the change" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "BlockOnPossibleDataLoss defaults to true, stopping deployments that might lose data. You can override it deliberately in a publish profile after handling data migration." },
+      "example": { "en": "Migrate data in a pre-deployment script first, then allow the change." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sqlpackage/sqlpackage-publish"]
+    },
+    {
+      "id": "d2-proj-0008",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-sql-projects",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "How should static lookup data (e.g. OrderStatus rows) be managed in a SQL project?" },
+      "options": [
+        { "id": "a", "text": { "en": "Idempotent MERGE statements in the post-deployment script, stored in source control" } },
+        { "id": "b", "text": { "en": "Manually inserted after each deployment" } },
+        { "id": "c", "text": { "en": "INSERT statements in the table's CREATE file" } },
+        { "id": "d", "text": { "en": "Stored only in production" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Post-deployment MERGE converges lookup tables to the versioned set on every deployment without duplicates. Manual steps drift; table files must contain only the declarative definition." },
+      "example": { "en": "MERGE dbo.OrderStatus USING (VALUES …) AS src … WHEN NOT MATCHED BY TARGET THEN INSERT …" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/pre-post-deployment-scripts"]
+    },
+    {
+      "id": "d2-proj-0009",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-sql-projects",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "For each statement about pre/post-deployment scripts, answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "A project can have only one pre-deployment and one post-deployment script." } },
+        { "id": "s2", "text": { "en": "Other script files can be included with the SQLCMD :r command." } },
+        { "id": "s3", "text": { "en": "Post-deployment scripts run only on the first deployment." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "yes", "s3": "no" },
+      "explanation": { "en": "There's one of each, organized via :r includes. They run on every deployment, which is why they must be idempotent." },
+      "example": { "en": ":r .\\ReferenceData\\OrderStatus.sql" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/pre-post-deployment-scripts"]
+    },
+    {
+      "id": "d2-proj-0010",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-sql-projects",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Why are SQL projects described as 'declarative'?" },
+      "options": [
+        { "id": "a", "text": { "en": "Each object is defined once in its desired final state; the deployment engine computes the ALTER steps" } },
+        { "id": "b", "text": { "en": "They declare variables only" } },
+        { "id": "c", "text": { "en": "They store a numbered list of migration scripts" } },
+        { "id": "d", "text": { "en": "They can't change existing databases" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "You edit CREATE definitions; DacFx compares model vs target and generates the changes. Migration-based tools (option c) are the alternative approach." },
+      "example": { "en": "Add a column to the CREATE TABLE file → deployment generates ALTER TABLE … ADD." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/sql-database-projects"]
+    },
+    {
+      "id": "d2-proj-0011",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-sql-projects",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Complete the commands to build a project and generate a reviewable deployment script." },
+      "code": "dotnet [BLANK1] Sales.sqlproj -c Release\nsqlpackage /Action:[BLANK2] /SourceFile:bin/Release/Sales.dacpac \\\n  /TargetConnectionString:\"$CONN\" /OutputPath:deploy.sql",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "build" } },
+            { "id": "c2", "text": { "en": "run" } },
+            { "id": "c3", "text": { "en": "publish-db" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "Script" } },
+            { "id": "c2", "text": { "en": "Export" } },
+            { "id": "c3", "text": { "en": "Import" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "dotnet build creates the dacpac; SqlPackage Script writes the change script for review. Export/Import work with bacpacs (schema + data)." },
+      "example": { "en": "Attach deploy.sql as a pipeline artifact for approvers." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sqlpackage/sqlpackage-script"]
+    },
+    {
+      "id": "d2-proj-0012",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-sql-projects",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Your procedure references sys.objects-style objects from master and the build reports unresolved references. What's the SDK-style fix?" },
+      "options": [
+        { "id": "a", "text": { "en": "Add a NuGet package reference to the master system dacpac (e.g. Microsoft.SqlServer.Dacpacs.Master)" } },
+        { "id": "b", "text": { "en": "Copy master's tables into the project" } },
+        { "id": "c", "text": { "en": "Disable validation globally" } },
+        { "id": "d", "text": { "en": "Change the file encoding" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "System database references resolve external objects. SDK-style projects reference them as packages. Copying system objects or disabling validation are wrong." },
+      "example": { "en": "<PackageReference Include=\"Microsoft.SqlServer.Dacpacs.Master\" Version=\"…\" />" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/package-references"]
+    },
+    {
+      "id": "d2-proj-0013",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-sql-projects",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A procedure queries another database whose name differs per environment (SalesDev, SalesProd). How should the project reference it?" },
+      "options": [
+        { "id": "a", "text": { "en": "A database reference with a SQLCMD variable, used as [$(SalesDb)].dbo.Orders" } },
+        { "id": "b", "text": { "en": "Hard-code SalesProd everywhere" } },
+        { "id": "c", "text": { "en": "Use dynamic SQL for every query" } },
+        { "id": "d", "text": { "en": "It isn't possible" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "SQLCMD variables let the publish profile supply the right database name per environment while keeping references validated." },
+      "example": { "en": "Publish profile: <SqlCmdVariable Include=\"SalesDb\"><Value>SalesProd</Value></SqlCmdVariable>" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/database-references"]
+    },
+    {
+      "id": "d2-proj-0014",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-sql-projects",
+      "type": "dragdrop-order", "difficulty": "medium",
+      "text": { "en": "Order the lifecycle of a schema change in a SQL project workflow." },
+      "items": [
+        { "id": "i1", "text": { "en": "Edit the object's CREATE definition file" } },
+        { "id": "i2", "text": { "en": "Build the project (validation → .dacpac)" } },
+        { "id": "i3", "text": { "en": "Generate a script/DeployReport against the target for review" } },
+        { "id": "i4", "text": { "en": "Publish the .dacpac to the target" } }
+      ],
+      "answer": ["i1", "i2", "i3", "i4"],
+      "explanation": { "en": "Edit declaratively, validate by building, review the computed changes, then publish." },
+      "example": { "en": "CI runs steps 2–3 on every pull request." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/sql-database-projects"]
+    },
+    {
+      "id": "d2-proj-0015",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-sql-projects",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "How do you start a SQL project from an existing production database?" },
+      "options": [
+        { "id": "a", "text": { "en": "Extract the schema (SqlPackage /Action:Extract or 'Create project from database' in tools) into a project" } },
+        { "id": "b", "text": { "en": "Copy the .mdf file into the repository" } },
+        { "id": "c", "text": { "en": "Back up the database to Git" } },
+        { "id": "d", "text": { "en": "Write every CREATE statement by hand" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Extract generates a dacpac (and tools can create .sql files per object) from a live database. Data files and backups aren't source code." },
+      "example": { "en": "sqlpackage /Action:Extract /SourceConnectionString:\"…\" /TargetFile:prod.dacpac /p:ExtractTarget=SchemaObjectType" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sqlpackage/sqlpackage-extract"]
+    },
+    {
+      "id": "d2-proj-0016",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-sql-projects",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which tool provides the GA authoring experience for SDK-style SQL projects?" },
+      "options": [
+        { "id": "a", "text": { "en": "The SQL Database Projects extension for Visual Studio Code" } },
+        { "id": "b", "text": { "en": "Notepad" } },
+        { "id": "c", "text": { "en": "Excel" } },
+        { "id": "d", "text": { "en": "SQL Server Configuration Manager" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "SDK-style projects are GA in VS Code (and in preview in Visual Studio 2022); the CLI also works. The other tools aren't project authoring environments." },
+      "example": { "en": "VS Code: 'Create Project from Database', build, publish, schema compare." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/sql-database-projects"]
+    },
+    {
+      "id": "d2-proj-0017",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-sql-projects",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "For each statement about the .dacpac, answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "One dacpac can be published to many databases (e.g. a fleet of tenants)." } },
+        { "id": "s2", "text": { "en": "A dacpac contains all table data." } },
+        { "id": "s3", "text": { "en": "Publishing to a new database creates objects in dependency order." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "no", "s3": "yes" },
+      "explanation": { "en": "A dacpac is a schema model (plus pre/post scripts), reusable across targets; data travels in bacpacs. DacFx orders object creation by dependencies (e.g. referenced tables first)." },
+      "example": { "en": "Loop sqlpackage /Action:Publish over 100 tenant databases." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/sql-database-projects"]
+    },
+    {
+      "id": "d2-proj-0018",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-sql-projects",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What does setting DropObjectsNotInSource = true in a publish profile do?" },
+      "options": [
+        { "id": "a", "text": { "en": "Drops objects in the target that don't exist in the dacpac" } },
+        { "id": "b", "text": { "en": "Drops all data" } },
+        { "id": "c", "text": { "en": "Drops the database before deploying" } },
+        { "id": "d", "text": { "en": "Prevents any drop" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "It makes the target exactly match the project by removing extra objects — powerful for drift cleanup, dangerous if other teams create objects in the same database. Use exclusion options when needed." },
+      "example": { "en": "Combine with DoNotDropObjectTypes to protect users/permissions." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sqlpackage/sqlpackage-publish"]
+    },
+    {
+      "id": "d2-proj-0019",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-sql-projects",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Where are environment-specific deployment settings (target connection, SQLCMD variable values, options) best stored?" },
+      "options": [
+        { "id": "a", "text": { "en": "Publish profiles (*.publish.xml), with secrets supplied by the pipeline" } },
+        { "id": "b", "text": { "en": "Inside each table's CREATE script" } },
+        { "id": "c", "text": { "en": "In the .dacpac name" } },
+        { "id": "d", "text": { "en": "In the post-deployment script" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Publish profiles hold per-environment options; credentials should come from secrets/identity, not the profile file. Object definitions and scripts shouldn't contain environment config." },
+      "example": { "en": "dev.publish.xml, test.publish.xml, prod.publish.xml" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/publish-profiles"]
+    },
+    {
+      "id": "d2-proj-0020",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-sql-projects",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which property enables static code analysis rules (such as avoiding SELECT *) during build?" },
+      "options": [
+        { "id": "a", "text": { "en": "RunSqlCodeAnalysis" } },
+        { "id": "b", "text": { "en": "TreatWarningsAsErrors only" } },
+        { "id": "c", "text": { "en": "EnableQueryStore" } },
+        { "id": "d", "text": { "en": "BlockOnPossibleDataLoss" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "RunSqlCodeAnalysis turns on DacFx code analysis. Rules can be configured as warnings or errors. The other properties do different things." },
+      "example": { "en": "<RunSqlCodeAnalysis>true</RunSqlCodeAnalysis>" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/sql-code-analysis/sql-code-analysis"]
+    },
+    {
+      "id": "d2-proj-0021",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-sql-projects",
+      "type": "multiple", "difficulty": "medium", "selectCount": 2,
+      "text": { "en": "Which two belong in a SQL project as declarative object files? (Select 2)" },
+      "options": [
+        { "id": "a", "text": { "en": "CREATE TABLE dbo.Orders (…)" } },
+        { "id": "b", "text": { "en": "CREATE PROCEDURE dbo.GetOrders …" } },
+        { "id": "c", "text": { "en": "ALTER TABLE dbo.Orders ADD Discount … (as a standalone change script)" } },
+        { "id": "d", "text": { "en": "DROP TABLE dbo.OldOrders" } }
+      ],
+      "answer": ["a", "b"],
+      "explanation": { "en": "Projects contain CREATE definitions of the desired state. ALTER/DROP change scripts belong to migration-based workflows; in a project you edit/remove the definition and the deployment generates the changes." },
+      "example": { "en": "To drop OldOrders, delete its file (and enable DropObjectsNotInSource if desired)." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/sql-database-projects"]
+    },
+    {
+      "id": "d2-proj-0022",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-sql-projects",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A column rename in the project file deploys as DROP column + ADD column, losing data. How do you make the deployment perform a rename?" },
+      "options": [
+        { "id": "a", "text": { "en": "Use the tool's rename refactoring so a refactor log records the rename, which the deployment turns into sp_rename" } },
+        { "id": "b", "text": { "en": "Turn off BlockOnPossibleDataLoss" } },
+        { "id": "c", "text": { "en": "Rename the file only" } },
+        { "id": "d", "text": { "en": "Use NOLOCK" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Without intent, the engine sees an old column missing and a new column present. Refactoring records the rename in a refactorlog so publish issues sp_rename and preserves data. Disabling the data-loss block would lose the data." },
+      "example": { "en": "The .refactorlog file must be committed with the change." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/howto/refactor-objects"]
+    },
+    {
+      "id": "d2-proj-0023",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-sql-projects",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which source control integration in Microsoft Fabric uses the SDK-style SQL project format?" },
+      "options": [
+        { "id": "a", "text": { "en": "SQL database in Fabric Git integration" } },
+        { "id": "b", "text": { "en": "Power BI paginated reports" } },
+        { "id": "c", "text": { "en": "OneLake shortcuts" } },
+        { "id": "d", "text": { "en": "Fabric capacity metrics" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "SQL database in Fabric's Git integration stores the database as an SDK-style SQL project, enabling the same build/deploy tooling." },
+      "example": { "en": "Commit from the Fabric workspace; the repo contains .sqlproj and .sql files." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/sql-database-projects"]
+    },
+    {
+      "id": "d2-proj-0024",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-sql-projects",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Complete the idempotent reference-data script for the post-deployment step." },
+      "code": "[BLANK1] dbo.Currency AS tgt\nUSING (VALUES ('USD', N'US Dollar'), ('PKR', N'Pakistani Rupee')) AS src (Code, Name)\n    ON tgt.Code = src.Code\nWHEN MATCHED AND tgt.Name <> src.Name THEN UPDATE SET Name = src.Name\nWHEN NOT MATCHED BY [BLANK2] THEN INSERT (Code, Name) VALUES (src.Code, src.Name);",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "MERGE" } },
+            { "id": "c2", "text": { "en": "INSERT INTO" } },
+            { "id": "c3", "text": { "en": "TRUNCATE" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "TARGET" } },
+            { "id": "c2", "text": { "en": "SOURCE" } },
+            { "id": "c3", "text": { "en": "INDEX" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "MERGE makes the script safe to re-run. 'NOT MATCHED BY TARGET' inserts source rows missing in the table; 'BY SOURCE' would handle rows to delete. INSERT alone would duplicate rows; TRUNCATE breaks foreign keys and history." },
+      "example": { "en": "Add WHEN NOT MATCHED BY SOURCE THEN DELETE to remove retired codes." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/merge-transact-sql"]
+    },
+    {
+      "id": "d2-proj-0025",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-sql-projects",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which command creates a new SDK-style SQL project from the CLI (after installing the templates)?" },
+      "options": [
+        { "id": "a", "text": { "en": "dotnet new sqlproj -n MyDatabase" } },
+        { "id": "b", "text": { "en": "sqlcmd -create MyDatabase" } },
+        { "id": "c", "text": { "en": "npm init sqlproj" } },
+        { "id": "d", "text": { "en": "git sql init" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Install Microsoft.Build.Sql.Templates, then use dotnet new sqlproj. The other commands don't exist for this purpose." },
+      "example": { "en": "dotnet new install Microsoft.Build.Sql.Templates" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/get-started"]
+    },
+    {
+      "id": "d2-proj-0026",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-sql-projects",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A team uses EF Core migrations for the app but wants a single source of truth for the full schema, including objects EF doesn't manage. What does Microsoft suggest SQL projects can do?" },
+      "options": [
+        { "id": "a", "text": { "en": "Track the database state by extracting the schema into a SQL project regardless of the ORM used" } },
+        { "id": "b", "text": { "en": "Replace EF Core entirely" } },
+        { "id": "c", "text": { "en": "Only work without ORMs" } },
+        { "id": "d", "text": { "en": "Store migrations as dacpacs" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "SQL projects can represent the database's source of truth even when an ORM creates it; schema can be extracted into the project for validation, review and drift detection." },
+      "example": { "en": "Extract after each release to keep the declarative model current." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/sql-database-projects"]
+    },
+    {
+      "id": "d2-proj-0027",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-sql-projects",
+      "type": "dragdrop-match", "difficulty": "medium",
+      "text": { "en": "Match each project artifact to its role." },
+      "items": [
+        { "id": "i1", "text": { "en": ".sqlproj" } },
+        { "id": "i2", "text": { "en": ".dacpac" } },
+        { "id": "i3", "text": { "en": ".publish.xml" } },
+        { "id": "i4", "text": { "en": "Script.PostDeployment.sql" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "Project definition: SDK, target platform, references" } },
+        { "id": "t2", "text": { "en": "Build output: the schema model to deploy" } },
+        { "id": "t3", "text": { "en": "Per-environment deployment options" } },
+        { "id": "t4", "text": { "en": "Runs after schema changes (e.g. reference data)" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "The four core artifacts of the SQL project workflow." },
+      "example": { "en": "Only .sqlproj, .sql files and profiles go into Git; the dacpac is a build artifact." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/sql-database-projects"]
+    },
+    {
+      "id": "d2-proj-0028",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-sql-projects",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Should the built .dacpac be committed to the Git repository?" },
+      "options": [
+        { "id": "a", "text": { "en": "No — it's a build artifact; CI builds it from source and publishes it as a pipeline artifact" } },
+        { "id": "b", "text": { "en": "Yes, always alongside every commit" } },
+        { "id": "c", "text": { "en": "Only the production dacpac" } },
+        { "id": "d", "text": { "en": "Dacpacs can't be stored anywhere" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Like compiled binaries, dacpacs are reproducible from source; commit sources, keep build outputs as CI artifacts (or package feeds for referenced dacpacs)." },
+      "example": { "en": "Add bin/ and obj/ to .gitignore." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/sql-database-projects"]
+    },
+    {
+      "id": "d2-proj-0029",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-sql-projects",
+      "type": "yesno", "difficulty": "hard",
+      "text": { "en": "Adding a NOT NULL column without a default to a table that has rows. Answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "The deployment may fail or be blocked because existing rows have no value." } },
+        { "id": "s2", "text": { "en": "Adding a DEFAULT constraint in the definition lets the deployment populate existing rows." } },
+        { "id": "s3", "text": { "en": "SqlPackage ignores NOT NULL constraints." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "yes", "s3": "no" },
+      "explanation": { "en": "Existing rows need a value; a default (or a pre-deployment data step / smart defaults option) resolves it. SqlPackage respects constraints." },
+      "example": { "en": "Discount DECIMAL(5,2) NOT NULL CONSTRAINT DF_Orders_Discount DEFAULT (0)" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sqlpackage/sqlpackage-publish"]
+    },
+    {
+      "id": "d2-proj-0030",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-sql-projects",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which tool compares a project (or dacpac) with a live database and shows differences interactively?" },
+      "options": [
+        { "id": "a", "text": { "en": "Schema compare" } },
+        { "id": "b", "text": { "en": "Query Store" } },
+        { "id": "c", "text": { "en": "Database Engine Tuning Advisor" } },
+        { "id": "d", "text": { "en": "SQL Server Agent" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Schema compare (VS Code, Visual Studio, SqlPackage-based) highlights differences and can update either side. The others are performance or scheduling tools." },
+      "example": { "en": "Use it to spot changes made directly in production (drift)." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/howto/compare-database-project"]
+    },
+    {
+      "id": "d2-proj-0031",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-sql-projects",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Your schema includes a vector column and the project build fails on the VECTOR type. What is the most likely issue?" },
+      "options": [
+        { "id": "a", "text": { "en": "Outdated tooling or a target platform that doesn't support vector — update Microsoft.Build.Sql/DacFx and set a supporting target" } },
+        { "id": "b", "text": { "en": "Vector columns can never be in projects" } },
+        { "id": "c", "text": { "en": "The column needs NOLOCK" } },
+        { "id": "d", "text": { "en": "Vectors must be stored in JSON files" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Vector support arrived in recent DacFx/SqlPackage and Microsoft.Build.Sql versions; older tooling or targets fail. Projects support vectors with current tools." },
+      "example": { "en": "Docs list Microsoft.Build.Sql 1.0.0+ and SqlPackage 162.5+ as supporting the vector type." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/data-types/vector-data-type"]
+    },
+    {
+      "id": "d2-proj-0032",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-sql-projects",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What's the difference between a .dacpac and a .bacpac?" },
+      "options": [
+        { "id": "a", "text": { "en": "A dacpac holds schema (for deployments); a bacpac holds schema and data (for export/import/migration)" } },
+        { "id": "b", "text": { "en": "They're identical" } },
+        { "id": "c", "text": { "en": "A bacpac is for backups to tape only" } },
+        { "id": "d", "text": { "en": "A dacpac contains only data" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Dacpacs drive schema deployments; bacpacs move whole databases (e.g. Azure SQL export). Neither replaces native backups." },
+      "example": { "en": "sqlpackage /Action:Export creates a bacpac." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sqlpackage/sqlpackage-export"]
+    },
+    {
+      "id": "d2-proj-0033",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-sql-projects",
+      "type": "dragdrop-order", "difficulty": "hard",
+      "text": { "en": "Order the steps to safely split a column FullName into FirstName and LastName with a SQL project deployment." },
+      "items": [
+        { "id": "i1", "text": { "en": "Add FirstName/LastName (nullable) to the table definition" } },
+        { "id": "i2", "text": { "en": "Post-deployment script populates the new columns from FullName (idempotently)" } },
+        { "id": "i3", "text": { "en": "Release apps that use the new columns" } },
+        { "id": "i4", "text": { "en": "Later deployment removes FullName (data already migrated)" } }
+      ],
+      "answer": ["i1", "i2", "i3", "i4"],
+      "explanation": { "en": "Expand → migrate data → switch consumers → contract. Removing FullName in the same release would block on data loss or break running apps." },
+      "example": { "en": "The expand/contract pattern keeps deployments backward compatible." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/pre-post-deployment-scripts"]
+    },
+    {
+      "id": "d2-proj-0034",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-sql-projects",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Why might a team split one large database into several SQL projects referencing each other as 'same database' references?" },
+      "options": [
+        { "id": "a", "text": { "en": "To let different teams own parts of the schema while composing one database model" } },
+        { "id": "b", "text": { "en": "To deploy to different servers automatically" } },
+        { "id": "c", "text": { "en": "Because one project can't contain more than 10 tables" } },
+        { "id": "d", "text": { "en": "To avoid validation" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Same-database references compose multiple projects into one database model with full validation. There's no 10-table limit, and validation remains." },
+      "example": { "en": "Core.sqlproj (shared tables) referenced by Billing.sqlproj and Shipping.sqlproj." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/database-references"]
+    },
+    {
+      "id": "d2-proj-0035",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-sql-projects",
+      "type": "multiple", "difficulty": "medium", "selectCount": 2,
+      "text": { "en": "Which two are build-time (not deploy-time) checks? (Select 2)" },
+      "options": [
+        { "id": "a", "text": { "en": "Unresolved object references" } },
+        { "id": "b", "text": { "en": "Syntax valid for the target platform" } },
+        { "id": "c", "text": { "en": "Existing data violating a new constraint in production" } },
+        { "id": "d", "text": { "en": "Login permissions on the target server" } }
+      ],
+      "answer": ["a", "b"],
+      "explanation": { "en": "Builds validate the model offline. Data-dependent issues and target permissions surface only when deploying to a real database." },
+      "example": { "en": "That's why CI should also deploy to a test database." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/sql-database-projects"]
+    },
+    {
+      "id": "d2-proj-0036",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-sql-projects",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A pre-deployment script inserts rows into a table that is being created in the same deployment. It fails on the first deployment. Why?" },
+      "options": [
+        { "id": "a", "text": { "en": "Pre-deployment runs BEFORE schema changes, so the table doesn't exist yet — move the insert to post-deployment" } },
+        { "id": "b", "text": { "en": "Pre-deployment scripts can't contain INSERTs" } },
+        { "id": "c", "text": { "en": "The table must be temporal" } },
+        { "id": "d", "text": { "en": "It needs NOLOCK" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Execution order: pre-deployment → schema changes → post-deployment. Data for new tables belongs in post-deployment." },
+      "example": { "en": "Pre-deployment is for preparing data that a schema change depends on." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/pre-post-deployment-scripts"]
+    },
+    {
+      "id": "d2-proj-0037",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-sql-projects",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which library provides the core functionality behind SQL projects, SqlPackage and schema compare?" },
+      "options": [
+        { "id": "a", "text": { "en": "DacFx (Microsoft.SqlServer.DacFx)" } },
+        { "id": "b", "text": { "en": "Entity Framework" } },
+        { "id": "c", "text": { "en": "SignalR" } },
+        { "id": "d", "text": { "en": "Polly" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "DacFx builds models, compares schemas and generates deployments; tools surface it. The others are ORM, real-time messaging and resilience libraries." },
+      "example": { "en": "DacFx extensibility allows custom deployment contributors and code analysis rules." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/sql-database-projects"]
+    },
+    {
+      "id": "d2-proj-0038",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-sql-projects",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "Answer Yes or No about code analysis in SQL projects." },
+      "statements": [
+        { "id": "s1", "text": { "en": "Rules can flag patterns like SELECT * or unused variables." } },
+        { "id": "s2", "text": { "en": "Rule violations can be configured to fail the build." } },
+        { "id": "s3", "text": { "en": "Code analysis requires a connection to production." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "yes", "s3": "no" },
+      "explanation": { "en": "Code analysis runs offline on the model; severities can be raised to errors to enforce standards in CI." },
+      "example": { "en": "<SqlCodeAnalysisRules>+!Microsoft.Rules.Data.SR0001</SqlCodeAnalysisRules> (treat as error)" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/sql-code-analysis/sql-code-analysis"]
+    },
+    {
+      "id": "d2-proj-0039",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-sql-projects",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which statement about SQL projects and new vs existing databases is correct?" },
+      "options": [
+        { "id": "a", "text": { "en": "For new databases objects are created in dependency order; for existing ones only the differences are applied" } },
+        { "id": "b", "text": { "en": "Existing databases are always dropped and recreated" } },
+        { "id": "c", "text": { "en": "Projects can only create new databases" } },
+        { "id": "d", "text": { "en": "Differences must be scripted by hand" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Publish handles both: create in correct order, or compute incremental ALTERs. No drop/recreate and no manual diff scripts." },
+      "example": { "en": "Missing two columns + changed proc → ALTER TABLE + ALTER PROCEDURE." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/sql-database-projects"]
+    },
+    {
+      "id": "d2-proj-0040",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-sql-projects",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "Two developers each add a different .sql file to an SDK-style project. Why do they avoid a merge conflict in the .sqlproj file?" },
+      "options": [
+        { "id": "a", "text": { "en": "Default globbing includes .sql files automatically, so the project file doesn't change" } },
+        { "id": "b", "text": { "en": "Git ignores .sqlproj files" } },
+        { "id": "c", "text": { "en": "SDK-style projects lock the file" } },
+        { "id": "d", "text": { "en": "They can't add files" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Original projects listed every file in the project, so concurrent additions conflicted. Globbing removes that hotspot." },
+      "example": { "en": "Exclude files with <Build Remove=\"Scratch\\**\" /> if needed." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/sql-database-projects"]
+    },
+    {
+      "id": "d2-proj-0041",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-sql-projects",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which SqlPackage action reports schema changes made to a registered database since its last deployment?" },
+      "options": [
+        { "id": "a", "text": { "en": "DriftReport" } },
+        { "id": "b", "text": { "en": "Import" } },
+        { "id": "c", "text": { "en": "Extract" } },
+        { "id": "d", "text": { "en": "Export" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "DriftReport compares a registered data-tier application with its current state. Import/Export move bacpacs; Extract creates a dacpac." },
+      "example": { "en": "Run before deployment to detect out-of-band changes." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sqlpackage/sqlpackage-deploy-drift-report"]
+    },
+    {
+      "id": "d2-proj-0042",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-sql-projects",
+      "type": "dragdrop-match", "difficulty": "medium",
+      "text": { "en": "Match each reference type to its use." },
+      "items": [
+        { "id": "i1", "text": { "en": "System database package reference" } },
+        { "id": "i2", "text": { "en": "Same-database project reference" } },
+        { "id": "i3", "text": { "en": "Different database, same server" } },
+        { "id": "i4", "text": { "en": "Different server" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "Resolve references to master/msdb objects" } },
+        { "id": "t2", "text": { "en": "Compose one database from multiple projects" } },
+        { "id": "t3", "text": { "en": "Three-part names via a database SQLCMD variable" } },
+        { "id": "t4", "text": { "en": "Four-part names via server and database SQLCMD variables" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "References make validation complete and let names vary by environment via SQLCMD variables." },
+      "example": { "en": "[$(LinkedServer)].[$(ArchiveDb)].dbo.Orders" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/database-references"]
+    },
+    {
+      "id": "d2-proj-0043",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-sql-projects",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Where do you set SQLCMD variable values used by a project for a specific environment deployment?" },
+      "options": [
+        { "id": "a", "text": { "en": "In the publish profile or as /v: arguments to SqlPackage" } },
+        { "id": "b", "text": { "en": "In each table definition" } },
+        { "id": "c", "text": { "en": "In the master database" } },
+        { "id": "d", "text": { "en": "They can't be set" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Publish profiles contain SqlCmdVariable values; SqlPackage also accepts /v:Name=Value overrides — handy in pipelines." },
+      "example": { "en": "sqlpackage /Action:Publish … /v:SalesDb=SalesProd" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sqlpackage/sqlpackage-publish"]
+    },
+    {
+      "id": "d2-proj-0044",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-sql-projects",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which statement about building SQL projects in CI agents (e.g. GitHub-hosted Linux runners) is true?" },
+      "options": [
+        { "id": "a", "text": { "en": "SDK-style projects build with the .NET SDK on Linux, Windows or macOS without SQL Server installed" } },
+        { "id": "b", "text": { "en": "They require Visual Studio on a Windows agent" } },
+        { "id": "c", "text": { "en": "They need a running SQL Server to build" } },
+        { "id": "d", "text": { "en": "They can't run in CI" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Cross-platform builds are a headline benefit of Microsoft.Build.Sql. Original projects needed Windows/.NET Framework tooling." },
+      "example": { "en": "GitHub Actions: actions/setup-dotnet then dotnet build." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/sql-database-projects"]
+    },
+    {
+      "id": "d2-proj-0045",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-sql-projects",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "Answer Yes or No about publish behavior." },
+      "statements": [
+        { "id": "s1", "text": { "en": "Publish can deploy to Azure SQL Database, Managed Instance, SQL Server and Fabric SQL database." } },
+        { "id": "s2", "text": { "en": "Publish always drops objects not in the project by default." } },
+        { "id": "s3", "text": { "en": "The Script action lets humans review changes before applying them." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "no", "s3": "yes" },
+      "explanation": { "en": "SQL projects support the SQL Server/Azure SQL/Fabric family. DropObjectsNotInSource is false by default. Script output enables review/approval workflows." },
+      "example": { "en": "Review deploy.sql in the PR; publish after approval." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sqlpackage/sqlpackage-publish"]
+    },
+    {
+      "id": "d2-proj-0046",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-sql-projects",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A post-deployment script adds a row with INSERT … VALUES every time and duplicates appear after each deployment. What's the fix?" },
+      "options": [
+        { "id": "a", "text": { "en": "Make it idempotent with IF NOT EXISTS or MERGE" } },
+        { "id": "b", "text": { "en": "Deploy less often" } },
+        { "id": "c", "text": { "en": "Move it to pre-deployment" } },
+        { "id": "d", "text": { "en": "Disable the post-deployment script" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Deployment scripts run on every publish, so they must be safe to re-run." },
+      "example": { "en": "IF NOT EXISTS (SELECT 1 FROM dbo.Settings WHERE [Key] = 'Theme') INSERT …" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/pre-post-deployment-scripts"]
+    },
+    {
+      "id": "d2-proj-0047",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-sql-projects",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "Production has security objects (users, role memberships) managed by the DBA team, not in the project. Publish with DropObjectsNotInSource = true would remove them. What's the safe configuration?" },
+      "options": [
+        { "id": "a", "text": { "en": "Keep DropObjectsNotInSource but exclude object types such as users, logins, role memberships and permissions (DoNotDropObjectTypes / ExcludeObjectTypes)" } },
+        { "id": "b", "text": { "en": "Accept the drops" } },
+        { "id": "c", "text": { "en": "Grant sysadmin to the pipeline" } },
+        { "id": "d", "text": { "en": "Disable the database's permissions" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Publish options can exclude object types from drops/comparison so shared ownership works. The other options cause outages or excessive privilege." },
+      "example": { "en": "/p:DoNotDropObjectTypes=Users;Logins;RoleMembership;Permissions" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sqlpackage/sqlpackage-publish"]
+    },
+    {
+      "id": "d2-proj-0048",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-sql-projects",
+      "type": "dropdown", "difficulty": "easy",
+      "text": { "en": "Complete the project file header for an SDK-style project targeting Azure SQL Database." },
+      "code": "<Project Sdk=\"[BLANK1]/1.0.0\">\n  <PropertyGroup>\n    <[BLANK2]>Microsoft.Data.Tools.Schema.Sql.SqlAzureV12DatabaseSchemaProvider</[BLANK2]>\n  </PropertyGroup>\n</Project>",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "Microsoft.Build.Sql" } },
+            { "id": "c2", "text": { "en": "Microsoft.NET.Sdk" } },
+            { "id": "c3", "text": { "en": "Microsoft.Data.SqlClient" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "DSP" } },
+            { "id": "c2", "text": { "en": "TargetFramework" } },
+            { "id": "c3", "text": { "en": "OutputType" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "Microsoft.Build.Sql is the SQL project SDK; DSP sets the target platform (database schema provider). TargetFramework/OutputType are .NET app properties." },
+      "example": { "en": "Other DSPs exist for SQL Server versions and Fabric SQL database." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/target-platform"]
+    },
+    {
+      "id": "d2-proj-0049",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-sql-projects",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which statement about SQLCLR objects in SDK-style projects is correct?" },
+      "options": [
+        { "id": "a", "text": { "en": "They're supported but the project must build with .NET Framework" } },
+        { "id": "b", "text": { "en": "They're fully supported on .NET 8 builds" } },
+        { "id": "c", "text": { "en": "They're automatically converted to T-SQL" } },
+        { "id": "d", "text": { "en": "They're deleted during conversion" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "SQLCLR is the documented exception: projects containing it require .NET Framework to build, though the resulting dacpac deploys with SqlPackage on .NET." },
+      "example": { "en": "Consider replacing SQLCLR with native features (e.g. REGEXP functions) to modernize." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/sql-database-projects"]
+    },
+    {
+      "id": "d2-proj-0050",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-sql-projects",
+      "type": "dragdrop-match", "difficulty": "hard",
+      "text": { "en": "Match each problem to the project feature that addresses it." },
+      "items": [
+        { "id": "i1", "text": { "en": "Column rename loses data on deploy" } },
+        { "id": "i2", "text": { "en": "Lookup rows differ between environments" } },
+        { "id": "i3", "text": { "en": "Build fails on new syntax" } },
+        { "id": "i4", "text": { "en": "Need to review changes before applying" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "Refactor log (rename refactoring)" } },
+        { "id": "t2", "text": { "en": "Idempotent post-deployment MERGE" } },
+        { "id": "t3", "text": { "en": "Correct target platform (DSP)" } },
+        { "id": "t4", "text": { "en": "SqlPackage Script / DeployReport" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "Four frequent SQL project issues and their built-in solutions." },
+      "example": { "en": "These features make declarative deployments safe and repeatable." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/sql-database-projects"]
+    }
+  ]
+}

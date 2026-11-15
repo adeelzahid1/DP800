@@ -1,0 +1,61 @@
+{
+  "subtopic": "d1-json-columns",
+  "title": { "en": "JSON columns & JSON indexes" },
+  "prerequisiteRecap": [
+    {
+      "heading": { "en": "JSON in 30 seconds" },
+      "body": {
+        "en": "JSON documents hold objects, arrays, strings, numbers, booleans and null. A path like `$.customer.city` addresses a value. If JSON itself is new to you, read the Foundations lesson 'JSON & semi-structured data from scratch' first — this subtopic focuses on *storing and indexing* JSON."
+      }
+    }
+  ],
+  "sections": [
+    {
+      "heading": { "en": "Two ways to store JSON" },
+      "body": {
+        "en": "1. **nvarchar(max) + ISJSON() check** — the classic approach, works everywhere since SQL Server 2016. The document is plain text; every function call parses it again.\n2. **Native json type** (SQL Server 2025, Azure SQL Database, Azure SQL Managed Instance, SQL database in Fabric) — the document is parsed once at write time into an optimized binary format. Reads that extract values are faster, storage is smaller, and invalid JSON is rejected by the type itself (no CHECK constraint needed).\nConversion between json and (n)varchar is implicit in both directions. Choose the native type for new work on supported platforms; keep nvarchar(max) for SQL Server 2022-or-earlier compatibility."
+      },
+      "code": "-- Native json type: invalid documents are rejected automatically\nCREATE TABLE dbo.Orders (\n    OrderId INT IDENTITY PRIMARY KEY,\n    Doc JSON NOT NULL\n);\n\nINSERT INTO dbo.Orders (Doc)\nVALUES ('{\"customer\":\"Adeel\",\"items\":[{\"sku\":\"A1\",\"qty\":2}]}');"
+    },
+    {
+      "heading": { "en": "JSON indexes" },
+      "body": {
+        "en": "SQL Server 2025 introduces the **JSON index** (preview feature; requires `PREVIEW_FEATURES = ON`): `CREATE JSON INDEX … ON table (json_column)` optionally `FOR ('$.path1', '$.path2')` to index only specific paths. It indexes keys and values inside the document so path-based predicates (JSON_VALUE comparisons, JSON_PATH_EXISTS, JSON_CONTAINS) can seek instead of parsing every row. Before JSON indexes (and still, on older versions), the standard pattern is a **computed column + regular B-tree index**: add `Col AS JSON_VALUE(Doc, '$.path')` and index it — fast for that one path, with the index usable even by queries written against JSON_VALUE."
+      },
+      "code": "-- SQL Server 2025 JSON index (preview)\nALTER DATABASE SCOPED CONFIGURATION SET PREVIEW_FEATURES = ON;\nCREATE JSON INDEX JX_Orders_Doc ON dbo.Orders (Doc) FOR ('$.customer');\n\n-- Classic pattern: computed column + B-tree\nALTER TABLE dbo.Orders\n    ADD CustomerName AS JSON_VALUE(Doc, '$.customer');\nCREATE INDEX IX_Orders_Customer ON dbo.Orders (CustomerName);"
+    },
+    {
+      "heading": { "en": "Modeling: columns vs JSON" },
+      "body": {
+        "en": "Promote to **relational columns** what you filter, join, aggregate or constrain often; keep in **JSON** what is sparse, variable, or schema-flexible (per-category product attributes, settings blobs, event payloads). Hybrid rows — fixed columns plus one JSON column — are the recommended pattern. Red flags that something should NOT be JSON: foreign keys point at it, you need column constraints on it, every query extracts it."
+      }
+    },
+    {
+      "heading": { "en": "Validating and constraining JSON" },
+      "body": {
+        "en": "With nvarchar storage, enforce well-formedness with `CHECK (ISJSON(Doc) = 1)`; `ISJSON(doc, VALUE | ARRAY | OBJECT | SCALAR)` can also check the top-level kind. With the native json type, well-formedness is inherent. Business-level checks still use constraints on computed columns (e.g. require a positive `$.total`)."
+      },
+      "code": "CREATE TABLE dbo.Events (\n    EventId BIGINT IDENTITY PRIMARY KEY,\n    Payload NVARCHAR(MAX) NOT NULL\n        CONSTRAINT CK_Events_Json CHECK (ISJSON(Payload) = 1),\n    Total AS CAST(JSON_VALUE(Payload, '$.total') AS DECIMAL(12,2)),\n    CONSTRAINT CK_Events_Total CHECK (Total IS NULL OR Total >= 0)\n);"
+    },
+    {
+      "heading": { "en": "Updating JSON in place" },
+      "body": {
+        "en": "`JSON_MODIFY(doc, path, newValue)` returns the document with one change: update a property, append to an array (`'append $.tags'`), or delete (set to NULL in lax mode). Chain calls for multiple edits. With the native json type, the engine can apply such modifications more efficiently than rewriting a huge text blob. The dedicated functions subtopic (JSON functions) drills query syntax in depth."
+      },
+      "code": "UPDATE dbo.Orders\nSET Doc = JSON_MODIFY(\n            JSON_MODIFY(Doc, '$.status', 'shipped'),\n            'append $.history', JSON_OBJECT('at': SYSUTCDATETIME(), 'event': 'ship'))\nWHERE OrderId = @id;"
+    }
+  ],
+  "examTips": [
+    { "en": "Native json type: SQL Server 2025 / Azure SQL / Fabric; binary-optimized; invalid JSON rejected; implicit conversion with strings. nvarchar(max)+ISJSON for older targets." },
+    { "en": "JSON index (CREATE JSON INDEX) is a SQL Server 2025 preview feature and can target specific paths with FOR ('$.path')." },
+    { "en": "Classic performance pattern: computed column over JSON_VALUE + B-tree index — still correct on all versions." },
+    { "en": "Columns for what you filter/join/constrain; JSON for sparse/variable attributes. Hybrid is the expected answer shape." },
+    { "en": "ISJSON can validate kind: ISJSON(x, ARRAY). CHECK constraints can't be added to a native json column for well-formedness because the type already guarantees it." }
+  ],
+  "sources": [
+    "https://learn.microsoft.com/en-us/sql/t-sql/data-types/json-data-type",
+    "https://learn.microsoft.com/en-us/sql/relational-databases/json/json-data-sql-server",
+    "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-json-index-transact-sql",
+    "https://learn.microsoft.com/en-us/sql/relational-databases/json/index-json-data"
+  ]
+}

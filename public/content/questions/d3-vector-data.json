@@ -1,0 +1,841 @@
+{
+  "subtopic": "d3-vector-data",
+  "cases": [
+    {
+      "id": "case-vd-litware",
+      "title": { "en": "Litware research portal" },
+      "scenario": {
+        "en": "Litware runs a research portal on **Azure SQL Database**. It will store about **2 million** document chunks embedded with a model that returns **3,072 dimensions**.\n- New chunks arrive continuously throughout the day.\n- Researchers always filter by `DepartmentId` and want the top 10 similar chunks.\n- Storage cost matters, and the team accepts a small precision loss."
+      }
+    }
+  ],
+  "questions": [
+    {
+      "id": "d3-vd-0001",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-vector-data",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "What's the maximum number of dimensions for a VECTOR column with the default float32 base type?" },
+      "options": [
+        { "id": "a", "text": { "en": "1,998" } },
+        { "id": "b", "text": { "en": "1,536" } },
+        { "id": "c", "text": { "en": "3,996" } },
+        { "id": "d", "text": { "en": "8,000" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "float32 vectors support up to 1,998 dimensions; float16 supports up to 3,996. 1,536 is a common model output size, and 8,000 is a page-related number, not a vector limit." },
+      "example": { "en": "VECTOR(1998) is the largest float32 declaration." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/data-types/vector-data-type"]
+    },
+    {
+      "id": "d3-vd-0002",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-vector-data",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "What's the maximum number of dimensions for VECTOR(n, float16)?" },
+      "options": [
+        { "id": "a", "text": { "en": "3,996" } },
+        { "id": "b", "text": { "en": "1,998" } },
+        { "id": "c", "text": { "en": "3,072" } },
+        { "id": "d", "text": { "en": "Unlimited" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Half precision halves storage per element, doubling the dimension limit to 3,996. 3,072 is text-embedding-3-large's output size, which fits." },
+      "example": { "en": "Embedding VECTOR(3072, float16)" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/data-types/vector-data-type"]
+    },
+    {
+      "id": "d3-vd-0003",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-vector-data",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "How much space do the elements of one VECTOR(1536) float32 value take?" },
+      "options": [
+        { "id": "a", "text": { "en": "About 6 KB (4 bytes × 1,536)" } },
+        { "id": "b", "text": { "en": "About 1.5 KB (1 byte per element)" } },
+        { "id": "c", "text": { "en": "About 12 KB (8 bytes per element)" } },
+        { "id": "d", "text": { "en": "It depends on the JSON text length" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Each float32 element is stored as a 4-byte single-precision value in binary form, regardless of how the JSON text looks." },
+      "example": { "en": "float16 would take about 3 KB for the same dimensions." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/data-types/vector-data-type"]
+    },
+    {
+      "id": "d3-vd-0004",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-vector-data",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Where are half-precision (float16) vectors generally available without any preview configuration?" },
+      "options": [
+        { "id": "a", "text": { "en": "Azure SQL Database, Azure SQL Managed Instance and SQL database in Fabric" } },
+        { "id": "b", "text": { "en": "SQL Server 2025 only" } },
+        { "id": "c", "text": { "en": "SQL Server 2022" } },
+        { "id": "d", "text": { "en": "Nowhere; float16 is planned" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "float16 is GA in the Azure SQL family and Fabric; in SQL Server 2025 it's preview and requires PREVIEW_FEATURES. SQL Server 2022 has no vector type." },
+      "example": { "en": "Use float16 to halve storage for large vector tables." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/data-types/vector-data-type"]
+    },
+    {
+      "id": "d3-vd-0005",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-vector-data",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "On SQL Server 2025, CREATE TABLE with VECTOR(1536, float16) fails. What must you run first?" },
+      "options": [
+        { "id": "a", "text": { "en": "ALTER DATABASE SCOPED CONFIGURATION SET PREVIEW_FEATURES = ON;" } },
+        { "id": "b", "text": { "en": "EXEC sp_configure 'float16 enabled', 1;" } },
+        { "id": "c", "text": { "en": "ALTER DATABASE SET COMPATIBILITY_LEVEL = 180;" } },
+        { "id": "d", "text": { "en": "DBCC TRACEON (16) GLOBAL;" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Preview features in SQL Server 2025, including float16 vectors and vector indexes, are enabled with the PREVIEW_FEATURES database scoped configuration. The other commands don't exist or don't apply." },
+      "example": { "en": "Not required in Azure SQL Database or Fabric." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/data-types/vector-data-type"]
+    },
+    {
+      "id": "d3-vd-0006",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-vector-data",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "How does SQL display a stored vector value when you SELECT it in SSMS?" },
+      "options": [
+        { "id": "a", "text": { "en": "As a JSON array of numbers" } },
+        { "id": "b", "text": { "en": "As hexadecimal varbinary" } },
+        { "id": "c", "text": { "en": "As XML" } },
+        { "id": "d", "text": { "en": "As a comma-separated string without brackets" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Vectors are stored in an optimized binary format but exposed as JSON arrays for convenience." },
+      "example": { "en": "[1.0000000e+000,2.0000000e+000,3.0000000e+000]" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/data-types/vector-data-type"]
+    },
+    {
+      "id": "d3-vd-0007",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-vector-data",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What happens with DECLARE @v VECTOR(3) = '[1, 2]';?" },
+      "options": [
+        { "id": "a", "text": { "en": "An error (42204): the number of elements must equal the declared dimensions" } },
+        { "id": "b", "text": { "en": "The missing element is padded with 0" } },
+        { "id": "c", "text": { "en": "The vector becomes VECTOR(2)" } },
+        { "id": "d", "text": { "en": "It's stored as NULL" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Conversion from a JSON array requires exactly the declared number of elements; SQL never pads, resizes or silently nulls vectors." },
+      "example": { "en": "DECLARE @v VECTOR(3) = '[1, 2, 0]'; -- explicit padding if intended" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/data-types/vector-data-type"]
+    },
+    {
+      "id": "d3-vd-0008",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-vector-data",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "How do CAST(@v AS NVARCHAR(MAX)) and CAST(@v AS JSON) differ for a vector?" },
+      "options": [
+        { "id": "a", "text": { "en": "The string cast uses scientific notation; the json cast uses decimal notation" } },
+        { "id": "b", "text": { "en": "They're identical" } },
+        { "id": "c", "text": { "en": "The json cast fails; vectors can't convert to json" } },
+        { "id": "d", "text": { "en": "The string cast returns binary" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Vector → string yields values like 1.0000000e+000; vector → json yields 1.0000000000. Both conversions are supported." },
+      "example": { "en": "If the target string is too short, error 42211 is raised (no truncation)." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/data-types/vector-data-type"]
+    },
+    {
+      "id": "d3-vd-0009",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-vector-data",
+      "type": "multiple", "difficulty": "medium", "selectCount": 3,
+      "text": { "en": "Which three can't be defined on a vector column? (Select 3)" },
+      "options": [
+        { "id": "a", "text": { "en": "PRIMARY KEY constraint" } },
+        { "id": "b", "text": { "en": "CHECK constraint" } },
+        { "id": "c", "text": { "en": "DEFAULT constraint" } },
+        { "id": "d", "text": { "en": "NOT NULL" } },
+        { "id": "e", "text": { "en": "Use as an INCLUDE column in a nonclustered index" } }
+      ],
+      "answer": ["a", "b", "c"],
+      "explanation": { "en": "Only NULL/NOT NULL constraints are supported; keys, CHECK, DEFAULT and UNIQUE aren't. A vector column can be an included column of a B-tree index, though it can't be a key column." },
+      "example": { "en": "CREATE INDEX ix ON dbo.Items(Category) INCLUDE (Embedding);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/data-types/vector-data-type"]
+    },
+    {
+      "id": "d3-vd-0010",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-vector-data",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A developer runs CREATE NONCLUSTERED INDEX ix_emb ON dbo.Docs(Embedding). What happens, and what's the right index for similarity search?" },
+      "options": [
+        { "id": "a", "text": { "en": "It fails — vector columns can't be B-tree (or columnstore) key columns; use CREATE VECTOR INDEX for approximate search" } },
+        { "id": "b", "text": { "en": "It succeeds and speeds up VECTOR_DISTANCE" } },
+        { "id": "c", "text": { "en": "It succeeds but only for equality searches" } },
+        { "id": "d", "text": { "en": "It creates a DiskANN index automatically" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "B-tree and columnstore indexes on vector columns aren't supported (sort orders don't apply to vectors). Vector indexes provide ANN search; VECTOR_DISTANCE never uses any index." },
+      "example": { "en": "CREATE VECTOR INDEX vix ON dbo.Docs(Embedding) WITH (METRIC = 'cosine');" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/data-types/vector-data-type"]
+    },
+    {
+      "id": "d3-vd-0011",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-vector-data",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Can you add a vector column to a memory-optimized table?" },
+      "options": [
+        { "id": "a", "text": { "en": "No, vector columns aren't supported in memory-optimized tables" } },
+        { "id": "b", "text": { "en": "Yes, and it's the fastest option" } },
+        { "id": "c", "text": { "en": "Only with float16" } },
+        { "id": "d", "text": { "en": "Only with DURABILITY = SCHEMA_ONLY" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The vector type documents that it can't be used in memory-optimized tables, regardless of base type or durability." },
+      "example": { "en": "Store vectors in a disk-based table linked to the in-memory table by key." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/data-types/vector-data-type"]
+    },
+    {
+      "id": "d3-vd-0012",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-vector-data",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Security wants to encrypt the Embedding column with Always Encrypted. What's the issue?" },
+      "options": [
+        { "id": "a", "text": { "en": "The vector type isn't supported with Always Encrypted" } },
+        { "id": "b", "text": { "en": "It works only with randomized encryption" } },
+        { "id": "c", "text": { "en": "It works but disables VECTOR_DISTANCE on the client" } },
+        { "id": "d", "text": { "en": "No issue" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Always Encrypted doesn't support vector columns. Protect them with TDE, access control and network security; the server must see vectors to compute distances anyway." },
+      "example": { "en": "Restrict SELECT on embedding tables to the search service's identity." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/data-types/vector-data-type"]
+    },
+    {
+      "id": "d3-vd-0013",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-vector-data",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A query uses WHERE e1.Embedding = e2.Embedding to find duplicate vectors. What happens?" },
+      "options": [
+        { "id": "a", "text": { "en": "It fails; vectors don't support comparison operators — compare with VECTOR_DISTANCE (e.g., distance = 0) or a hash of the source text" } },
+        { "id": "b", "text": { "en": "It works like varbinary equality" } },
+        { "id": "c", "text": { "en": "It compares only the first element" } },
+        { "id": "d", "text": { "en": "It compares the JSON text" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Comparison, arithmetic and concatenation operators aren't supported on vectors. Use distance functions or compare source text/hashes." },
+      "example": { "en": "WHERE VECTOR_DISTANCE('euclidean', e1.Embedding, e2.Embedding) = 0" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/data-types/vector-data-type"]
+    },
+    {
+      "id": "d3-vd-0014",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-vector-data",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A .NET 9 service should read and write vectors natively in binary rather than as JSON strings. What does it need?" },
+      "options": [
+        { "id": "a", "text": { "en": "Microsoft.Data.SqlClient 6.1.0 or later, using SqlVector<float>" } },
+        { "id": "b", "text": { "en": "System.Data.SqlClient 4.8" } },
+        { "id": "c", "text": { "en": "An ODBC DSN" } },
+        { "id": "d", "text": { "en": "A CLR assembly on the server" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Microsoft.Data.SqlClient 6.1 introduced SqlVector and native vector transport over TDS 7.4+. The legacy System.Data.SqlClient doesn't support it, and ODBC DSNs or CLR aren't the .NET answer." },
+      "example": { "en": "command.Parameters.Add(\"@v\", SqlDbTypeExtensions.Vector).Value = new SqlVector<float>(values);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/data-types/vector-data-type"]
+    },
+    {
+      "id": "d3-vd-0015",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-vector-data",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "An older application with a legacy driver queries a vector column. What does it receive?" },
+      "options": [
+        { "id": "a", "text": { "en": "A varchar(max) JSON array it can parse as text" } },
+        { "id": "b", "text": { "en": "An error: unsupported type" } },
+        { "id": "c", "text": { "en": "NULL" } },
+        { "id": "d", "text": { "en": "Raw binary bytes" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "For clients without the TDS enhancements, SQL exposes vectors as varchar(max) JSON for backward compatibility." },
+      "example": { "en": "JsonSerializer.Deserialize<float[]>(reader.GetString(0))" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/data-types/vector-data-type"]
+    },
+    {
+      "id": "d3-vd-0016",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-vector-data",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "What's the range of VECTOR_DISTANCE('cosine', v1, v2)?" },
+      "options": [
+        { "id": "a", "text": { "en": "0 (identical direction) to 2 (opposite)" } },
+        { "id": "b", "text": { "en": "-1 to 1, where 1 is identical" } },
+        { "id": "c", "text": { "en": "0 to 100" } },
+        { "id": "d", "text": { "en": "0 to infinity" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Cosine distance is 0 for vectors pointing the same way and 2 for opposite vectors. Cosine similarity (−1 to 1) is a different measure; euclidean ranges 0 to infinity." },
+      "example": { "en": "ORDER BY distance ASC puts the most similar first." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-distance-transact-sql"]
+    },
+    {
+      "id": "d3-vd-0017",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-vector-data",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "VECTOR_DISTANCE('dot', @a, @b) returns -0.92 for one pair and -0.15 for another. Which pair is more similar?" },
+      "options": [
+        { "id": "a", "text": { "en": "The pair with -0.92, because the function returns the negative dot product and smaller values mean more similar" } },
+        { "id": "b", "text": { "en": "The pair with -0.15, because it's closer to zero" } },
+        { "id": "c", "text": { "en": "They're equally similar" } },
+        { "id": "d", "text": { "en": "Dot results can't be compared" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "SQL returns the negative dot product so that, like other metrics, smaller means more similar. A larger raw dot product (0.92) becomes −0.92." },
+      "example": { "en": "Sort ascending by distance for every metric." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-distance-transact-sql"]
+    },
+    {
+      "id": "d3-vd-0018",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-vector-data",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A table has a cosine vector index. Does SELECT TOP (10) … ORDER BY VECTOR_DISTANCE('cosine', @q, Embedding) use it?" },
+      "options": [
+        { "id": "a", "text": { "en": "No; VECTOR_DISTANCE is always exact and never uses a vector index — use VECTOR_SEARCH with TOP … WITH APPROXIMATE for ANN" } },
+        { "id": "b", "text": { "en": "Yes, automatically" } },
+        { "id": "c", "text": { "en": "Only if the query has a WHERE clause" } },
+        { "id": "d", "text": { "en": "Only with OPTION (RECOMPILE)" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The docs state VECTOR_DISTANCE is exact and doesn't use any vector index even if available. Approximate search requires VECTOR_SEARCH." },
+      "example": { "en": "Use VECTOR_DISTANCE for small sets, re-ranking or ground-truth recall measurements." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-distance-transact-sql"]
+    },
+    {
+      "id": "d3-vd-0019",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-vector-data",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "What does VECTOR_NORM(CAST('[3, 4, 0]' AS VECTOR(3)), 'norm2') return?" },
+      "options": [
+        { "id": "a", "text": { "en": "5" } },
+        { "id": "b", "text": { "en": "7" } },
+        { "id": "c", "text": { "en": "4" } },
+        { "id": "d", "text": { "en": "[0.6, 0.8, 0]" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The Euclidean (norm2) length is √(3² + 4² + 0²) = 5. 7 would be norm1 and 4 would be norminf; the unit vector is what VECTOR_NORMALIZE returns." },
+      "example": { "en": "VECTOR_NORM(@v, 'norm1') = 7; VECTOR_NORM(@v, 'norminf') = 4" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-functions-transact-sql"]
+    },
+    {
+      "id": "d3-vd-0020",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-vector-data",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "What does VECTOR_NORMALIZE(CAST('[3, 4, 0]' AS VECTOR(3)), 'norm2') return?" },
+      "options": [
+        { "id": "a", "text": { "en": "[0.6, 0.8, 0]" } },
+        { "id": "b", "text": { "en": "5" } },
+        { "id": "c", "text": { "en": "[3, 4, 0]" } },
+        { "id": "d", "text": { "en": "[1, 1, 0]" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Normalizing divides each element by the norm (5), giving a unit vector in the same direction. 5 is VECTOR_NORM's result." },
+      "example": { "en": "Store normalized vectors when your model doesn't normalize its output." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-normalize-transact-sql"]
+    },
+    {
+      "id": "d3-vd-0021",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-vector-data",
+      "type": "dragdrop-match", "difficulty": "medium",
+      "text": { "en": "Match each norm type to its definition." },
+      "items": [
+        { "id": "i1", "text": { "en": "norm1" } },
+        { "id": "i2", "text": { "en": "norm2" } },
+        { "id": "i3", "text": { "en": "norminf" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "Sum of the absolute values of the components" } },
+        { "id": "t2", "text": { "en": "Square root of the sum of squares (Euclidean)" } },
+        { "id": "t3", "text": { "en": "Maximum absolute component value" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3" },
+      "explanation": { "en": "These are the three norm types accepted by VECTOR_NORM and VECTOR_NORMALIZE; norm2 is the most common for embeddings." },
+      "example": { "en": "VECTOR_NORMALIZE(@v, 'norm2')" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-normalize-transact-sql"]
+    },
+    {
+      "id": "d3-vd-0022",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-vector-data",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Some imported vectors may have the wrong length. Which function checks a vector's dimension count?" },
+      "options": [
+        { "id": "a", "text": { "en": "VECTORPROPERTY(Embedding, 'Dimensions')" } },
+        { "id": "b", "text": { "en": "LEN(Embedding)" } },
+        { "id": "c", "text": { "en": "DATALENGTH(Embedding) / 2" } },
+        { "id": "d", "text": { "en": "VECTOR_NORM(Embedding, 'norm1')" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "VECTORPROPERTY returns Dimensions (int) or BaseType. LEN and DATALENGTH don't report dimensions reliably, and a norm measures magnitude." },
+      "example": { "en": "SELECT COUNT(*) FROM dbo.Docs WHERE VECTORPROPERTY(Embedding, 'Dimensions') <> 1536;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/vectorproperty-transact-sql"]
+    },
+    {
+      "id": "d3-vd-0023",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-vector-data",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "When should you apply VECTOR_NORMALIZE to embeddings before storing them?" },
+      "options": [
+        { "id": "a", "text": { "en": "When the embedding model doesn't return unit-length vectors, so magnitude doesn't skew dot-product comparisons" } },
+        { "id": "b", "text": { "en": "Always, even for Azure OpenAI embeddings that are already normalized" } },
+        { "id": "c", "text": { "en": "To convert vectors from one model into another model's space" } },
+        { "id": "d", "text": { "en": "To reduce dimensions" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Azure OpenAI vectors are already normalized; other models (or frameworks) may not be. Normalization removes magnitude effects but can't translate between models or change dimension counts." },
+      "example": { "en": "UPDATE dbo.Docs SET Embedding = VECTOR_NORMALIZE(Embedding, 'norm2');" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-normalize-transact-sql"]
+    },
+    {
+      "id": "d3-vd-0024",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-vector-data",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "All stored and query vectors are unit-length (norm2 = 1). How do rankings by cosine distance and by dot compare?" },
+      "options": [
+        { "id": "a", "text": { "en": "They produce the same ranking, because for unit vectors the dot product equals cosine similarity" } },
+        { "id": "b", "text": { "en": "They produce opposite rankings" } },
+        { "id": "c", "text": { "en": "Dot can't be used with normalized vectors" } },
+        { "id": "d", "text": { "en": "Cosine requires unnormalized vectors" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "For unit vectors, cosine similarity = dot product, so cosine distance (1 − similarity) and SQL's negative dot product order results identically. The index metric still has to match the query metric." },
+      "example": { "en": "Pick one metric consistently for the index and queries." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-distance-transact-sql"]
+    },
+    {
+      "id": "d3-vd-0025",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-vector-data",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "VECTOR_DISTANCE fails when comparing a 1,536-dimension query vector with a VECTOR(768) column. Why?" },
+      "options": [
+        { "id": "a", "text": { "en": "Both vectors must have the same dimensions (and base type); the stored data and the query come from different models or settings" } },
+        { "id": "b", "text": { "en": "VECTOR_DISTANCE only supports 768 dimensions" } },
+        { "id": "c", "text": { "en": "The metric name is case-sensitive" } },
+        { "id": "d", "text": { "en": "The query vector must be normalized first" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Distance requires matching dimensions; the mismatch signals different models or dimensions settings. Fix the query embedding configuration rather than normalizing." },
+      "example": { "en": "Use the same external model (and dimensions parameter) for indexing and querying." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/05-implement-vector-search-query-patterns"]
+    },
+    {
+      "id": "d3-vd-0026",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-vector-data",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Create an approximate index for cosine similarity on dbo.Articles.ContentVector, limiting the build to 4 parallel threads." },
+      "code": "CREATE [BLANK1] vix_Articles_Content\n    ON dbo.Articles (ContentVector)\n    WITH (METRIC = '[BLANK2]', TYPE = '[BLANK3]', MAXDOP = 4);",
+      "blanks": [
+        { "id": "b1", "label": { "en": "BLANK1" }, "choices": [
+          { "id": "c1", "text": { "en": "VECTOR INDEX" } },
+          { "id": "c2", "text": { "en": "NONCLUSTERED INDEX" } },
+          { "id": "c3", "text": { "en": "FULLTEXT INDEX" } }
+        ] },
+        { "id": "b2", "label": { "en": "BLANK2" }, "choices": [
+          { "id": "c1", "text": { "en": "cosine" } },
+          { "id": "c2", "text": { "en": "jaccard" } },
+          { "id": "c3", "text": { "en": "manhattan" } }
+        ] },
+        { "id": "b3", "label": { "en": "BLANK3" }, "choices": [
+          { "id": "c1", "text": { "en": "HNSW" } },
+          { "id": "c2", "text": { "en": "DiskANN" } },
+          { "id": "c3", "text": { "en": "IVFFlat" } }
+        ] }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1", "b3": "c2" },
+      "explanation": { "en": "CREATE VECTOR INDEX builds the ANN index; supported metrics are cosine, dot and euclidean; DiskANN is the only (and default) type. HNSW and IVFFlat are algorithms used by other databases." },
+      "example": { "en": "Optionally add ON [filegroup] to place the index." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-vector-index-transact-sql"]
+    },
+    {
+      "id": "d3-vd-0027",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-vector-data",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "CREATE VECTOR INDEX fails with error 42266 on a new table with 40 rows. What's wrong?" },
+      "options": [
+        { "id": "a", "text": { "en": "Vector indexes need at least 100 rows with non-NULL vectors; load more data first (VECTOR_SEARCH still works without an index via kNN)" } },
+        { "id": "b", "text": { "en": "The table must have at least 1 million rows" } },
+        { "id": "c", "text": { "en": "MAXDOP must be 1" } },
+        { "id": "d", "text": { "en": "The vector column must be NULLable" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Latest-version vector indexes require ≥ 100 non-NULL vectors. Until then, queries can run as exact kNN scans. There's no 1-million minimum, and MAXDOP or nullability aren't the cause." },
+      "example": { "en": "Create the index in a post-load step once the table qualifies." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-vector-index-transact-sql"]
+    },
+    {
+      "id": "d3-vd-0028",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-vector-data",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which permission is required to create a vector index on dbo.Articles?" },
+      "options": [
+        { "id": "a", "text": { "en": "ALTER on the table" } },
+        { "id": "b", "text": { "en": "SELECT on the table" } },
+        { "id": "c", "text": { "en": "EXECUTE ON EXTERNAL MODEL" } },
+        { "id": "d", "text": { "en": "CONTROL SERVER" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Like other indexes, creating a vector index requires ALTER on the table. SELECT reads data, EXECUTE on a model calls AI functions, and CONTROL SERVER is excessive." },
+      "example": { "en": "GRANT ALTER ON dbo.Articles TO [search_admin];" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-vector-index-transact-sql"]
+    },
+    {
+      "id": "d3-vd-0029",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-vector-data",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "The only vector index on Embedding uses METRIC = 'euclidean'. A query calls VECTOR_SEARCH(…, METRIC = 'cosine'). What happens?" },
+      "options": [
+        { "id": "a", "text": { "en": "No compatible index exists for cosine, so a warning is raised and an exact kNN search runs" } },
+        { "id": "b", "text": { "en": "SQL converts the index to cosine automatically" } },
+        { "id": "c", "text": { "en": "The query uses the euclidean index anyway" } },
+        { "id": "d", "text": { "en": "The query returns no rows" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "An ANN index is used only when its metric and column match the query; otherwise SQL warns and falls back to kNN, which can be slow on large tables." },
+      "example": { "en": "Create the index with the same metric your queries use." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-search-transact-sql"]
+    },
+    {
+      "id": "d3-vd-0030",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-vector-data",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "In Azure SQL Database, rows are inserted, updated and deleted in a table with a newly created vector index. What happens?" },
+      "options": [
+        { "id": "a", "text": { "en": "DML works normally; the latest index version maintains itself automatically and changes are searchable after commit" } },
+        { "id": "b", "text": { "en": "The table is read-only until the index is dropped" } },
+        { "id": "c", "text": { "en": "Changes are visible only after a nightly rebuild" } },
+        { "id": "d", "text": { "en": "Only INSERTs are allowed" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Latest-version vector indexes support INSERT, UPDATE, DELETE and MERGE with real-time maintenance. Read-only behavior was a limitation of earlier versions." },
+      "example": { "en": "Monitor background maintenance with sys.dm_db_vector_indexes." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-vector-index-transact-sql"]
+    },
+    {
+      "id": "d3-vd-0031",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-vector-data",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "An older (earlier-version) vector index made its table read-only. Which statement describes your options?" },
+      "options": [
+        { "id": "a", "text": { "en": "Drop and recreate it to get the latest version (with full DML), or — where supported — enable ALLOW_STALE_VECTOR_INDEX if stale results are acceptable" } },
+        { "id": "b", "text": { "en": "Run ALTER INDEX … UPGRADE" } },
+        { "id": "c", "text": { "en": "Use NOLOCK when inserting" } },
+        { "id": "d", "text": { "en": "Nothing can be done" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Earlier-version indexes can't be upgraded in place; drop and recreate to get the latest structure. The ALLOW_STALE_VECTOR_INDEX scoped configuration allowed DML at the cost of stale search results. There's no UPGRADE option, and NOLOCK doesn't allow writes." },
+      "example": { "en": "DROP INDEX vec_idx ON dbo.Docs; CREATE VECTOR INDEX vec_idx ON dbo.Docs(Embedding) WITH (METRIC = 'cosine');" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-vector-index-transact-sql"]
+    },
+    {
+      "id": "d3-vd-0032",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-vector-data",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "How can you tell whether existing vector indexes use the latest version?" },
+      "options": [
+        { "id": "a", "text": { "en": "Query sys.vector_indexes and read JSON_VALUE(build_parameters, '$.Version') — 3 or higher is latest" } },
+        { "id": "b", "text": { "en": "SELECT @@VERSION" } },
+        { "id": "c", "text": { "en": "sys.dm_db_index_usage_stats" } },
+        { "id": "d", "text": { "en": "DBCC SHOW_STATISTICS" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "sys.vector_indexes exposes build parameters including the index version. Server version, usage stats and statistics don't reveal it." },
+      "example": { "en": "Earlier versions → plan a drop/recreate migration during a maintenance window." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-vector-index-transact-sql"]
+    },
+    {
+      "id": "d3-vd-0033",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-vector-data",
+      "type": "dragdrop-order", "difficulty": "medium",
+      "text": { "en": "TRUNCATE TABLE fails on a vector-indexed table. Order the steps to empty and reload it." },
+      "items": [
+        { "id": "i1", "text": { "en": "Drop the vector index" } },
+        { "id": "i2", "text": { "en": "TRUNCATE TABLE" } },
+        { "id": "i3", "text": { "en": "Reload data (at least 100 rows with non-NULL vectors)" } },
+        { "id": "i4", "text": { "en": "Recreate the vector index" } }
+      ],
+      "answer": ["i1", "i2", "i3", "i4"],
+      "explanation": { "en": "Tables with vector indexes can't be truncated; drop the index first, reload enough data to satisfy the minimum, then recreate it." },
+      "example": { "en": "Alternatively, DELETE in batches if the index must stay online." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-search-transact-sql"]
+    },
+    {
+      "id": "d3-vd-0034",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-vector-data",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A partitioned table needs a vector index aligned with its partition scheme. Is that possible?" },
+      "options": [
+        { "id": "a", "text": { "en": "No, vector indexes can't be partitioned" } },
+        { "id": "b", "text": { "en": "Yes, with ON partition_scheme(column)" } },
+        { "id": "c", "text": { "en": "Only with float16" } },
+        { "id": "d", "text": { "en": "Only on SQL Server 2025" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Partitioning vector indexes isn't supported (current limitation). You can place the index on a filegroup, but not partition it." },
+      "example": { "en": "CREATE VECTOR INDEX … ON [SECONDARY];" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-vector-index-transact-sql"]
+    },
+    {
+      "id": "d3-vd-0035",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-vector-data",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A SQL project deploys a DACPAC to a new, empty database that defines a vector index. After loading data, vector queries are slow. Why?" },
+      "options": [
+        { "id": "a", "text": { "en": "The vector index wasn't created: tables need ≥ 100 non-NULL vectors, and DACPAC deployments can skip it; create it in a post-load/post-deployment step and verify in sys.vector_indexes" } },
+        { "id": "b", "text": { "en": "DACPACs always create vector indexes as euclidean" } },
+        { "id": "c", "text": { "en": "DACPACs convert vectors to nvarchar" } },
+        { "id": "d", "text": { "en": "The index exists but is disabled for 24 hours" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Vector indexes can't be fully deployed by DACPAC, and an empty target skips index creation; DacFx doesn't create it later. Add an explicit creation step after data is loaded." },
+      "example": { "en": "Post-deployment: IF (SELECT COUNT(*) FROM dbo.Docs WHERE Embedding IS NOT NULL) >= 100 CREATE VECTOR INDEX …" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-vector-index-transact-sql"]
+    },
+    {
+      "id": "d3-vd-0036",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-vector-data",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which object can be the TABLE argument of VECTOR_SEARCH?" },
+      "options": [
+        { "id": "a", "text": { "en": "A base table" } },
+        { "id": "b", "text": { "en": "A view" } },
+        { "id": "c", "text": { "en": "A local temporary table" } },
+        { "id": "d", "text": { "en": "A table variable" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "VECTOR_SEARCH (and CREATE VECTOR INDEX) work on base tables; views and temporary tables aren't supported." },
+      "example": { "en": "TABLE = dbo.ProductEmbeddings AS e" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-search-transact-sql"]
+    },
+    {
+      "id": "d3-vd-0037",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-vector-data",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A developer wants to wrap a VECTOR_SEARCH query in a view for reuse. What should they do instead?" },
+      "options": [
+        { "id": "a", "text": { "en": "Use a stored procedure or inline logic, because VECTOR_SEARCH can't be used in the body of a view" } },
+        { "id": "b", "text": { "en": "Create the view WITH SCHEMABINDING" } },
+        { "id": "c", "text": { "en": "Create an indexed view" } },
+        { "id": "d", "text": { "en": "Use a synonym" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "VECTOR_SEARCH isn't allowed in view definitions (schema-bound or indexed included); a procedure with parameters fits and can be exposed through DAB." },
+      "example": { "en": "CREATE PROCEDURE dbo.SearchDocs @q NVARCHAR(4000), @top INT AS …" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-search-transact-sql"]
+    },
+    {
+      "id": "d3-vd-0038",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-vector-data",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "What does VECTOR_SEARCH return?" },
+      "options": [
+        { "id": "a", "text": { "en": "All columns of the searched table plus a distance column" } },
+        { "id": "b", "text": { "en": "Only the primary key" } },
+        { "id": "c", "text": { "en": "A single scalar distance" } },
+        { "id": "d", "text": { "en": "The query vector" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The result set merges the table's columns (referenced with the TABLE alias) with a generated distance column, the only valid ordering key for approximate results." },
+      "example": { "en": "SELECT t.Title, r.distance FROM VECTOR_SEARCH(TABLE = dbo.Docs AS t, …) AS r" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-search-transact-sql"]
+    },
+    {
+      "id": "d3-vd-0039",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-vector-data",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which vector index TYPE values are supported?" },
+      "options": [
+        { "id": "a", "text": { "en": "DiskANN only (also the default)" } },
+        { "id": "b", "text": { "en": "DiskANN, HNSW and IVF" } },
+        { "id": "c", "text": { "en": "B-tree and hash" } },
+        { "id": "d", "text": { "en": "Columnstore" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The SQL Database Engine currently supports only DiskANN, a graph-based ANN algorithm that balances memory, CPU and I/O. Other algorithms belong to other products." },
+      "example": { "en": "WITH (METRIC = 'cosine') — TYPE defaults to DiskANN." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-vector-index-transact-sql"]
+    },
+    {
+      "id": "d3-vd-0040",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-vector-data",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What does MAXDOP do in CREATE VECTOR INDEX?" },
+      "options": [
+        { "id": "a", "text": { "en": "Limits the parallelism (and resource use) of the index build" } },
+        { "id": "b", "text": { "en": "Sets the maximum dimensions" } },
+        { "id": "c", "text": { "en": "Sets how many neighbors queries return" } },
+        { "id": "d", "text": { "en": "Sets the recall target" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "MAXDOP overrides max degree of parallelism for the build (0 = server setting, 1 = serial). It doesn't control dimensions, result counts or recall." },
+      "example": { "en": "MAXDOP = 4 to keep a daytime rebuild from starving other workloads." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-vector-index-transact-sql"]
+    },
+    {
+      "id": "d3-vd-0041",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-vector-data",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "Estimate the raw vector storage for 2 million rows of VECTOR(1536) float32." },
+      "options": [
+        { "id": "a", "text": { "en": "About 12 GB (2,000,000 × 1,536 × 4 bytes)" } },
+        { "id": "b", "text": { "en": "About 1.2 GB" } },
+        { "id": "c", "text": { "en": "About 120 GB" } },
+        { "id": "d", "text": { "en": "About 3 GB" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "2,000,000 × 6,144 bytes ≈ 12.3 GB, before row overhead, other columns and the vector index. float16 would roughly halve it." },
+      "example": { "en": "Size storage and memory with this arithmetic during design." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/04-prepare-sql-vector-search"]
+    },
+    {
+      "id": "d3-vd-0042",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-vector-data",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Vector queries always filter on Category. Besides the vector index, what helps performance with latest-version iterative filtering?" },
+      "options": [
+        { "id": "a", "text": { "en": "A regular nonclustered index on Category" } },
+        { "id": "b", "text": { "en": "A second vector index with the dot metric" } },
+        { "id": "c", "text": { "en": "A columnstore index on the vector" } },
+        { "id": "d", "text": { "en": "Nothing else can help" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The optimizer can use both a vector index and traditional indexes on filter columns during iterative filtering. A second vector index doesn't help filtering, and columnstore on vectors isn't supported." },
+      "example": { "en": "CREATE NONCLUSTERED INDEX ix_cat ON dbo.ProductEmbeddings(Category);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-vector-index-transact-sql"]
+    },
+    {
+      "id": "d3-vd-0043",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-vector-data",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A dataset has thousands of identical vectors (copied boilerplate). Why does that matter for a vector index?" },
+      "options": [
+        { "id": "a", "text": { "en": "Duplicates crowd out better neighbors, lower result usefulness and add build/maintenance cost — deduplicate first" } },
+        { "id": "b", "text": { "en": "Duplicates improve recall" } },
+        { "id": "c", "text": { "en": "Vector indexes reject duplicates" } },
+        { "id": "d", "text": { "en": "It doesn't matter" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Microsoft advises against indexing datasets with a high proportion of duplicate embeddings because of result quality and cost. Indexes don't reject duplicates; they just degrade." },
+      "example": { "en": "Embed distinct text once and map many rows to it if needed." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-vector-index-transact-sql"]
+    },
+    {
+      "id": "d3-vd-0044",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-vector-data",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which statement about availability is correct?" },
+      "options": [
+        { "id": "a", "text": { "en": "The vector type and functions are GA everywhere (SQL Server 2025, Azure SQL Database, MI, Fabric); vector indexes are GA in Azure SQL Database, Fabric and MI Always-up-to-date but preview in SQL Server 2025" } },
+        { "id": "b", "text": { "en": "Everything vector-related is preview everywhere" } },
+        { "id": "c", "text": { "en": "Vector indexes are GA in SQL Server 2025 only" } },
+        { "id": "d", "text": { "en": "The vector type is preview in Azure SQL Database" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The docs list the vector type and functions as GA across the family, with vector indexes and VECTOR_SEARCH GA in Azure SQL Database, Fabric and MI Always-up-to-date, and preview in SQL Server 2025 (PREVIEW_FEATURES)." },
+      "example": { "en": "Plan production ANN workloads accordingly." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-functions-transact-sql"]
+    },
+    {
+      "id": "d3-vd-0045",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-vector-data",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "For each statement about the vector type, answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "A vector can be declared as a stored procedure parameter." } },
+        { "id": "s2", "text": { "en": "A JSON_ARRAY(...) result can be assigned to a vector variable of matching dimensions." } },
+        { "id": "s3", "text": { "en": "You can create an alias type for vector with CREATE TYPE." } },
+        { "id": "s4", "text": { "en": "A vector value can be stored in a sql_variant column." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "yes", "s3": "no", "s4": "no" },
+      "explanation": { "en": "Vectors work as variables and parameters, and JSON arrays (including JSON_ARRAY output) convert to vectors. Alias types and sql_variant aren't supported for vectors." },
+      "example": { "en": "DECLARE @v VECTOR(3) = JSON_ARRAY(1.0, -0.2, 30);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/data-types/vector-data-type"]
+    },
+    {
+      "id": "d3-vd-0046",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-vector-data",
+      "type": "single", "difficulty": "medium",
+      "caseId": "case-vd-litware",
+      "text": { "en": "How should Litware store the 3,072-dimension embeddings?" },
+      "options": [
+        { "id": "a", "text": { "en": "VECTOR(3072, float16), or request ≤ 1,998 dimensions from the model and use float32" } },
+        { "id": "b", "text": { "en": "VECTOR(3072) with the default float32" } },
+        { "id": "c", "text": { "en": "nvarchar(max) JSON text" } },
+        { "id": "d", "text": { "en": "Two VECTOR(1536) columns splitting the array" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "float32 caps at 1,998 dimensions; float16 (GA in Azure SQL Database) holds 3,072 and halves storage, matching the accepted small precision loss. Text storage loses vector functions, and splitting a vector breaks distance math." },
+      "example": { "en": "Embedding VECTOR(3072, float16) NOT NULL" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/data-types/vector-data-type"]
+    },
+    {
+      "id": "d3-vd-0047",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-vector-data",
+      "type": "single", "difficulty": "hard",
+      "caseId": "case-vd-litware",
+      "text": { "en": "Roughly how much raw space do Litware's vectors need as VECTOR(3072, float16)?" },
+      "options": [
+        { "id": "a", "text": { "en": "About 12 GB (2,000,000 × 3,072 × 2 bytes)" } },
+        { "id": "b", "text": { "en": "About 24 GB" } },
+        { "id": "c", "text": { "en": "About 6 GB" } },
+        { "id": "d", "text": { "en": "About 1.2 GB" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "float16 uses 2 bytes per element: 3,072 × 2 = 6,144 bytes per row; × 2 million ≈ 12.3 GB. float32 would need ≈ 24.6 GB (and isn't allowed at 3,072 dimensions)." },
+      "example": { "en": "Same footprint as a 1,536-dimension float32 column." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/data-types/vector-data-type"]
+    },
+    {
+      "id": "d3-vd-0048",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-vector-data",
+      "type": "single", "difficulty": "medium",
+      "caseId": "case-vd-litware",
+      "text": { "en": "New chunks arrive all day. What's the impact on Litware's vector index in Azure SQL Database?" },
+      "options": [
+        { "id": "a", "text": { "en": "None beyond maintenance cost: the latest index version supports continuous DML and new rows become searchable after commit" } },
+        { "id": "b", "text": { "en": "Inserts fail while the index exists" } },
+        { "id": "c", "text": { "en": "The index must be rebuilt after every batch" } },
+        { "id": "d", "text": { "en": "New chunks are searchable only with VECTOR_DISTANCE" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Azure SQL Database uses latest-version vector indexes with automatic real-time maintenance. Read-only tables and rebuilds were earlier-version constraints." },
+      "example": { "en": "Recreate the index only after replacing most embeddings (e.g., a model change)." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-vector-index-transact-sql"]
+    },
+    {
+      "id": "d3-vd-0049",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-vector-data",
+      "type": "single", "difficulty": "medium",
+      "caseId": "case-vd-litware",
+      "text": { "en": "Researchers always filter by DepartmentId. Which design supports fast, complete top-10 results?" },
+      "options": [
+        { "id": "a", "text": { "en": "A vector index on the embedding plus a B-tree index on DepartmentId, querying with SELECT TOP (10) WITH APPROXIMATE … WHERE DepartmentId = @d" } },
+        { "id": "b", "text": { "en": "Embedding the department name into each chunk instead of filtering" } },
+        { "id": "c", "text": { "en": "One vector index per department" } },
+        { "id": "d", "text": { "en": "VECTOR_DISTANCE over all 2 million rows" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "With latest-version indexes, the WHERE predicate is applied during the search (iterative filtering) and can use the B-tree index, returning the full 10 qualifying rows. Embedding metadata is unreliable, per-department vector indexes on one column aren't a supported pattern, and a full kNN scan is slow." },
+      "example": { "en": "… FROM VECTOR_SEARCH(TABLE = dbo.Chunks AS c, …) AS r WHERE c.DepartmentId = @d ORDER BY r.distance;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-search-transact-sql"]
+    },
+    {
+      "id": "d3-vd-0050",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-vector-data",
+      "type": "dragdrop-match", "difficulty": "medium",
+      "text": { "en": "Match each task to the vector function to use." },
+      "items": [
+        { "id": "i1", "text": { "en": "Exact distance between two specific vectors" } },
+        { "id": "i2", "text": { "en": "Approximate top-k neighbors from a large table" } },
+        { "id": "i3", "text": { "en": "Scale a vector to unit length" } },
+        { "id": "i4", "text": { "en": "Check how many dimensions a vector has" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "VECTOR_DISTANCE" } },
+        { "id": "t2", "text": { "en": "VECTOR_SEARCH" } },
+        { "id": "t3", "text": { "en": "VECTOR_NORMALIZE" } },
+        { "id": "t4", "text": { "en": "VECTORPROPERTY" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "These are the study guide's four named functions for semantic search; VECTOR_NORM complements them by returning magnitude." },
+      "example": { "en": "VECTORPROPERTY(@v, 'Dimensions')" },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/05-implement-vector-search-query-patterns"]
+    }
+  ]
+}

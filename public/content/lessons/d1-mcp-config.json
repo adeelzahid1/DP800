@@ -1,0 +1,60 @@
+{
+  "subtopic": "d1-mcp-config",
+  "title": { "en": "MCP servers, instruction files & model configuration" },
+  "prerequisiteRecap": [
+    {
+      "heading": { "en": "What MCP is" },
+      "body": {
+        "en": "The **Model Context Protocol (MCP)** is an open standard that lets AI assistants call external **tools** and read external **resources** through a uniform interface. An **MCP server** exposes capabilities (e.g. 'run a SQL query', 'list tables'); an **MCP client/host** (Copilot agent mode in VS Code, other AI apps) discovers those tools and lets the model invoke them. Think of it as a USB port between AI models and your systems: one protocol, many integrations."
+      }
+    }
+  ],
+  "sections": [
+    {
+      "heading": { "en": "MCP architecture in 2 minutes" },
+      "body": {
+        "en": "Three roles: **Host** (the AI application, e.g. VS Code with Copilot agent mode), **Client** (the protocol connection the host manages per server), **Server** (exposes tools/resources/prompts). Transports: **stdio** (server runs as a local child process) and **HTTP/SSE** (remote servers). The model decides WHEN to call a tool; the host enforces approval policies; the server executes with ITS configured credentials. That last sentence is the security crux: an MCP server connected with a powerful SQL login gives the model that power."
+      }
+    },
+    {
+      "heading": { "en": "The MSSQL MCP server" },
+      "body": {
+        "en": "Microsoft provides an **MSSQL MCP server** that exposes SQL Server/Azure SQL databases to AI agents with tools like listing tables, describing schema, reading data and running queries (write operations are typically gated/configurable). Configured in VS Code via `mcp.json` (workspace `.vscode/mcp.json` or user-level), giving the command/URL plus connection settings. Once registered, Copilot agent mode lists its tools; you can enable/disable individual tools per chat session via the tools picker. A similar pattern applies to the **Fabric lakehouse/Fabric MCP endpoints**, letting agents explore lakehouse tables and run queries against Fabric items — the study guide names both connection targets."
+      },
+      "code": "// .vscode/mcp.json\n{\n  \"servers\": {\n    \"mssql\": {\n      \"command\": \"npx\",\n      \"args\": [\"-y\", \"@azure/mssql-mcp\"],\n      \"env\": {\n        \"SERVER_NAME\": \"localhost\",\n        \"DATABASE_NAME\": \"AdventureWorks\",\n        \"READONLY\": \"true\"\n      }\n    }\n  }\n}",
+      "codeLang": "json"
+    },
+    {
+      "heading": { "en": "Configuring models and tools in a chat session" },
+      "body": {
+        "en": "In a GitHub Copilot (or Copilot in Fabric) chat session you can configure:\n- **Model picker**: choose the underlying model (different models trade speed, reasoning depth and cost/premium-request multipliers). Pick lighter models for boilerplate, stronger ones for complex refactoring.\n- **Mode**: ask / edit / agent — agent mode is where MCP tools become available.\n- **Tools picker**: enable/disable specific tools (from MCP servers and built-ins) for the session; fewer, relevant tools = better tool selection by the model and smaller attack surface.\n- **Context**: attach files, use participants (@mssql), reference instruction files.\nGovernance note: organizations can control which models and MCP servers are allowed via policy."
+      }
+    },
+    {
+      "heading": { "en": "MCP security" },
+      "body": {
+        "en": "MCP concentrates classic risks:\n- **Credential scope**: the server's connection = the model's power. Read-only or least-privileged logins for exploration; never sysadmin.\n- **Tool approval**: hosts prompt before tool calls (configurable). Auto-approving write-capable tools is the dangerous convenience.\n- **Prompt injection**: data returned by one tool (rows, documents) can contain instructions that steer the model's next tool calls — the 'lethal trifecta' (private data + untrusted content + exfiltration channel) applies.\n- **Server trust**: an MCP server is code you run; install only trusted/official servers (supply-chain risk).\n- **Auditing**: database-side auditing still sees everything the agent does — pair agent access with Domain 2's auditing features. Securing MCP endpoints themselves (authentication) is covered in Domain 2's endpoint-security subtopic."
+      }
+    },
+    {
+      "heading": { "en": "Why this matters for DP-800" },
+      "body": {
+        "en": "The study guide's bullets map directly: 'configure model and MCP tool options in a chat session' (model picker, tools picker, modes), 'create and configure GitHub Copilot instruction files' (previous subtopic), and 'connect to MCP server endpoints, including Microsoft SQL Server and Fabric lakehouse' (mcp.json / endpoint registration). Expect configuration-shaped questions (where does the file go, which mode exposes tools) and judgment questions (which login should the MCP server use)."
+      }
+    }
+  ],
+  "examTips": [
+    { "en": "MCP = open protocol for AI tool calling. Host (VS Code/Copilot) ↔ client ↔ server (MSSQL, Fabric lakehouse…)." },
+    { "en": "VS Code MCP config lives in mcp.json (workspace .vscode/mcp.json or user profile); agent mode exposes the tools." },
+    { "en": "Model picker trades capability vs speed/cost; tools picker scopes what the agent may call in the session." },
+    { "en": "The MCP server's credentials bound the agent's power — least privilege/read-only is the default right answer." },
+    { "en": "Tool results are untrusted content: prompt injection can ride database rows into the agent's reasoning." },
+    { "en": "stdio = local process transport; HTTP/SSE = remote servers." }
+  ],
+  "sources": [
+    "https://learn.microsoft.com/en-us/sql/tools/visual-studio-code-extensions/mssql/mssql-mcp-server",
+    "https://code.visualstudio.com/docs/copilot/chat/mcp-servers",
+    "https://modelcontextprotocol.io/introduction",
+    "https://learn.microsoft.com/en-us/fabric/fundamentals/copilot-fabric-overview"
+  ]
+}

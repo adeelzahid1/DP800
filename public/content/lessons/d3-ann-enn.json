@@ -1,0 +1,57 @@
+{
+  "subtopic": "d3-ann-enn",
+  "title": { "en": "ANN vs ENN & implementing vector search" },
+  "prerequisiteRecap": [
+    {
+      "heading": { "en": "Exact vs approximate in one picture" },
+      "body": {
+        "en": "**Exact nearest neighbor (ENN, also called kNN)** compares the query vector with *every* candidate vector, sorts by distance and returns the true top k — perfect accuracy, cost grows with the number of rows. **Approximate nearest neighbor (ANN)** walks a prebuilt index graph (DiskANN) to the neighborhood of the query and returns *almost* the true top k far faster. The quality of the approximation is measured by **recall**."
+      }
+    }
+  ],
+  "sections": [
+    {
+      "heading": { "en": "Choosing ENN or ANN" },
+      "body": {
+        "en": "- **ENN** when the search space is small: Microsoft's general guideline is **fewer than about 50,000 vectors** after your predicates are applied (the table can be larger if filters narrow it, e.g., one tenant). Also for guaranteed accuracy, threshold queries, re-ranking a short list, and producing ground truth for evaluation.\n- **ANN** for hundreds of thousands to millions of vectors where latency matters and a recall close to 1 is acceptable. Embeddings already approximate meaning, so a small recall loss rarely changes answers.\n- **Recall@k** = |ANN top-k ∩ ENN top-k| ÷ k. Measure it on a sample of real queries: run each query exactly (VECTOR_DISTANCE) and approximately (VECTOR_SEARCH) and compare.\n- With the latest vector indexes the **optimizer** may still choose a kNN scan when that's cheaper (for example, a very selective filter); `WITH (FORCE_ANN_ONLY)` forces the index."
+      },
+      "code": "-- ENN (exact): every candidate row is compared\nSELECT TOP (10) d.DocId, d.Title,\n       VECTOR_DISTANCE('cosine', @qv, d.Embedding) AS distance\nFROM dbo.Docs AS d\nWHERE d.TenantId = @tenant          -- small candidate set\nORDER BY distance;"
+    },
+    {
+      "heading": { "en": "Index types and metrics" },
+      "body": {
+        "en": "- **Type**: `DiskANN` is the only (and default) vector index type — a graph-based index designed for large datasets with limited memory, using SSD efficiently.\n- **Metrics**: `cosine` (angle; ignores magnitude; the usual choice for text embeddings), `dot` (negative inner product; for unit-length vectors it ranks exactly like cosine), `euclidean` (straight-line distance; magnitude matters — sometimes used for image or other embeddings trained that way). Choose the metric the embedding model was designed for.\n- The index **metric must match** the query's `METRIC`, otherwise no ANN index is used (warning + kNN).\n- Evaluate options by measuring **recall, latency, and resource use** on representative queries; recreate the index after large-scale embedding replacement."
+      }
+    },
+    {
+      "heading": { "en": "Implementing ANN with VECTOR_SEARCH (latest syntax)" },
+      "body": {
+        "en": "`SELECT TOP (N) WITH APPROXIMATE … FROM VECTOR_SEARCH(TABLE = t AS a, COLUMN = c, SIMILAR_TO = @qv, METRIC = '…') AS r [WHERE …] ORDER BY r.distance;`\nRules:\n- `ORDER BY` is **required** and must be **only the distance column, ascending** (errors 42248 / 42271 otherwise).\n- `WITH APPROXIMATE` requires `VECTOR_SEARCH` in the query.\n- `TOP_N` inside VECTOR_SEARCH is **deprecated** and fails with latest-version indexes (Msg 42274).\n- Reference table columns through the alias given in `TABLE = … AS a`; `distance` comes from the VECTOR_SEARCH alias.\n- **Iterative filtering**: WHERE predicates are applied *during* the search, so you get N qualifying rows when they exist (earlier versions post-filtered the `TOP_N` results, so you had to oversample).\n- `INNER JOIN` and WHERE work directly. **GROUP BY, aggregates, window functions, UNION/EXCEPT/INTERSECT, DISTINCT, extra ORDER BY columns** need the **subquery pattern** (search inside, other operations outside). `CROSS APPLY` must put `TOP … WITH APPROXIMATE` inside the applied subquery.\n- Without `WITH APPROXIMATE`: `TOP + ORDER BY distance` → exact kNN; no TOP → distances for every row. No index → kNN scan.\n- VECTOR_SEARCH can't be used inside a view; target must be a base table."
+      },
+      "code": "DECLARE @qv VECTOR(1536) = AI_GENERATE_EMBEDDINGS(N'reset a forgotten password' USE MODEL KbEmbedder);\n\n-- ANN with iterative filtering and a join\nSELECT TOP (5) WITH APPROXIMATE a.ArticleId, a.Title, r.distance\nFROM dbo.KbArticles AS a\nINNER JOIN VECTOR_SEARCH(TABLE = dbo.KbChunks AS c, COLUMN = Embedding,\n                         SIMILAR_TO = @qv, METRIC = 'cosine') AS r\n    ON a.ArticleId = c.ArticleId\nWHERE c.ProductLine = 'Mobile'\nORDER BY r.distance;\n\n-- Aggregation needs the subquery pattern\nSELECT ProductLine, COUNT(*) AS hits, MIN(distance) AS best\nFROM (SELECT TOP (100) WITH APPROXIMATE c.ProductLine, r.distance\n      FROM VECTOR_SEARCH(TABLE = dbo.KbChunks AS c, COLUMN = Embedding,\n                         SIMILAR_TO = @qv, METRIC = 'cosine') AS r\n      ORDER BY r.distance) AS v\nGROUP BY ProductLine;"
+    },
+    {
+      "heading": { "en": "From .NET (EF Core 10+)" },
+      "body": {
+        "en": "`EF.Functions.VectorDistance(\"cosine\", e.Embedding, q)` in `OrderBy(...).Take(k)` → exact search. `context.Items.VectorSearch(e => e.Embedding, q, \"cosine\").OrderBy(r => r.Distance).Take(k).WithApproximate()` → `SELECT TOP(k) WITH APPROXIMATE … VECTOR_SEARCH`. Properties use `SqlVector<float>` mapped to `vector(n)`; `HasVectorIndex()` creates the index in migrations."
+      }
+    }
+  ],
+  "examTips": [
+    { "en": "ENN/kNN = exact, all candidates, best for < ~50,000 vectors after filters or for ground truth; ANN = vector index, fast, approximate." },
+    { "en": "Recall@k = overlap of ANN and ENN top-k ÷ k; measure against an ENN baseline." },
+    { "en": "DiskANN is the only index type; metrics cosine/dot/euclidean; index metric must equal query metric." },
+    { "en": "Latest syntax: SELECT TOP (N) WITH APPROXIMATE … VECTOR_SEARCH … ORDER BY distance (ASC only, required); TOP_N deprecated (Msg 42274)." },
+    { "en": "Iterative filtering (latest) applies WHERE during search; earlier versions post-filtered → oversample." },
+    { "en": "GROUP BY, window functions, UNION, DISTINCT, multi-column ORDER BY → subquery pattern; CROSS APPLY → TOP WITH APPROXIMATE inside the apply." },
+    { "en": "FORCE_ANN_ONLY requires a vector index and TOP … WITH APPROXIMATE." }
+  ],
+  "sources": [
+    "https://learn.microsoft.com/en-us/sql/sql-server/ai/vectors",
+    "https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-search-transact-sql",
+    "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-vector-index-transact-sql",
+    "https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-distance-transact-sql",
+    "https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/05-implement-vector-search-query-patterns",
+    "https://learn.microsoft.com/en-us/ef/core/providers/sql-server/vector-search"
+  ]
+}

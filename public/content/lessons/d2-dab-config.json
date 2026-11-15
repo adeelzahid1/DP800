@@ -1,0 +1,65 @@
+{
+  "subtopic": "d2-dab-config",
+  "title": { "en": "Data API builder configuration" },
+  "prerequisiteRecap": [
+    {
+      "heading": { "en": "What Data API builder is" },
+      "body": {
+        "en": "**Data API builder (DAB)** is an open-source, configuration-driven engine that exposes database objects as secure **REST** and **GraphQL** endpoints (and, in version 2.0+, an **MCP** endpoint for AI agents) without writing API code. You describe *what* to expose and *who* may do *what* in a JSON file (`dab-config.json`); DAB generates and serves the API. As a .NET developer, think of it as a ready-made, secure CRUD Web API over your tables, views and stored procedures."
+      }
+    }
+  ],
+  "sections": [
+    {
+      "heading": { "en": "The configuration file and CLI" },
+      "body": {
+        "en": "`dab-config.json` has three top-level parts:\n- **data-source**: `database-type` (mssql for SQL Server/Azure SQL/Fabric SQL), `connection-string` (use `@env('NAME')` to read it from an environment variable), and `options` such as `set-session-context` (send user claims to SQL `SESSION_CONTEXT` for RLS).\n- **runtime**: global REST/GraphQL/MCP settings, host (mode, CORS, authentication), cache, pagination, telemetry, health.\n- **entities**: one entry per exposed object with source, permissions and endpoint options.\nThe **DAB CLI** (`dotnet tool install -g Microsoft.DataApiBuilder`) builds the file: `dab init` (create config), `dab add` (add entity), `dab update` (change entity), `dab configure` (runtime settings), `dab validate`, `dab start` (run locally)."
+      },
+      "code": "dab init --database-type mssql --connection-string \"@env('SQL_CONN')\" --host-mode development\ndab add Book --source dbo.Books --permissions \"anonymous:read\"\ndab update Book --permissions \"authenticated:create,read,update,delete\"\ndab validate\ndab start",
+      "codeLang": "text"
+    },
+    {
+      "heading": { "en": "Runtime settings you must know" },
+      "body": {
+        "en": "- `runtime.rest`: `enabled` (default true), `path` (default `/api`), `request-body-strict` (default true — extra fields in a request body cause 400 Bad Request).\n- `runtime.graphql`: `enabled`, `path` (default `/graphql`), `allow-introspection` (default true; set false to hide the schema in production), `depth-limit` (cap nested query depth), `multiple-mutations.create.enabled`.\n- `runtime.host`: `mode` (`production` default; `development` enables Swagger UI and the Nitro GraphQL IDE and more verbose logging), `cors`, `authentication` (provider + jwt audience/issuer), `max-response-size-mb`.\n- `runtime.pagination`: `default-page-size` (default **100**) and `max-page-size` (default **100,000**).\n- `runtime.cache`: `enabled` (default **false**), `ttl-seconds` (default **5**), optional `level-2` distributed cache (Redis).\n- `runtime.mcp`: SQL MCP Server endpoint (`/mcp`) and per-tool switches (DAB 2.0+)."
+      },
+      "code": "{\n  \"$schema\": \"https://github.com/Azure/data-api-builder/releases/latest/download/dab.draft.schema.json\",\n  \"data-source\": {\n    \"database-type\": \"mssql\",\n    \"connection-string\": \"@env('SQL_CONN')\",\n    \"options\": { \"set-session-context\": true }\n  },\n  \"runtime\": {\n    \"rest\": { \"enabled\": true, \"path\": \"/api\" },\n    \"graphql\": { \"enabled\": true, \"path\": \"/graphql\", \"allow-introspection\": false },\n    \"host\": { \"mode\": \"production\", \"cors\": { \"origins\": [\"https://shop.contoso.com\"] } },\n    \"cache\": { \"enabled\": true, \"ttl-seconds\": 30 },\n    \"pagination\": { \"default-page-size\": 50, \"max-page-size\": 1000 }\n  },\n  \"entities\": { }\n}",
+      "codeLang": "json"
+    },
+    {
+      "heading": { "en": "Entities: tables, views, stored procedures" },
+      "body": {
+        "en": "Each entity names its **source** (`object`, `type`: table | view | stored-procedure). Tables expose their primary key automatically; **views need a declared key** because DAB can't infer one. In DAB 2.0 the unified **`fields`** array describes columns: `name`, `alias` (API name), `description`, `primary-key` — it **replaces the deprecated `mappings` and `source.key-fields`** (the schema doesn't allow mixing them on one entity). Stored procedures declare **parameters** (DAB 2.0 prefers an array of `{ name, required, default, description }`; the old dictionary form is deprecated) and run through the `execute` action; `*` on a procedure means just `execute`, on a table/view it means create/read/update/delete. Other entity settings: `rest` (`enabled`, `path`, and for procedures `methods`, default **POST**), `graphql` (`enabled`, `type` singular/plural, and for procedures `operation`: query or mutation — default **mutation**), `cache`, `relationships`, `permissions`, `description`, `mcp`."
+      },
+      "code": "\"entities\": {\n  \"Book\": {\n    \"source\": { \"object\": \"dbo.Books\", \"type\": \"table\" },\n    \"graphql\": { \"type\": { \"singular\": \"Book\", \"plural\": \"Books\" } },\n    \"fields\": [ { \"name\": \"pub_year\", \"alias\": \"year\" } ],\n    \"cache\": { \"enabled\": true, \"ttl-seconds\": 60 },\n    \"permissions\": [ { \"role\": \"anonymous\", \"actions\": [\"read\"] } ]\n  },\n  \"BookSummary\": {\n    \"source\": { \"object\": \"dbo.vBookSummary\", \"type\": \"view\" },\n    \"fields\": [ { \"name\": \"BookId\", \"primary-key\": true } ],\n    \"permissions\": [ { \"role\": \"authenticated\", \"actions\": [\"read\"] } ]\n  },\n  \"SearchBooks\": {\n    \"source\": { \"object\": \"dbo.SearchBooks\", \"type\": \"stored-procedure\",\n                \"parameters\": [ { \"name\": \"q\", \"required\": false, \"default\": \"\" } ] },\n    \"rest\": { \"methods\": [\"get\"] },\n    \"graphql\": { \"operation\": \"query\" },\n    \"permissions\": [ { \"role\": \"anonymous\", \"actions\": [\"execute\"] } ]\n  }\n}",
+      "codeLang": "json"
+    },
+    {
+      "heading": { "en": "Caching, pagination, searching and filtering" },
+      "body": {
+        "en": "- **Caching**: enable globally (`runtime.cache.enabled`) AND per entity; results are cached for `ttl-seconds` (entity TTL inherits the global value when omitted). If the global switch is false, entity settings are ignored. Caching applies to **REST** reads only (not GraphQL). Entity `level`: `L1` = in-memory only, `L1L2` (default) = in-memory + distributed **level-2** cache (Redis) shared by scaled-out instances. Clients can send `Cache-Control: no-cache` (skip cache, read fresh, refresh cache) or `no-store` (use a cached value if present, but don't store the new result). Cache trades freshness for speed — fine for catalogs, not for balances.\n- **Pagination**: results are paged by default (100 items). REST returns a `nextLink` with an `$after` continuation token; GraphQL returns `items`, `hasNextPage` and `endCursor` (pass `after:`). Page size: REST `$first`, GraphQL `first:`; `-1` requests the max page size.\n- **Filtering/searching/sorting**: REST `$filter` (OData-style operators: eq, ne, gt, ge, lt, le, and, or, not), `$orderby`, `$select`; GraphQL `filter:` input objects (eq, neq, gt, gte, lt, lte, contains, notContains, startsWith, endsWith, isNull) and `orderBy:`. For 'search' semantics beyond simple contains (full-text or vector search), expose a stored procedure."
+      },
+      "code": "GET /api/Book?$filter=year ge 2020 and price lt 30&$orderby=title asc&$select=id,title&$first=20\n\nquery {\n  books(filter: { title: { contains: \"SQL\" } }, orderBy: { year: DESC }, first: 20) {\n    items { id title year }\n    hasNextPage\n    endCursor\n  }\n}",
+      "codeLang": "text"
+    }
+  ],
+  "examTips": [
+    { "en": "Config sections: data-source, runtime, entities. Use @env('NAME') for connection strings." },
+    { "en": "CLI: dab init → dab add → dab update / dab configure → dab validate → dab start." },
+    { "en": "Defaults: REST /api, GraphQL /graphql, MCP /mcp; page size 100 (max 100,000); cache disabled, TTL 5 s; host mode production." },
+    { "en": "Views need a declared key (DAB 2.0: fields[].primary-key; older: source.key-fields); procedures use parameters + execute action; procs default to POST (REST) and mutation (GraphQL)." },
+    { "en": "DAB 2.0 'fields' (name/alias/description/primary-key) replaces deprecated mappings and key-fields." },
+    { "en": "Cache must be enabled globally AND per entity; REST only; L1 = memory, L1L2 = memory + Redis (default level)." },
+    { "en": "Development mode enables Swagger UI and the GraphQL IDE; don't run production in development mode." },
+    { "en": "allow-introspection: false hides the GraphQL schema; depth-limit protects against deeply nested queries." }
+  ],
+  "sources": [
+    "https://learn.microsoft.com/en-us/azure/data-api-builder/overview",
+    "https://learn.microsoft.com/en-us/azure/data-api-builder/configuration/runtime",
+    "https://learn.microsoft.com/en-us/azure/data-api-builder/configuration/entities",
+    "https://learn.microsoft.com/en-us/azure/data-api-builder/concept/rest/overview",
+    "https://learn.microsoft.com/en-us/azure/data-api-builder/concept/cache/level-1",
+    "https://learn.microsoft.com/en-us/azure/data-api-builder/concept/cache/http-headers",
+    "https://learn.microsoft.com/en-us/azure/data-api-builder/command-line/"
+  ]
+}

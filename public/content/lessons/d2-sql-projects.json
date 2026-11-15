@@ -1,0 +1,67 @@
+{
+  "subtopic": "d2-sql-projects",
+  "title": { "en": "SQL Database Projects (SDK-style, build & validate)" },
+  "prerequisiteRecap": [
+    {
+      "heading": { "en": "Declarative vs migration-based database changes" },
+      "body": {
+        "en": "There are two ways to version a database: **migration-based** (a sequence of change scripts — EF Core migrations, Flyway) and **state-based / declarative** (files describe the desired END STATE; a tool computes the change script). SQL Database Projects are declarative: each object is defined ONCE in a `.sql` file with `CREATE` syntax; to change a table you edit its CREATE TABLE file, and the deployment engine (DacFx) works out the `ALTER`. As a .NET developer, think of it as 'csproj for databases'."
+      }
+    }
+  ],
+  "sections": [
+    {
+      "heading": { "en": "SDK-style projects (Microsoft.Build.Sql)" },
+      "body": {
+        "en": "The modern format uses the **Microsoft.Build.Sql** MSBuild SDK — the format used by the VS Code SQL Database Projects extension and by SQL database in Fabric source control; recommended for new work. Benefits over original (.NET Framework) projects: cross-platform builds on .NET 8+ (`dotnet build`), **NuGet package references** for database references (e.g. system databases), and **default globbing** — all `.sql` files in the folder are included automatically, so the project file doesn't list every object (far fewer merge conflicts). Create with the `Microsoft.Build.Sql.Templates` package: `dotnet new sqlproj`. Original projects can be converted by editing the project file; SQLCLR still needs .NET Framework to build."
+      },
+      "code": "<!-- AdventureWorks.sqlproj (SDK-style) -->\n<Project Sdk=\"Microsoft.Build.Sql/1.0.0\">\n  <PropertyGroup>\n    <Name>AdventureWorks</Name>\n    <DSP>Microsoft.Data.Tools.Schema.Sql.SqlAzureV12DatabaseSchemaProvider</DSP>\n    <RunSqlCodeAnalysis>true</RunSqlCodeAnalysis>\n  </PropertyGroup>\n  <ItemGroup>\n    <!-- system database reference; pick the package version matching your target platform -->\n    <PackageReference Include=\"Microsoft.SqlServer.Dacpacs.Master\" Version=\"x.y.z\" />\n  </ItemGroup>\n</Project>",
+      "codeLang": "text"
+    },
+    {
+      "heading": { "en": "Build = validate + produce a .dacpac" },
+      "body": {
+        "en": "`dotnet build` compiles the model and validates it:\n- **Reference validation**: a view referencing a missing table/column fails the build (unresolved reference errors like SQL71501).\n- **Target platform** (DSP property): syntax and features are validated against a specific SQL version — e.g. JSON functions from SQL Server 2022 fail on a Sql140 target; choose Azure SQL Database, SQL Server 2025, Fabric SQL database etc.\n- **Code analysis** (optional, `RunSqlCodeAnalysis`): best-practice rules (SR0001 'avoid SELECT *', etc.) reported as warnings or configurable errors.\nThe output artifact is a **.dacpac** (data-tier application package) in bin/Debug or bin/Release — a portable, versionable model of the schema. Builds don't need a live database, so they run anywhere, including CI agents."
+      },
+      "code": "dotnet new install Microsoft.Build.Sql.Templates\ndotnet new sqlproj -n AdventureWorks\ndotnet build AdventureWorks/AdventureWorks.sqlproj -c Release\n# -> bin/Release/AdventureWorks.dacpac",
+      "codeLang": "text"
+    },
+    {
+      "heading": { "en": "Database references" },
+      "body": {
+        "en": "Objects often reference things outside the project:\n- **System databases** (master/msdb): add package references (e.g. `Microsoft.SqlServer.Dacpacs.Master`) so references to sys objects resolve.\n- **Other projects or .dacpacs, same database**: split a large schema into multiple projects composed into one database.\n- **Different database, same server / different server**: references use SQLCMD variables for database (and server) names, e.g. `[$(SalesDb)].dbo.Orders`, so names can differ per environment.\nUnresolved external references become build warnings/errors — references are how you make validation complete."
+      }
+    },
+    {
+      "heading": { "en": "Pre/post-deployment scripts and reference (static) data" },
+      "body": {
+        "en": "Each project can have ONE pre-deployment and ONE post-deployment script (they can include other files with SQLCMD `:r`). Pre-deployment runs before the schema changes (e.g. data fix-ups needed for a change); post-deployment runs after (e.g. seeding). **Reference/static data** (country codes, order statuses, feature flags) belongs in source control too: write **idempotent** post-deployment scripts — typically `MERGE` from a VALUES list — so every deployment converges the table to the expected rows without duplicates. Keep scripts re-runnable; deployments run them every time."
+      },
+      "code": "-- Script.PostDeployment.sql\nMERGE dbo.OrderStatus AS tgt\nUSING (VALUES (1, N'New'), (2, N'Shipped'), (3, N'Cancelled')) AS src (StatusId, Name)\n    ON tgt.StatusId = src.StatusId\nWHEN MATCHED AND tgt.Name <> src.Name THEN UPDATE SET Name = src.Name\nWHEN NOT MATCHED BY TARGET THEN INSERT (StatusId, Name) VALUES (src.StatusId, src.Name)\nWHEN NOT MATCHED BY SOURCE THEN DELETE;"
+    },
+    {
+      "heading": { "en": "Publishing with SqlPackage" },
+      "body": {
+        "en": "Deploy the .dacpac with **SqlPackage** (cross-platform CLI) — actions you should know:\n- `/Action:Publish` — compare dacpac to target and apply changes (new or existing databases; one dacpac can upgrade a fleet).\n- `/Action:Script` — generate the T-SQL deployment script without running it (for review).\n- `/Action:DeployReport` — XML report of the changes a publish would make.\n- `/Action:DriftReport` — changes made to a registered database since its last deployment (schema drift).\n- `/Action:Extract` — create a .dacpac from an existing database (start a project from production).\n**Publish profiles** (`*.publish.xml`) store deployment options per environment: `BlockOnPossibleDataLoss` (default true — stops deployments that would lose data), `DropObjectsNotInSource`, SQLCMD variable values, etc."
+      },
+      "code": "sqlpackage /Action:Script /SourceFile:bin/Release/AdventureWorks.dacpac \\\n  /TargetConnectionString:\"$CONN\" /OutputPath:deploy.sql\n\nsqlpackage /Action:Publish /SourceFile:bin/Release/AdventureWorks.dacpac \\\n  /TargetConnectionString:\"$CONN\" /Profile:prod.publish.xml",
+      "codeLang": "text"
+    }
+  ],
+  "examTips": [
+    { "en": "SDK-style = Microsoft.Build.Sql, dotnet build, cross-platform, NuGet package references, default .sql globbing (fewer project-file merge conflicts)." },
+    { "en": "Build validates references and target-platform syntax and outputs a .dacpac — no live database needed." },
+    { "en": "Target platform (DSP) mismatch is a classic build-failure cause for new syntax (JSON, vector, REGEXP)." },
+    { "en": "One pre- and one post-deployment script per project; use :r to include more; scripts must be idempotent." },
+    { "en": "Reference/static data → MERGE in post-deployment script, stored in source control." },
+    { "en": "SqlPackage actions: Publish, Script, DeployReport, DriftReport, Extract. BlockOnPossibleDataLoss defaults to true." },
+    { "en": "Cross-database references use SQLCMD variables so database names can vary by environment." }
+  ],
+  "sources": [
+    "https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/sql-database-projects",
+    "https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/target-platform",
+    "https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/pre-post-deployment-scripts",
+    "https://learn.microsoft.com/en-us/sql/tools/sqlpackage/sqlpackage-publish",
+    "https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/database-references"
+  ]
+}

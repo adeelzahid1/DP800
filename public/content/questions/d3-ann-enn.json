@@ -1,0 +1,838 @@
+{
+  "subtopic": "d3-ann-enn",
+  "cases": [
+    {
+      "id": "case-ae-kb",
+      "title": { "en": "Contoso support knowledge base" },
+      "scenario": {
+        "en": "Contoso's support assistant searches **5 million** knowledge-base chunks in **Azure SQL Database** (`dbo.KbChunks(ChunkId, ArticleId, ProductLine, Embedding VECTOR(1536))`).\n- Each request returns the top 5 chunks for one `ProductLine`.\n- The SLA is under 200 ms per search.\n- Quality must be proven: **recall@5 of at least 0.95** compared with exact search.\n- Product managers also want a weekly report: for the top 100 matches of sample questions, how many come from each product line."
+      }
+    }
+  ],
+  "questions": [
+    {
+      "id": "d3-ae-0001",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-ann-enn",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "What is exact nearest neighbor (ENN / kNN) vector search?" },
+      "options": [
+        { "id": "a", "text": { "en": "Computing the distance from the query vector to every candidate vector and returning the true closest k" } },
+        { "id": "b", "text": { "en": "Navigating a graph index to return close, but not guaranteed closest, vectors" } },
+        { "id": "c", "text": { "en": "Matching identical text strings" } },
+        { "id": "d", "text": { "en": "Searching only the first k rows of the table" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "ENN is exhaustive and precise but resource-intensive. Option B describes ANN; C is exact string matching; D would return arbitrary results." },
+      "example": { "en": "SELECT TOP (10) … ORDER BY VECTOR_DISTANCE('cosine', @qv, Embedding);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/sql-server/ai/vectors"]
+    },
+    {
+      "id": "d3-ae-0002",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-ann-enn",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "What does approximate nearest neighbor (ANN) search trade, and for what?" },
+      "options": [
+        { "id": "a", "text": { "en": "A small amount of recall for large gains in speed and lower resource usage" } },
+        { "id": "b", "text": { "en": "Speed for perfect accuracy" } },
+        { "id": "c", "text": { "en": "Storage for compression only" } },
+        { "id": "d", "text": { "en": "Nothing; it's always exact" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "ANN uses an index to avoid scanning every vector, accepting that a few true neighbors may be missed. With recall close to 1, results are nearly identical to kNN." },
+      "example": { "en": "DiskANN indexes power ANN in the SQL Database Engine." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/sql-server/ai/vectors"]
+    },
+    {
+      "id": "d3-ae-0003",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-ann-enn",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "According to Microsoft's general guideline, when is exact search recommended?" },
+      "options": [
+        { "id": "a", "text": { "en": "When the vectors to search, after predicates, number fewer than about 50,000" } },
+        { "id": "b", "text": { "en": "Only for tables with more than 10 million rows" } },
+        { "id": "c", "text": { "en": "Whenever a vector index exists" } },
+        { "id": "d", "text": { "en": "Never; ANN is always better" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Exact search is recommended for small search spaces (≈ 50,000 or fewer vectors). The table can be larger if filters reduce the candidates. Large tables favor ANN." },
+      "example": { "en": "A 30,000-row FAQ table can use VECTOR_DISTANCE without an index." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/sql-server/ai/vectors"]
+    },
+    {
+      "id": "d3-ae-0004",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-ann-enn",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A multi-tenant table holds 10 million chunks, but each query filters to one tenant with about 2,000 chunks. Which approach is reasonable?" },
+      "options": [
+        { "id": "a", "text": { "en": "Exact search with VECTOR_DISTANCE over the tenant's rows (supported by an index on TenantId)" } },
+        { "id": "b", "text": { "en": "Always ANN, because the table is large" } },
+        { "id": "c", "text": { "en": "Full-text search only" } },
+        { "id": "d", "text": { "en": "Exact search without any filter" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "What matters is the number of candidates after predicates. 2,000 vectors is cheap to scan exactly and gives perfect recall. Scanning all 10 million isn't necessary." },
+      "example": { "en": "WHERE TenantId = @t ORDER BY VECTOR_DISTANCE('cosine', @qv, Embedding)" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/sql-server/ai/vectors"]
+    },
+    {
+      "id": "d3-ae-0005",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-ann-enn",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "In vector search, what does recall measure?" },
+      "options": [
+        { "id": "a", "text": { "en": "The proportion of the true (exact) nearest neighbors that the approximate search returns" } },
+        { "id": "b", "text": { "en": "How quickly the index was built" } },
+        { "id": "c", "text": { "en": "The number of dimensions recalled from storage" } },
+        { "id": "d", "text": { "en": "How often users repeat a search" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Recall compares ANN results with an exhaustive search; 1 means no approximation loss. It isn't about build time, dimensions or user behavior." },
+      "example": { "en": "Recall of 0.98 means 98% of true neighbors were found." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/sql-server/ai/vectors"]
+    },
+    {
+      "id": "d3-ae-0006",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-ann-enn",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "For a query, the ANN top 10 shares 9 items with the exact top 10. What's recall@10?" },
+      "options": [
+        { "id": "a", "text": { "en": "0.9" } },
+        { "id": "b", "text": { "en": "0.1" } },
+        { "id": "c", "text": { "en": "9" } },
+        { "id": "d", "text": { "en": "1.0" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Recall@k = overlap ÷ k = 9 ÷ 10 = 0.9. Average over many queries for a stable estimate." },
+      "example": { "en": "Report mean recall@10 across 200 sample queries." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/sql-server/ai/vectors"]
+    },
+    {
+      "id": "d3-ae-0007",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-ann-enn",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "How do you measure the recall of your vector index?" },
+      "options": [
+        { "id": "a", "text": { "en": "For sample queries, compare ANN results (VECTOR_SEARCH … WITH APPROXIMATE) with exact results (VECTOR_DISTANCE or VECTOR_SEARCH without APPROXIMATE) and compute the overlap" } },
+        { "id": "b", "text": { "en": "Read the recall column in sys.vector_indexes" } },
+        { "id": "c", "text": { "en": "Check CPU usage" } },
+        { "id": "d", "text": { "en": "Count rows in the table" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Recall is relative to ground truth, which exact search provides. Catalog views don't report recall, and CPU or row counts aren't quality measures." },
+      "example": { "en": "Store both result sets in temp tables and INTERSECT their keys." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/sql-server/ai/vectors"]
+    },
+    {
+      "id": "d3-ae-0008",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-ann-enn",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What algorithm do SQL Database Engine vector indexes use?" },
+      "options": [
+        { "id": "a", "text": { "en": "DiskANN, a graph-based index that navigates to close vectors using SSD and limited memory" } },
+        { "id": "b", "text": { "en": "B-tree ordering of vector elements" } },
+        { "id": "c", "text": { "en": "Hash buckets on the first dimension" } },
+        { "id": "d", "text": { "en": "Full-text inverted indexes" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "DiskANN builds a graph to traverse quickly toward nearest neighbors, balancing memory, CPU and I/O while keeping high QPS and low latency. The others aren't vector index algorithms here." },
+      "example": { "en": "TYPE = 'DiskANN' (the default and only option)" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/sql-server/ai/vectors"]
+    },
+    {
+      "id": "d3-ae-0009",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-ann-enn",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which metric is the usual choice for text embeddings from models such as Azure OpenAI's?" },
+      "options": [
+        { "id": "a", "text": { "en": "cosine" } },
+        { "id": "b", "text": { "en": "euclidean on unnormalized vectors" } },
+        { "id": "c", "text": { "en": "manhattan" } },
+        { "id": "d", "text": { "en": "jaccard" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Most text embedding models are optimized for cosine similarity, which compares direction rather than magnitude. Manhattan and Jaccard aren't supported metrics." },
+      "example": { "en": "CREATE VECTOR INDEX … WITH (METRIC = 'cosine')" },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/04-prepare-sql-vector-search"]
+    },
+    {
+      "id": "d3-ae-0010",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-ann-enn",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "Your model returns unit-length vectors. A teammate asks whether to index with cosine or dot. What's true?" },
+      "options": [
+        { "id": "a", "text": { "en": "For unit vectors both produce the same ranking; pick one and use the same metric in the index and queries" } },
+        { "id": "b", "text": { "en": "Dot gives the opposite ranking" } },
+        { "id": "c", "text": { "en": "Cosine can't be used with unit vectors" } },
+        { "id": "d", "text": { "en": "You must create both indexes" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "When vectors are normalized, dot product equals cosine similarity, so rankings match. The important rule is that the index metric equals the query metric." },
+      "example": { "en": "METRIC = 'dot' in both CREATE VECTOR INDEX and VECTOR_SEARCH." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-distance-transact-sql"]
+    },
+    {
+      "id": "d3-ae-0011",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-ann-enn",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "When is euclidean distance more appropriate than cosine?" },
+      "options": [
+        { "id": "a", "text": { "en": "When vector magnitude carries meaning, for example embeddings trained for straight-line distance (often some image embeddings)" } },
+        { "id": "b", "text": { "en": "Whenever vectors are normalized" } },
+        { "id": "c", "text": { "en": "Only for full-text search" } },
+        { "id": "d", "text": { "en": "Never; it isn't supported" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Euclidean considers both direction and magnitude; choose the metric that matches how the model was trained. It's supported for VECTOR_DISTANCE and vector indexes." },
+      "example": { "en": "Check the model card for the recommended similarity function." },
+      "sources": ["https://learn.microsoft.com/en-us/ef/core/providers/sql-server/vector-search"]
+    },
+    {
+      "id": "d3-ae-0012",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-ann-enn",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Complete the approximate top-10 search for a latest-version vector index." },
+      "code": "SELECT TOP (10) [BLANK1]\n       t.DocId, t.Title, r.distance\nFROM [BLANK2](\n        TABLE      = dbo.Docs AS t,\n        COLUMN     = Embedding,\n        SIMILAR_TO = @qv,\n        METRIC     = 'cosine'\n     ) AS r\nORDER BY [BLANK3];",
+      "blanks": [
+        { "id": "b1", "label": { "en": "BLANK1" }, "choices": [
+          { "id": "c1", "text": { "en": "WITH APPROXIMATE" } },
+          { "id": "c2", "text": { "en": "WITH TIES" } },
+          { "id": "c3", "text": { "en": "PERCENT" } }
+        ] },
+        { "id": "b2", "label": { "en": "BLANK2" }, "choices": [
+          { "id": "c1", "text": { "en": "VECTOR_DISTANCE" } },
+          { "id": "c2", "text": { "en": "VECTOR_SEARCH" } },
+          { "id": "c3", "text": { "en": "OPENJSON" } }
+        ] },
+        { "id": "b3", "label": { "en": "BLANK3" }, "choices": [
+          { "id": "c1", "text": { "en": "r.distance" } },
+          { "id": "c2", "text": { "en": "r.distance DESC" } },
+          { "id": "c3", "text": { "en": "t.Title" } }
+        ] }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c2", "b3": "c1" },
+      "explanation": { "en": "Approximate search requires TOP (N) WITH APPROXIMATE, the VECTOR_SEARCH table-valued function, and ORDER BY on the distance column ascending only." },
+      "example": { "en": "Earlier-version indexes used TOP_N = 10 inside VECTOR_SEARCH instead (deprecated)." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-search-transact-sql"]
+    },
+    {
+      "id": "d3-ae-0013",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-ann-enn",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A query with TOP_N = 10 inside VECTOR_SEARCH fails with Msg 42274 on Azure SQL Database. Why, and how do you fix it?" },
+      "options": [
+        { "id": "a", "text": { "en": "The latest-version index doesn't support TOP_N; remove it and use SELECT TOP (10) WITH APPROXIMATE … ORDER BY distance" } },
+        { "id": "b", "text": { "en": "TOP_N must be at least 100" } },
+        { "id": "c", "text": { "en": "Add OPTION (MAXDOP 1)" } },
+        { "id": "d", "text": { "en": "Recreate the index as an earlier version" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "TOP_N is deprecated and only works with earlier-version indexes. The fix is the new syntax; you can't create earlier-version indexes intentionally, and MAXDOP doesn't help." },
+      "example": { "en": "Msg 42274: Vector search with version 3 index does not support explicit TOP_N parameter." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-search-transact-sql"]
+    },
+    {
+      "id": "d3-ae-0014",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-ann-enn",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "SELECT TOP (10) WITH APPROXIMATE r.distance FROM VECTOR_SEARCH(…) AS r; returns an error. What's missing?" },
+      "options": [
+        { "id": "a", "text": { "en": "ORDER BY r.distance — APPROXIMATE can't be used without ORDER BY" } },
+        { "id": "b", "text": { "en": "A GROUP BY clause" } },
+        { "id": "c", "text": { "en": "A WHERE clause" } },
+        { "id": "d", "text": { "en": "OPTION (RECOMPILE)" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Approximate queries must order by the distance column (error 42248 otherwise). GROUP BY isn't allowed directly, and WHERE or RECOMPILE are optional." },
+      "example": { "en": "… ) AS r ORDER BY r.distance;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-search-transact-sql"]
+    },
+    {
+      "id": "d3-ae-0015",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-ann-enn",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "You want approximate results sorted by distance and then by Title for ties. ORDER BY r.distance, t.Title raises error 42271. What's the fix?" },
+      "options": [
+        { "id": "a", "text": { "en": "Run the approximate search in a subquery ordered by distance only, then ORDER BY distance, Title in the outer query" } },
+        { "id": "b", "text": { "en": "Use ORDER BY t.Title, r.distance" } },
+        { "id": "c", "text": { "en": "Use ORDER BY r.distance DESC, t.Title" } },
+        { "id": "d", "text": { "en": "Multi-column sorting isn't possible with vector search" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "TOP … WITH APPROXIMATE requires ORDER BY on distance ascending only. Additional sort columns go in an outer query (the documented subquery pattern)." },
+      "example": { "en": "SELECT * FROM (SELECT TOP (100) WITH APPROXIMATE … ORDER BY r.distance) AS v ORDER BY distance, Title;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-search-transact-sql"]
+    },
+    {
+      "id": "d3-ae-0016",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-ann-enn",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Can approximate results be ordered by distance descending to find the least similar items?" },
+      "options": [
+        { "id": "a", "text": { "en": "No; the distance column must be ordered ascending with TOP … WITH APPROXIMATE" } },
+        { "id": "b", "text": { "en": "Yes, DESC is supported" } },
+        { "id": "c", "text": { "en": "Yes, but only with euclidean" } },
+        { "id": "d", "text": { "en": "Yes, with FORCE_ANN_ONLY" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Approximate vector search finds nearest neighbors; descending order isn't supported (error 42271). For 'least similar' analysis, use exact queries." },
+      "example": { "en": "SELECT TOP (10) … ORDER BY VECTOR_DISTANCE(…) DESC -- exact" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-search-transact-sql"]
+    },
+    {
+      "id": "d3-ae-0017",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-ann-enn",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A developer writes SELECT TOP (10) WITH APPROXIMATE … ORDER BY VECTOR_DISTANCE('cosine', Embedding, @qv) FROM dbo.Docs (no VECTOR_SEARCH). What happens?" },
+      "options": [
+        { "id": "a", "text": { "en": "It fails: WITH APPROXIMATE requires a VECTOR_SEARCH function in the query" } },
+        { "id": "b", "text": { "en": "It uses the vector index" } },
+        { "id": "c", "text": { "en": "It runs exactly and ignores APPROXIMATE" } },
+        { "id": "d", "text": { "en": "It returns random rows" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The APPROXIMATE clause is only valid together with VECTOR_SEARCH. VECTOR_DISTANCE is always exact." },
+      "example": { "en": "Rewrite with FROM VECTOR_SEARCH(TABLE = dbo.Docs AS t, …)." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-search-transact-sql"]
+    },
+    {
+      "id": "d3-ae-0018",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-ann-enn",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "With a latest-version vector index, a query asks for TOP (5) WITH APPROXIMATE results WHERE Category = 'Technology'. Only 2% of rows are Technology. What happens?" },
+      "options": [
+        { "id": "a", "text": { "en": "Iterative filtering applies the predicate during the search, so it returns 5 qualifying rows if they exist" } },
+        { "id": "b", "text": { "en": "It finds the 5 nearest overall, then filters, often returning fewer than 5" } },
+        { "id": "c", "text": { "en": "It ignores the WHERE clause" } },
+        { "id": "d", "text": { "en": "It fails because filters aren't allowed" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Latest indexes apply WHERE predicates during the search and keep searching until enough qualifying rows are found or the space is exhausted. Option B describes earlier-version post-filtering." },
+      "example": { "en": "No need to oversample with the latest version." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-search-transact-sql"]
+    },
+    {
+      "id": "d3-ae-0019",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-ann-enn",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "On an earlier-version vector index, VECTOR_SEARCH(…, TOP_N = 10) with WHERE accepted = 1 often returns fewer than 10 rows. Why, and what was the workaround?" },
+      "options": [
+        { "id": "a", "text": { "en": "Earlier versions post-filter: the 10 neighbors are found first and then filtered; request more candidates (e.g., TOP_N = 50) and take TOP (10) — or upgrade the index" } },
+        { "id": "b", "text": { "en": "The WHERE clause disables the index" } },
+        { "id": "c", "text": { "en": "TOP_N is a maximum distance, not a count" } },
+        { "id": "d", "text": { "en": "The metric must be dot for filters" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Post-filtering applies predicates after retrieval, so qualifying rows outside the first TOP_N are lost. Oversampling (or migrating to the latest index for iterative filtering) solves it." },
+      "example": { "en": "SELECT TOP (10) … FROM VECTOR_SEARCH(…, TOP_N = 50) AS r WHERE t.accepted = 1 ORDER BY r.distance;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-search-transact-sql", "https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/05-implement-vector-search-query-patterns"]
+    },
+    {
+      "id": "d3-ae-0020",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-ann-enn",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "SELECT TOP (10) t.Id, r.distance FROM VECTOR_SEARCH(TABLE = dbo.Docs AS t, …) AS r ORDER BY r.distance — with no WITH APPROXIMATE. How does it run?" },
+      "options": [
+        { "id": "a", "text": { "en": "As an exact kNN search (exact nearest neighbors)" } },
+        { "id": "b", "text": { "en": "As an approximate search using the index" } },
+        { "id": "c", "text": { "en": "It fails without APPROXIMATE" } },
+        { "id": "d", "text": { "en": "It returns 10 random rows" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "TOP with ORDER BY distance but without APPROXIMATE executes as kNN. This is handy for computing ground truth with the same query shape." },
+      "example": { "en": "Use it to measure recall against the WITH APPROXIMATE version." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-search-transact-sql"]
+    },
+    {
+      "id": "d3-ae-0021",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-ann-enn",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What happens when VECTOR_SEARCH runs on a table with no vector index?" },
+      "options": [
+        { "id": "a", "text": { "en": "It still runs, performing a full kNN scan that computes distances for all rows" } },
+        { "id": "b", "text": { "en": "It fails with 'index required'" } },
+        { "id": "c", "text": { "en": "It builds an index automatically" } },
+        { "id": "d", "text": { "en": "It returns no rows" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Without an index, VECTOR_SEARCH falls back to brute-force kNN (fine for development or small tables). Indexes are never created automatically. FORCE_ANN_ONLY would fail in this case." },
+      "example": { "en": "Create the index once the table has ≥ 100 vectors and grows large." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-search-transact-sql"]
+    },
+    {
+      "id": "d3-ae-0022",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-ann-enn",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "When should you add WITH (FORCE_ANN_ONLY) to VECTOR_SEARCH, and what does it require?" },
+      "options": [
+        { "id": "a", "text": { "en": "To force the approximate index strategy over the optimizer's choice; it requires a vector index and SELECT TOP (N) WITH APPROXIMATE" } },
+        { "id": "b", "text": { "en": "To force exact search" } },
+        { "id": "c", "text": { "en": "To allow DESC ordering" } },
+        { "id": "d", "text": { "en": "To enable float16" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The latest version lets the optimizer choose between DiskANN and kNN; the hint overrides that choice. Without an index or the APPROXIMATE syntax, the query fails." },
+      "example": { "en": "… ) AS r WITH (FORCE_ANN_ONLY) ORDER BY r.distance;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-search-transact-sql"]
+    },
+    {
+      "id": "d3-ae-0023",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-ann-enn",
+      "type": "multiple", "difficulty": "medium", "selectCount": 3,
+      "text": { "en": "Which three operations require the subquery pattern when combined with SELECT TOP (N) WITH APPROXIMATE? (Select 3)" },
+      "options": [
+        { "id": "a", "text": { "en": "GROUP BY with aggregates" } },
+        { "id": "b", "text": { "en": "Window functions such as ROW_NUMBER" } },
+        { "id": "c", "text": { "en": "UNION of two searches" } },
+        { "id": "d", "text": { "en": "INNER JOIN to another table" } },
+        { "id": "e", "text": { "en": "A WHERE predicate on the searched table" } }
+      ],
+      "answer": ["a", "b", "c"],
+      "explanation": { "en": "Aggregation, window functions, set operations, DISTINCT and extra ORDER BY columns need the search in an inner query. INNER JOIN and WHERE predicates work directly." },
+      "example": { "en": "SELECT category, COUNT(*) FROM (SELECT TOP (100) WITH APPROXIMATE …) v GROUP BY category;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-search-transact-sql"]
+    },
+    {
+      "id": "d3-ae-0024",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-ann-enn",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "For each recent order, you want the 10 products most similar to the customer's preference vector. A CROSS APPLY VECTOR_SEARCH with an outer TOP (100) WITH APPROXIMATE fails. What works?" },
+      "options": [
+        { "id": "a", "text": { "en": "CROSS APPLY a subquery that contains SELECT TOP (10) WITH APPROXIMATE … ORDER BY r.distance, without APPROXIMATE in the outer query" } },
+        { "id": "b", "text": { "en": "Use OUTER APPLY with the same outer TOP WITH APPROXIMATE" } },
+        { "id": "c", "text": { "en": "Use TOP_N = 10" } },
+        { "id": "d", "text": { "en": "Per-row vector search isn't possible" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "An approximate plan can't merge many independent searches into one ordered stream; scoping TOP … WITH APPROXIMATE inside the applied subquery runs one bounded search per outer row. OUTER APPLY has the same restriction, and TOP_N is deprecated." },
+      "example": { "en": "FROM Orders o CROSS APPLY (SELECT TOP (10) WITH APPROXIMATE p.title, r.distance FROM VECTOR_SEARCH(TABLE = Products AS p, …, SIMILAR_TO = o.pref_vector, …) AS r ORDER BY r.distance) AS vs" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-search-transact-sql"]
+    },
+    {
+      "id": "d3-ae-0025",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-ann-enn",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Embeddings are in dbo.ArticleEmbeddings; titles are in dbo.Articles. How do you return titles with approximate results?" },
+      "options": [
+        { "id": "a", "text": { "en": "INNER JOIN dbo.Articles to VECTOR_SEARCH(TABLE = dbo.ArticleEmbeddings AS e, …) on the article key, with TOP … WITH APPROXIMATE and ORDER BY distance" } },
+        { "id": "b", "text": { "en": "Put both tables in the TABLE argument" } },
+        { "id": "c", "text": { "en": "Create a view joining them and search the view" } },
+        { "id": "d", "text": { "en": "Joins aren't supported with vector search" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "INNER JOIN works directly with approximate search, and the TABLE alias (e) can be used in WHERE for iterative filtering. TABLE accepts one base table, and views aren't supported." },
+      "example": { "en": "FROM dbo.Articles a INNER JOIN VECTOR_SEARCH(TABLE = dbo.ArticleEmbeddings AS e, …) AS vs ON a.id = e.article_id" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-search-transact-sql"]
+    },
+    {
+      "id": "d3-ae-0026",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-ann-enn",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "In FROM VECTOR_SEARCH(TABLE = dbo.Docs AS t, …) AS r, how do you reference the Title column?" },
+      "options": [
+        { "id": "a", "text": { "en": "t.Title — use the alias given in the TABLE argument; r provides distance" } },
+        { "id": "b", "text": { "en": "r.Title" } },
+        { "id": "c", "text": { "en": "dbo.Docs.Title only" } },
+        { "id": "d", "text": { "en": "VECTOR_SEARCH.Title" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Table columns must be referenced with the TABLE alias; the VECTOR_SEARCH alias can't be used for them, but it exposes the generated distance column." },
+      "example": { "en": "SELECT t.Title, r.distance …" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-search-transact-sql"]
+    },
+    {
+      "id": "d3-ae-0027",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-ann-enn",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "The searched table already has a column named distance. What happens when you reference distance in the query?" },
+      "options": [
+        { "id": "a", "text": { "en": "It's ambiguous, like a join between tables sharing a column name; qualify it with the correct alias" } },
+        { "id": "b", "text": { "en": "VECTOR_SEARCH renames its column to distance2" } },
+        { "id": "c", "text": { "en": "The table's column is dropped" } },
+        { "id": "d", "text": { "en": "VECTOR_SEARCH can't run on that table" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The docs compare it to a join with a shared column name: use aliases to disambiguate, or an error is raised." },
+      "example": { "en": "ORDER BY r.distance (not t.distance)" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-search-transact-sql"]
+    },
+    {
+      "id": "d3-ae-0028",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-ann-enn",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "You want every product within cosine distance 0.3 of the query, not a fixed count. Which pattern fits?" },
+      "options": [
+        { "id": "a", "text": { "en": "An exact query: WHERE VECTOR_DISTANCE('cosine', @qv, Embedding) < 0.3 ORDER BY that distance" } },
+        { "id": "b", "text": { "en": "VECTOR_SEARCH with TOP_N = 0.3" } },
+        { "id": "c", "text": { "en": "SELECT TOP (0.3) WITH APPROXIMATE" } },
+        { "id": "d", "text": { "en": "A full-text RANK filter" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Threshold queries return everything meeting a quality bar; VECTOR_DISTANCE in WHERE expresses that exactly. TOP values are counts, and RANK is a full-text score." },
+      "example": { "en": "Tune the threshold by inspecting distances on real queries." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-distance-transact-sql"]
+    },
+    {
+      "id": "d3-ae-0029",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-ann-enn",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "How should you choose a distance threshold such as 0.3 for 'similar enough'?" },
+      "options": [
+        { "id": "a", "text": { "en": "Test with real queries, inspect returned distances, and find where relevant results stop — it depends on the data and model" } },
+        { "id": "b", "text": { "en": "Always use 0.5 for cosine" } },
+        { "id": "c", "text": { "en": "Use the number of dimensions divided by 1,000" } },
+        { "id": "d", "text": { "en": "Thresholds aren't possible" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Distance distributions vary by model and corpus; there's no universal cutoff. Fixed constants or formulas based on dimensions have no basis." },
+      "example": { "en": "Plot distances of labeled relevant vs irrelevant pairs to pick a cutoff." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/05-implement-vector-search-query-patterns"]
+    },
+    {
+      "id": "d3-ae-0030",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-ann-enn",
+      "type": "dragdrop-order", "difficulty": "medium",
+      "text": { "en": "Order the steps to serve an approximate semantic search request." },
+      "items": [
+        { "id": "i1", "text": { "en": "Embed the user's text with the same external model used for stored vectors" } },
+        { "id": "i2", "text": { "en": "Run SELECT TOP (N) WITH APPROXIMATE … FROM VECTOR_SEARCH(… METRIC matching the index …)" } },
+        { "id": "i3", "text": { "en": "Apply filters in WHERE (iterative filtering) and join metadata tables" } },
+        { "id": "i4", "text": { "en": "ORDER BY distance and return results" } }
+      ],
+      "answer": ["i1", "i2", "i3", "i4"],
+      "explanation": { "en": "A query vector is needed first; the approximate search, filters and joins form one statement; the result is ordered by distance (a requirement of the syntax)." },
+      "example": { "en": "DECLARE @qv VECTOR(1536) = AI_GENERATE_EMBEDDINGS(@q USE MODEL m);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-search-transact-sql"]
+    },
+    {
+      "id": "d3-ae-0031",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-ann-enn",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Why is exact search still useful in a system that uses ANN in production?" },
+      "options": [
+        { "id": "a", "text": { "en": "It provides ground truth for measuring recall and re-ranks small candidate sets precisely" } },
+        { "id": "b", "text": { "en": "It's faster than ANN on large tables" } },
+        { "id": "c", "text": { "en": "It's required to build the index" } },
+        { "id": "d", "text": { "en": "It isn't useful" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "ENN is the reference for evaluating ANN quality and is cheap on short lists. It isn't faster on large tables, and indexes are built by CREATE VECTOR INDEX." },
+      "example": { "en": "Approximate top 100 → exact re-rank with another metric or business signal → top 10." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/sql-server/ai/vectors"]
+    },
+    {
+      "id": "d3-ae-0032",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-ann-enn",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "With a latest-version index, a query has a very selective filter (WHERE CustomerId = 42, ~300 rows). The plan shows a kNN scan, not the vector index. Is that a problem?" },
+      "options": [
+        { "id": "a", "text": { "en": "Not necessarily: the optimizer can choose kNN when it's cheaper; use FORCE_ANN_ONLY only if you have evidence the index is better" } },
+        { "id": "b", "text": { "en": "Yes, the index is corrupt" } },
+        { "id": "c", "text": { "en": "Yes, filters always disable indexes" } },
+        { "id": "d", "text": { "en": "Yes, you must drop the filter" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Latest indexes are optimizer-driven, choosing between DiskANN and kNN based on query characteristics; scanning 300 rows exactly is fast and perfectly accurate." },
+      "example": { "en": "Compare duration with and without WITH (FORCE_ANN_ONLY)." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-vector-index-transact-sql"]
+    },
+    {
+      "id": "d3-ae-0033",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-ann-enn",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "A FAQ table has 30,000 vectors and exact queries return in 40 ms. Do you need a vector index?" },
+      "options": [
+        { "id": "a", "text": { "en": "Not necessarily; exact search is recommended at this size and meets the latency target" } },
+        { "id": "b", "text": { "en": "Yes, vector search requires an index" } },
+        { "id": "c", "text": { "en": "Yes, otherwise results are approximate" } },
+        { "id": "d", "text": { "en": "No, because vector indexes need over 1 million rows" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Below ~50,000 vectors, exact search is usually adequate and gives perfect recall. An index isn't required (exact search is exact), and the index minimum is 100 rows, not 1 million." },
+      "example": { "en": "Revisit when the table grows or latency rises." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/sql-server/ai/vectors"]
+    },
+    {
+      "id": "d3-ae-0034",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-ann-enn",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "In EF Core 10 with SQL Server, which LINQ chain produces an approximate (ANN) vector search?" },
+      "options": [
+        { "id": "a", "text": { "en": "context.Docs.VectorSearch(d => d.Embedding, q, \"cosine\").OrderBy(r => r.Distance).Take(5).WithApproximate()" } },
+        { "id": "b", "text": { "en": "context.Docs.OrderBy(d => EF.Functions.VectorDistance(\"cosine\", d.Embedding, q)).Take(5)" } },
+        { "id": "c", "text": { "en": "context.Docs.Where(d => d.Embedding == q)" } },
+        { "id": "d", "text": { "en": "context.Docs.FromSql(\"SELECT * FROM Docs\")" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "WithApproximate() (after Take) adds WITH APPROXIMATE to the TOP clause of a VECTOR_SEARCH query. Option B translates to exact VECTOR_DISTANCE; vector equality isn't supported; raw SQL without vector search doesn't rank." },
+      "example": { "en": "Map the property as SqlVector<float> with column type vector(1536)." },
+      "sources": ["https://learn.microsoft.com/en-us/ef/core/providers/sql-server/vector-search"]
+    },
+    {
+      "id": "d3-ae-0035",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-ann-enn",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "For each statement about ANN and ENN, answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "ENN results are guaranteed to be the true nearest neighbors." } },
+        { "id": "s2", "text": { "en": "ANN always returns exactly the same rows as ENN." } },
+        { "id": "s3", "text": { "en": "ENN cost grows with the number of candidate vectors." } },
+        { "id": "s4", "text": { "en": "A recall of 1 means the approximate search matched exact search." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "no", "s3": "yes", "s4": "yes" },
+      "explanation": { "en": "Exact search compares every candidate, so it's precise but scales linearly. ANN may miss some neighbors; recall 1 means no loss." },
+      "example": { "en": "Typical production recall targets are close to 1 (for example ≥ 0.95)." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/sql-server/ai/vectors"]
+    },
+    {
+      "id": "d3-ae-0036",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-ann-enn",
+      "type": "dragdrop-match", "difficulty": "hard",
+      "text": { "en": "Match each error or symptom to its fix." },
+      "items": [
+        { "id": "i1", "text": { "en": "Msg 42274 (TOP_N with version 3 index)" } },
+        { "id": "i2", "text": { "en": "Msg 42248 (APPROXIMATE without ORDER BY)" } },
+        { "id": "i3", "text": { "en": "Msg 42271 (extra ORDER BY column)" } },
+        { "id": "i4", "text": { "en": "Warning, then slow kNN despite an index" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "Remove TOP_N; use SELECT TOP (N) WITH APPROXIMATE" } },
+        { "id": "t2", "text": { "en": "Add ORDER BY r.distance" } },
+        { "id": "t3", "text": { "en": "Move extra sorting to an outer query" } },
+        { "id": "t4", "text": { "en": "Use the same METRIC as the index" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "These are the documented expected behaviors of VECTOR_SEARCH with the latest syntax and index matching rules." },
+      "example": { "en": "SELECT * FROM (SELECT TOP (50) WITH APPROXIMATE … ORDER BY r.distance) v ORDER BY distance, title;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-search-transact-sql"]
+    },
+    {
+      "id": "d3-ae-0037",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-ann-enn",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "On Azure SQL Managed Instance with the SQL Server 2025 update policy, what's required to use vector indexes and VECTOR_SEARCH?" },
+      "options": [
+        { "id": "a", "text": { "en": "They're preview there; enable the PREVIEW_FEATURES database scoped configuration" } },
+        { "id": "b", "text": { "en": "Nothing; they're GA under every policy" } },
+        { "id": "c", "text": { "en": "Switch to the SQL Server 2022 update policy" } },
+        { "id": "d", "text": { "en": "They can't be used on Managed Instance" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Vector indexes are GA in MI with the Always-up-to-date policy but preview with the SQL Server 2025 policy (and in SQL Server 2025), requiring PREVIEW_FEATURES. The SQL Server 2022 policy lacks vector features." },
+      "example": { "en": "ALTER DATABASE SCOPED CONFIGURATION SET PREVIEW_FEATURES = ON;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-search-transact-sql"]
+    },
+    {
+      "id": "d3-ae-0038",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-ann-enn",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Why does ENN become impractical for very large tables?" },
+      "options": [
+        { "id": "a", "text": { "en": "It computes a distance for every candidate row and sorts them, so CPU and I/O grow with table size" } },
+        { "id": "b", "text": { "en": "It can't run on tables over 1 million rows" } },
+        { "id": "c", "text": { "en": "It requires float16" } },
+        { "id": "d", "text": { "en": "It returns approximate results on large tables" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Exhaustive comparison scales linearly with data. There's no hard row limit or float16 requirement, and exact search stays exact." },
+      "example": { "en": "10 million × 1,536-dimension comparisons per query is expensive." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/sql-server/ai/vectors"]
+    },
+    {
+      "id": "d3-ae-0039",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-ann-enn",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which approach evaluates vector index type and metric choices for your workload?" },
+      "options": [
+        { "id": "a", "text": { "en": "Run representative queries and compare recall against exact search, latency, and resource usage for each candidate configuration" } },
+        { "id": "b", "text": { "en": "Pick the metric with the shortest name" } },
+        { "id": "c", "text": { "en": "Always choose euclidean" } },
+        { "id": "d", "text": { "en": "Use whatever metric another team used" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Evaluation is empirical: quality (recall/relevance) and performance on your data and queries, with the metric matching the model's training." },
+      "example": { "en": "Benchmark cosine vs dot on a 500-query sample with ENN ground truth." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/04-prepare-sql-vector-search"]
+    },
+    {
+      "id": "d3-ae-0040",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-ann-enn",
+      "type": "single", "difficulty": "medium",
+      "caseId": "case-ae-kb",
+      "text": { "en": "Which search approach should Contoso use for live requests?" },
+      "options": [
+        { "id": "a", "text": { "en": "ANN: a cosine vector index on KbChunks.Embedding and SELECT TOP (5) WITH APPROXIMATE queries" } },
+        { "id": "b", "text": { "en": "ENN over all 5 million chunks for every request" } },
+        { "id": "c", "text": { "en": "Full-text search only" } },
+        { "id": "d", "text": { "en": "Random sampling of 1,000 chunks" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Millions of vectors with a 200 ms SLA call for ANN. Exact search over 5 million vectors per request is too slow, full-text doesn't provide semantic matching, and sampling breaks relevance." },
+      "example": { "en": "CREATE VECTOR INDEX vix_kb ON dbo.KbChunks(Embedding) WITH (METRIC = 'cosine');" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/sql-server/ai/vectors"]
+    },
+    {
+      "id": "d3-ae-0041",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-ann-enn",
+      "type": "single", "difficulty": "hard",
+      "caseId": "case-ae-kb",
+      "text": { "en": "How should Contoso prove recall@5 ≥ 0.95?" },
+      "options": [
+        { "id": "a", "text": { "en": "For a sample of real questions, compare the approximate top 5 with the exact top 5 (same filter, no APPROXIMATE), average overlap/5 across queries" } },
+        { "id": "b", "text": { "en": "Check that all queries finish under 200 ms" } },
+        { "id": "c", "text": { "en": "Count the rows in KbChunks" } },
+        { "id": "d", "text": { "en": "Read recall from Query Store" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Recall needs ground truth from exact search with identical predicates. Latency, row counts and Query Store don't measure recall." },
+      "example": { "en": "Exact branch: SELECT TOP (5) … FROM VECTOR_SEARCH(…) AS r WHERE c.ProductLine = @pl ORDER BY r.distance; -- no APPROXIMATE" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-search-transact-sql"]
+    },
+    {
+      "id": "d3-ae-0042",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-ann-enn",
+      "type": "single", "difficulty": "medium",
+      "caseId": "case-ae-kb",
+      "text": { "en": "How should Contoso apply the ProductLine filter?" },
+      "options": [
+        { "id": "a", "text": { "en": "WHERE c.ProductLine = @pl in the approximate query (iterative filtering), plus a B-tree index on ProductLine" } },
+        { "id": "b", "text": { "en": "Retrieve the top 5 overall, then filter in the app" } },
+        { "id": "c", "text": { "en": "Embed the product line name into the question text" } },
+        { "id": "d", "text": { "en": "Create one table per product line" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Latest indexes apply predicates during the search, and a traditional index helps evaluate them, so each request gets 5 qualifying chunks. App-side post-filtering returns too few, embedding metadata is unreliable, and per-line tables complicate everything." },
+      "example": { "en": "CREATE INDEX ix_kb_pl ON dbo.KbChunks(ProductLine);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-vector-index-transact-sql"]
+    },
+    {
+      "id": "d3-ae-0043",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-ann-enn",
+      "type": "single", "difficulty": "hard",
+      "caseId": "case-ae-kb",
+      "text": { "en": "How do you write the weekly report (count of top-100 matches per product line)?" },
+      "options": [
+        { "id": "a", "text": { "en": "Wrap SELECT TOP (100) WITH APPROXIMATE c.ProductLine, r.distance … ORDER BY r.distance in a subquery, then GROUP BY ProductLine outside" } },
+        { "id": "b", "text": { "en": "Add GROUP BY c.ProductLine directly to the approximate query" } },
+        { "id": "c", "text": { "en": "Use COUNT(*) OVER () in the approximate query" } },
+        { "id": "d", "text": { "en": "It isn't possible with vector search" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Aggregates and window functions require the subquery pattern: run the approximate search inside, aggregate outside." },
+      "example": { "en": "SELECT ProductLine, COUNT(*) FROM (…) AS v GROUP BY ProductLine;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-search-transact-sql"]
+    },
+    {
+      "id": "d3-ae-0044",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-ann-enn",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Two approximate searches (for \"AI\" and \"machine learning\") should be combined into one list. How?" },
+      "options": [
+        { "id": "a", "text": { "en": "Put each SELECT TOP (N) WITH APPROXIMATE … ORDER BY distance in its own subquery and UNION the outer selects" } },
+        { "id": "b", "text": { "en": "UNION the two approximate queries directly" } },
+        { "id": "c", "text": { "en": "Pass two vectors to SIMILAR_TO" } },
+        { "id": "d", "text": { "en": "Average the two query vectors with + and /" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Set operations need the subquery pattern. SIMILAR_TO takes one vector, and arithmetic operators aren't supported on vectors." },
+      "example": { "en": "SELECT id FROM (SELECT TOP (50) WITH APPROXIMATE …) a UNION SELECT id FROM (SELECT TOP (50) WITH APPROXIMATE …) b;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-search-transact-sql"]
+    },
+    {
+      "id": "d3-ae-0045",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-ann-enn",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "You need ROW_NUMBER() over approximate results to label positions 1..100. Where does ROW_NUMBER go?" },
+      "options": [
+        { "id": "a", "text": { "en": "In an outer query over a subquery containing SELECT TOP (100) WITH APPROXIMATE … ORDER BY r.distance" } },
+        { "id": "b", "text": { "en": "Directly in the approximate SELECT list" } },
+        { "id": "c", "text": { "en": "Inside the VECTOR_SEARCH arguments" } },
+        { "id": "d", "text": { "en": "Window functions can't be used" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Window functions are listed among operations requiring the subquery pattern. This is exactly how a hybrid search ranks its vector branch before RRF." },
+      "example": { "en": "SELECT id, ROW_NUMBER() OVER (ORDER BY distance) AS vec_rank FROM (…) AS v;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-search-transact-sql"]
+    },
+    {
+      "id": "d3-ae-0046",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-ann-enn",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A query uses VECTOR_SEARCH without any TOP and ORDER BY t.Id. What does it do?" },
+      "options": [
+        { "id": "a", "text": { "en": "A full scan that computes and returns the distance for every row" } },
+        { "id": "b", "text": { "en": "An approximate top-100 search" } },
+        { "id": "c", "text": { "en": "It fails" } },
+        { "id": "d", "text": { "en": "It returns only rows with distance 0" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Without TOP and without ordering by distance, VECTOR_SEARCH behaves as a brute-force computation of distances for all rows." },
+      "example": { "en": "Useful for analytics on small tables; avoid on large ones." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-search-transact-sql"]
+    },
+    {
+      "id": "d3-ae-0047",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-ann-enn",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which statement about combining a vector index with traditional indexes is correct?" },
+      "options": [
+        { "id": "a", "text": { "en": "They work together: the vector index finds similar embeddings while B-tree indexes on filter columns speed up iterative filtering" } },
+        { "id": "b", "text": { "en": "A table can't have both" } },
+        { "id": "c", "text": { "en": "B-tree indexes slow vector queries" } },
+        { "id": "d", "text": { "en": "The vector index replaces the clustered index" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The docs recommend traditional indexes on filter columns; the optimizer uses both index types. Tables can have both, and the vector index doesn't replace the clustered index." },
+      "example": { "en": "CREATE NONCLUSTERED INDEX ix_filters ON product_embeddings(category);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-vector-index-transact-sql"]
+    },
+    {
+      "id": "d3-ae-0048",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-ann-enn",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What should you do after re-embedding most of a table with a new model, given an existing vector index?" },
+      "options": [
+        { "id": "a", "text": { "en": "Drop and recreate the vector index so its graph reflects the new embedding distribution" } },
+        { "id": "b", "text": { "en": "Nothing; recall is unaffected" } },
+        { "id": "c", "text": { "en": "Change the metric to euclidean" } },
+        { "id": "d", "text": { "en": "Switch to ENN permanently" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Results remain valid, but recall and ranking may degrade because the graph was built for the old distribution. Recreating restores predictable behavior." },
+      "example": { "en": "Then re-measure recall against ENN." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-vector-index-transact-sql"]
+    },
+    {
+      "id": "d3-ae-0049",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-ann-enn",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Why is the small accuracy loss of ANN usually acceptable for AI applications?" },
+      "options": [
+        { "id": "a", "text": { "en": "Embeddings already approximate meaning, so with recall close to 1 the results are nearly identical to exact search" } },
+        { "id": "b", "text": { "en": "Users never notice any search quality" } },
+        { "id": "c", "text": { "en": "ANN is exact in practice" } },
+        { "id": "d", "text": { "en": "LLMs ignore retrieved context" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Microsoft notes the trade-off is reasonable because embeddings are themselves approximations; high recall preserves result quality while saving resources." },
+      "example": { "en": "Still validate recall for your data." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/sql-server/ai/vectors"]
+    },
+    {
+      "id": "d3-ae-0050",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-ann-enn",
+      "type": "multiple", "difficulty": "medium", "selectCount": 2,
+      "text": { "en": "Which two scenarios favor ENN (exact search)? (Select 2)" },
+      "options": [
+        { "id": "a", "text": { "en": "Searching within one customer's 1,500 documents" } },
+        { "id": "b", "text": { "en": "Computing ground-truth results to evaluate an index" } },
+        { "id": "c", "text": { "en": "Real-time search over 20 million product vectors" } },
+        { "id": "d", "text": { "en": "A public site search with millions of articles and a 100 ms SLA" } },
+        { "id": "e", "text": { "en": "A chatbot retrieving from 8 million chunks" } }
+      ],
+      "answer": ["a", "b"],
+      "explanation": { "en": "Small candidate sets and evaluation baselines suit exact search. Tens of millions of vectors with tight latency targets call for ANN." },
+      "example": { "en": "Use both: ANN in production, ENN in evaluation jobs." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/sql-server/ai/vectors"]
+    }
+  ]
+}

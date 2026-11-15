@@ -1,0 +1,853 @@
+{
+  "subtopic": "d2-encryption",
+  "questions": [
+    {
+      "id": "d2-enc-0001",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-encryption",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which feature keeps data encrypted even from DBAs and the cloud platform, because keys never reach the server?" },
+      "options": [
+        { "id": "a", "text": { "en": "Always Encrypted" } },
+        { "id": "b", "text": { "en": "Transparent Data Encryption (TDE)" } },
+        { "id": "c", "text": { "en": "Dynamic Data Masking" } },
+        { "id": "d", "text": { "en": "TLS" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "AE performs cryptography in the client driver with keys the server never holds. TDE (b) decrypts for anyone who can query. Masking (c) is presentation-layer obfuscation, trivially bypassed by authorized queries. TLS (d) protects only the wire." },
+      "example": { "en": "Threat-model keyword 'protect from privileged users / cloud operators' → Always Encrypted." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/encryption/always-encrypted-database-engine"]
+    },
+    {
+      "id": "d2-enc-0002",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-encryption",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Where is the Column Master Key (CMK) stored?" },
+      "options": [
+        { "id": "a", "text": { "en": "Outside the database — e.g. Azure Key Vault, Windows certificate store, or an HSM" } },
+        { "id": "b", "text": { "en": "In the table it protects" } },
+        { "id": "c", "text": { "en": "In master.sys.keys as plaintext" } },
+        { "id": "d", "text": { "en": "Inside the CEK" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The CMK must live beyond the server's reach — that externality IS the security model; the database stores only metadata about its location. (b)-(d) would put the key where the server (and its admins) could use it, defeating AE." },
+      "example": { "en": "CEK (in DB, encrypted) ← protected by CMK (outside DB). Two-level hierarchy." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/encryption/always-encrypted-database-engine"]
+    },
+    {
+      "id": "d2-enc-0003",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-encryption",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Queries must filter WHERE SSN = @ssn on an Always Encrypted column. Which encryption type allows this?" },
+      "options": [
+        { "id": "a", "text": { "en": "Deterministic" } },
+        { "id": "b", "text": { "en": "Randomized" } },
+        { "id": "c", "text": { "en": "Either type works for equality" } },
+        { "id": "d", "text": { "en": "Neither — encrypted columns can't be filtered" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Deterministic encryption produces stable ciphertext, so the driver encrypts @ssn and the server compares ciphertexts — equality works. Randomized (b) yields different ciphertext per encryption: nothing matches. (c) is wrong therefore, and (d) ignores deterministic's purpose." },
+      "example": { "en": "Equality/joins/GROUP BY → deterministic; everything else about the value stays hidden-but-patterned." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/encryption/always-encrypted-database-engine"]
+    },
+    {
+      "id": "d2-enc-0004",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-encryption",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Why is deterministic encryption risky for a column holding only 'M'/'F' values?" },
+      "options": [
+        { "id": "a", "text": { "en": "With two distinct ciphertexts, frequency analysis trivially maps each ciphertext to its plaintext" } },
+        { "id": "b", "text": { "en": "Deterministic encryption rejects short values" } },
+        { "id": "c", "text": { "en": "It makes the column too large" } },
+        { "id": "d", "text": { "en": "It is not risky at all" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Deterministic leaks equality patterns; low-cardinality domains collapse to a lookup exercise (the rarer ciphertext is 'F'...). Length (b) and size (c) aren't the issue. Microsoft explicitly warns about exactly this (d)." },
+      "example": { "en": "Low-cardinality + sensitive → randomized; use deterministic only where lookup is required and cardinality is high." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/encryption/always-encrypted-database-engine"]
+    },
+    {
+      "id": "d2-enc-0005",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-encryption",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "The business needs range queries (BETWEEN) and LIKE on an encrypted salary column, still hidden from DBAs. Which technology?" },
+      "options": [
+        { "id": "a", "text": { "en": "Always Encrypted with secure enclaves" } },
+        { "id": "b", "text": { "en": "Classic Always Encrypted randomized" } },
+        { "id": "c", "text": { "en": "TDE" } },
+        { "id": "d", "text": { "en": "Dynamic Data Masking" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Enclaves run computations on plaintext inside a hardware/VBS-protected enclave the host can't inspect — enabling rich computations (ranges, LIKE, sorting) on randomized-encrypted data. Classic randomized (b) supports no operations; TDE (c) doesn't protect from DBAs; DDM (d) isn't encryption." },
+      "example": { "en": "'Rich computations on encrypted data' is the enclave signature phrase." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/encryption/always-encrypted-enclaves"]
+    },
+    {
+      "id": "d2-enc-0006",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-encryption",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "For each statement about Always Encrypted, answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "The connection string needs Column Encryption Setting=Enabled for transparent client-side crypto." } },
+        { "id": "s2", "text": { "en": "SELECT UPPER(EncryptedCol) works server-side on an AE column." } },
+        { "id": "s3", "text": { "en": "Deterministic string columns require a BIN2 collation." } },
+        { "id": "s4", "text": { "en": "The vector data type can be protected with Always Encrypted." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "no", "s3": "yes", "s4": "no" },
+      "explanation": { "en": "The driver setting activates AE behavior. Server-side functions can't operate on ciphertext (UPPER included). BIN2 collation is mandatory for deterministic strings (equality on exact bytes). The vector type is documented as unsupported with AE." },
+      "example": { "en": "Connection string: ...;Column Encryption Setting=Enabled;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/encryption/always-encrypted-database-engine", "https://learn.microsoft.com/en-us/sql/t-sql/data-types/vector-data-type"]
+    },
+    {
+      "id": "d2-enc-0007",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-encryption",
+      "type": "dragdrop-match", "difficulty": "medium",
+      "text": { "en": "Match each threat to the encryption feature that addresses it." },
+      "items": [
+        { "id": "i1", "text": { "en": "Stolen backup tapes read offline" } },
+        { "id": "i2", "text": { "en": "Network eavesdropping between app and server" } },
+        { "id": "i3", "text": { "en": "A curious DBA SELECTing customer SSNs" } },
+        { "id": "i4", "text": { "en": "Selective column secrecy with server-side T-SQL decryption acceptable" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "TDE" } },
+        { "id": "t2", "text": { "en": "TLS / encrypted connections" } },
+        { "id": "t3", "text": { "en": "Always Encrypted" } },
+        { "id": "t4", "text": { "en": "ENCRYPTBYKEY (column-level, key hierarchy)" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "At rest wholesale → TDE; in transit → TLS; in use/from admins → AE; selective server-side → ENCRYPTBYKEY. The four-threat matrix decides every 'which encryption' question." },
+      "example": { "en": "First question to ask any scenario: WHO is the adversary?" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/encryption/sql-server-encryption"]
+    },
+    {
+      "id": "d2-enc-0008",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-encryption",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "In the classic SQL Server encryption hierarchy, what directly protects a symmetric key used with ENCRYPTBYKEY?" },
+      "options": [
+        { "id": "a", "text": { "en": "A certificate (or asymmetric key / password) in the database" } },
+        { "id": "b", "text": { "en": "The Windows page file" } },
+        { "id": "c", "text": { "en": "The CEK" } },
+        { "id": "d", "text": { "en": "Nothing — symmetric keys are stored raw" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Hierarchy: SMK → DMK → certificate/asymmetric key → symmetric key → data. The CEK (c) belongs to Always Encrypted, a different stack. Keys are never stored raw (d), and the page file (b) is noise." },
+      "example": { "en": "CREATE SYMMETRIC KEY K WITH ALGORITHM = AES_256 ENCRYPTION BY CERTIFICATE C;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/encryption/encryption-hierarchy"]
+    },
+    {
+      "id": "d2-enc-0009",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-encryption",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Complete the column-level encryption sequence." },
+      "code": "OPEN SYMMETRIC KEY CardKey DECRYPTION BY CERTIFICATE CardCert;\n\nUPDATE dbo.Cards\nSET CardNoEnc = [BLANK1](KEY_GUID('CardKey'), CardNo);\n\nSELECT CONVERT(CHAR(16), [BLANK2](CardNoEnc)) AS CardNo\nFROM dbo.Cards;\n\nCLOSE SYMMETRIC KEY CardKey;",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "ENCRYPTBYKEY" } },
+            { "id": "c2", "text": { "en": "HASHBYTES" } },
+            { "id": "c3", "text": { "en": "ENCRYPTBYPASSPHRASE" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "DECRYPTBYKEY" } },
+            { "id": "c2", "text": { "en": "DECRYPTBYCERT" } },
+            { "id": "c3", "text": { "en": "UNHASH" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "ENCRYPTBYKEY/DECRYPTBYKEY pair with an opened symmetric key (DECRYPTBYKEY needs no key GUID — it reads it from the ciphertext header). HASHBYTES is one-way (no decryption, hence no UNHASH — it doesn't exist). ENCRYPTBYPASSPHRASE pairs with DECRYPTBYPASSPHRASE, not the key infrastructure." },
+      "example": { "en": "Hash for verification (passwords), encrypt for retrieval (card numbers) — different tools." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/encryptbykey-transact-sql"]
+    },
+    {
+      "id": "d2-enc-0010",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-encryption",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What's the critical operational difference between TDE and Always Encrypted for an application developer?" },
+      "options": [
+        { "id": "a", "text": { "en": "TDE is invisible to queries; AE restricts operations on protected columns and requires driver support" } },
+        { "id": "b", "text": { "en": "TDE requires app changes; AE doesn't" } },
+        { "id": "c", "text": { "en": "Both require identical app changes" } },
+        { "id": "d", "text": { "en": "AE encrypts backups; TDE doesn't" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "TDE lives below the query layer (apps unaffected); AE moves crypto into the client — parameterization requirements, operation restrictions, enabled connection strings. (b) reverses it. TDE does cover backups (d reversed)." },
+      "example": { "en": "'No application changes allowed' + at-rest requirement → TDE. Column secrecy from admins → accept AE's constraints." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/encryption/transparent-data-encryption"]
+    },
+    {
+      "id": "d2-enc-0011",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-encryption",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "During CMK rotation for Always Encrypted, what gets re-encrypted?" },
+      "options": [
+        { "id": "a", "text": { "en": "Only the CEKs — the table data itself is untouched" } },
+        { "id": "b", "text": { "en": "All table data, row by row" } },
+        { "id": "c", "text": { "en": "Nothing — rotation is metadata-only" } },
+        { "id": "d", "text": { "en": "The entire database file" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Because data is encrypted by CEKs, rotating the master key means decrypting/re-encrypting those small CEK values with the new CMK — fast and online. Full data rewrite (b) is what CEK rotation would cost. It's more than pure metadata (c) — CEK ciphertexts change. Files (d) are TDE territory." },
+      "example": { "en": "Key-rotation cost asymmetry is why the two-tier CMK/CEK design exists." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/encryption/rotate-always-encrypted-keys-using-ssms"]
+    },
+    {
+      "id": "d2-enc-0012",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-encryption",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which Azure service is the recommended enterprise store for Column Master Keys?" },
+      "options": [
+        { "id": "a", "text": { "en": "Azure Key Vault (incl. Managed HSM)" } },
+        { "id": "b", "text": { "en": "Azure Blob Storage" } },
+        { "id": "c", "text": { "en": "A table in the same database" } },
+        { "id": "d", "text": { "en": "App Service configuration" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Key Vault provides access policies/RBAC, rotation, auditing and HSM backing — the canonical CMK home. Blob storage (b) is unmanaged bytes, in-database storage (c) breaks the model entirely, and app settings (d) leak through deployment tooling." },
+      "example": { "en": "Grant the app's managed identity get/unwrapKey on the vault — no secrets in config." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/encryption/create-and-store-column-master-keys-always-encrypted"]
+    },
+    {
+      "id": "d2-enc-0013",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-encryption",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "An ad-hoc UPDATE in SSMS sets an AE-encrypted column to a literal value and fails with 'Encryption scheme mismatch'. Why?" },
+      "options": [
+        { "id": "a", "text": { "en": "Plaintext literals can't be sent for encrypted columns; values must be parameterized so the enabled driver encrypts them" } },
+        { "id": "b", "text": { "en": "The column is corrupted" } },
+        { "id": "c", "text": { "en": "UPDATE is banned on encrypted columns" } },
+        { "id": "d", "text": { "en": "SSMS can never work with AE" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The server compares what you sent (plaintext) with what the column expects (ciphertext) — mismatch. Parameterize (SSMS: enable Parameterization for Always Encrypted on an enabled connection) so the driver encrypts @p before sending. Updates are fine when done correctly (c), and SSMS does support AE workflows (d)." },
+      "example": { "en": "DECLARE @ssn CHAR(11) = '...'; UPDATE ... SET SSN = @ssn; -- with AE-enabled, parameterized connection" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/encryption/always-encrypted-query-columns-ssms"]
+    },
+    {
+      "id": "d2-enc-0014",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-encryption",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "For each statement about TDE, answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "TDE encrypts backups of the database." } },
+        { "id": "s2", "text": { "en": "TDE prevents a db_datareader user from seeing data." } },
+        { "id": "s3", "text": { "en": "New Azure SQL Databases have TDE enabled by default." } },
+        { "id": "s4", "text": { "en": "TDE requires rewriting application queries." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "no", "s3": "yes", "s4": "no" },
+      "explanation": { "en": "TDE covers files AND backups, transparently (no app changes), and is default-on in Azure SQL. It does nothing against authorized queries — data decrypts on page read for anyone with SELECT permission. Transparent = invisible to apps AND to logged-in attackers." },
+      "example": { "en": "TDE answers 'stolen .bak file' scenarios, never 'malicious insider' ones." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/encryption/transparent-data-encryption"]
+    },
+    {
+      "id": "d2-enc-0015",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-encryption",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Two AE columns must be JOINed on equality (Orders.CustSSN = Customers.SSN). What must be true?" },
+      "options": [
+        { "id": "a", "text": { "en": "Both columns use DETERMINISTIC encryption with the SAME column encryption key" } },
+        { "id": "b", "text": { "en": "Both use randomized encryption" } },
+        { "id": "c", "text": { "en": "Any combination works" } },
+        { "id": "d", "text": { "en": "Joins are impossible under AE" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Ciphertext-equality joins require identical ciphertexts for identical plaintexts: deterministic type AND the same CEK on both sides. Randomized (b) never matches. Mixed keys/types (c) produce incomparable ciphertexts. Deterministic joins are supported (d)." },
+      "example": { "en": "Plan shared CEKs for columns that join — a design-time decision." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/encryption/always-encrypted-database-engine"]
+    },
+    {
+      "id": "d2-enc-0016",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-encryption",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "HASHBYTES('SHA2_256', Password) differs from encryption because hashing is:" },
+      "options": [
+        { "id": "a", "text": { "en": "One-way — you can verify a value matches but never recover the original" } },
+        { "id": "b", "text": { "en": "Reversible with the right key" } },
+        { "id": "c", "text": { "en": "Faster encryption" } },
+        { "id": "d", "text": { "en": "Only for numbers" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Hashes have no inverse — ideal for passwords (verify by re-hashing + compare, with salt), wrong for data you must read back (card numbers → encryption). Reversibility (b) defines encryption, not hashing. (c) and (d) are category errors." },
+      "example": { "en": "Store: salt + HASHBYTES('SHA2_512', salt + password). Never ENCRYPTBYKEY for passwords." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/hashbytes-transact-sql"]
+    },
+    {
+      "id": "d2-enc-0017",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-encryption",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "Secure enclaves: what prevents the SQL Server host administrator from reading plaintext inside the enclave?" },
+      "options": [
+        { "id": "a", "text": { "en": "Hardware/hypervisor isolation (VBS or SGX) — host processes can't inspect enclave memory, and the client attests the enclave before sending keys" } },
+        { "id": "b", "text": { "en": "An operating system password" } },
+        { "id": "c", "text": { "en": "Obfuscated code" } },
+        { "id": "d", "text": { "en": "Nothing — admins can read enclave memory" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Enclave memory is protected by the platform (virtualization-based security or Intel SGX); **attestation** proves to the client that a genuine, untampered enclave is running before CEKs are released to it. Passwords (b) and obfuscation (c) are not isolation; (d) would void the feature." },
+      "example": { "en": "Attestation services (e.g. Microsoft Azure Attestation) are part of enclave deployment questions." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/encryption/always-encrypted-enclaves"]
+    },
+    {
+      "id": "d2-enc-0018",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-encryption",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "GDPR-driven requirement: the app must read card numbers, auditors accept server-side key management, DBAs are trusted operationally. Minimal-friction choice?" },
+      "options": [
+        { "id": "a", "text": { "en": "Column-level ENCRYPTBYKEY with the database key hierarchy (optionally procedures wrapping access)" } },
+        { "id": "b", "text": { "en": "Always Encrypted with enclaves" } },
+        { "id": "c", "text": { "en": "No encryption, just masking" } },
+        { "id": "d", "text": { "en": "Store card numbers in plain text with TLS" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "When the threat model trusts server admins, the classic hierarchy delivers selective encryption with zero client/driver changes — simpler than AE (b), which earns its complexity only when admins are IN the threat model. Masking (c) isn't encryption; TLS-only (d) leaves rest exposure." },
+      "example": { "en": "Match mechanism strength to the ACTUAL adversary — over-engineering is also a wrong answer." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/encryption/encrypt-a-column-of-data"]
+    },
+    {
+      "id": "d2-enc-0019",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-encryption",
+      "type": "dropdown", "difficulty": "hard",
+      "text": { "en": "Complete the Always Encrypted column definition for a lookup-able national ID." },
+      "code": "NationalId CHAR(13) COLLATE Latin1_General_[BLANK1]\n    ENCRYPTED WITH (\n        COLUMN_ENCRYPTION_KEY = CEK_PII,\n        ENCRYPTION_TYPE = [BLANK2],\n        ALGORITHM = 'AEAD_AES_256_CBC_HMAC_SHA_256'\n    )",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "BIN2" } },
+            { "id": "c2", "text": { "en": "CI_AS" } },
+            { "id": "c3", "text": { "en": "CS_AI" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "DETERMINISTIC" } },
+            { "id": "c2", "text": { "en": "RANDOMIZED" } },
+            { "id": "c3", "text": { "en": "DYNAMIC" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "Lookup-able ⇒ DETERMINISTIC, which for character data mandates a binary-order BIN2 collation (linguistic collations like CI_AS can't guarantee byte-stable equality). DYNAMIC isn't an encryption type; RANDOMIZED would break lookups." },
+      "example": { "en": "The BIN2 + DETERMINISTIC pairing is a reliable dropdown combo." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/encryption/always-encrypted-database-engine"]
+    },
+    {
+      "id": "d2-enc-0020",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-encryption",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Who can decrypt data protected by classic column-level encryption (ENCRYPTBYKEY), in principle?" },
+      "options": [
+        { "id": "a", "text": { "en": "Anyone with sufficient database permissions on the keys/certificates — including privileged admins" } },
+        { "id": "b", "text": { "en": "Nobody but the application vendor" } },
+        { "id": "c", "text": { "en": "Only Windows administrators" } },
+        { "id": "d", "text": { "en": "Decryption is impossible once encrypted" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The server holds the whole key chain; CONTROL-level principals can open keys and decrypt — the fundamental threat-model difference from AE. Vendors (b) and OS admins (c) aren't the boundary; and reversibility is the point of encryption (d)." },
+      "example": { "en": "Exam phrasing: 'protects data at rest within the database, but not from administrators'." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/encryption/encryption-hierarchy"]
+    },
+    {
+      "id": "d2-enc-0021",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-encryption",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which operations remain possible on a RANDOMIZED Always Encrypted column WITHOUT enclaves?" },
+      "options": [
+        { "id": "a", "text": { "en": "Storing and retrieving the value (decrypted client-side) — no server-side computation at all" } },
+        { "id": "b", "text": { "en": "Equality filters" } },
+        { "id": "c", "text": { "en": "ORDER BY" } },
+        { "id": "d", "text": { "en": "LIKE searches" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Randomized columns are opaque blobs to the server: insert/select round-trips work (the client decrypts), but no predicates, sorts or pattern matches (b–d all need enclaves or deterministic). Maximum secrecy, minimum computability." },
+      "example": { "en": "Design: filter on other columns, retrieve the randomized ones for display." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/encryption/always-encrypted-database-engine"]
+    },
+    {
+      "id": "d2-enc-0022",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-encryption",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which statement about encryption in transit for Azure SQL is true?" },
+      "options": [
+        { "id": "a", "text": { "en": "Connections are TLS-encrypted; Azure SQL enforces encryption in transit" } },
+        { "id": "b", "text": { "en": "Transit encryption must be bought separately" } },
+        { "id": "c", "text": { "en": "Only AE-enabled apps get TLS" } },
+        { "id": "d", "text": { "en": "TLS replaces the need for at-rest encryption" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Azure SQL requires encrypted connections (TLS); it's part of the platform, not an add-on (b) and independent of AE (c). Layers are complementary — transit encryption does nothing for files at rest (d)." },
+      "example": { "en": "Defense in depth: TLS + TDE + (AE where the threat model demands)." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-sql/database/security-overview"]
+    },
+    {
+      "id": "d2-enc-0023",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-encryption",
+      "type": "yesno", "difficulty": "hard",
+      "text": { "en": "A migration must enable AE on an existing populated column. Answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "The data must be re-written (encrypted) by a client-side process holding the keys." } },
+        { "id": "s2", "text": { "en": "ALTER TABLE on the server alone can encrypt the existing data." } },
+        { "id": "s3", "text": { "en": "The SSMS Always Encrypted wizard or PowerShell can perform the migration." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "no", "s3": "yes" },
+      "explanation": { "en": "Only key-holding clients can produce ciphertext, so initial encryption is a client-driven rewrite (wizard/PowerShell orchestrate it). The server can't encrypt what it can't key — a pure T-SQL ALTER cannot do the data transformation." },
+      "example": { "en": "Plan downtime/maintenance for large tables: the rewrite moves every row through the client." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/encryption/configure-always-encrypted-using-sql-server-management-studio"]
+    },
+    {
+      "id": "d2-enc-0024",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-encryption",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Backups of an Always Encrypted database are restored to a dev server. What can dev admins see in the protected columns?" },
+      "options": [
+        { "id": "a", "text": { "en": "Only ciphertext — without the CMK they cannot decrypt, making AE backups inherently safe for key-less environments" } },
+        { "id": "b", "text": { "en": "Plaintext — restore decrypts data" } },
+        { "id": "c", "text": { "en": "Nothing — the restore fails" } },
+        { "id": "d", "text": { "en": "Masked values" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Ciphertext travels with backups; keys don't. Restores succeed (c is wrong) but protected data stays opaque (b is wrong) — a feature for dev/test refresh workflows. Masking (d) is a different feature." },
+      "example": { "en": "Pair with synthetic test data generation for usable dev environments." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/encryption/always-encrypted-database-engine"]
+    },
+    {
+      "id": "d2-enc-0025",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-encryption",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Access to CMKs in Azure Key Vault should be granted to applications via:" },
+      "options": [
+        { "id": "a", "text": { "en": "Managed identities with least-privilege key permissions (get/unwrapKey)" } },
+        { "id": "b", "text": { "en": "A shared master password in source code" } },
+        { "id": "c", "text": { "en": "Public anonymous access" } },
+        { "id": "d", "text": { "en": "Copying the key into appsettings.json" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Managed identity + scoped vault permissions = no secrets anywhere, auditable key usage. Hard-coded passwords (b), public access (c) and config-file keys (d) each reintroduce the leak the vault exists to prevent." },
+      "example": { "en": "This bridges to Domain 2's 'passwordless' bullet — the same identity pattern everywhere." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/encryption/create-and-store-column-master-keys-always-encrypted"]
+    },
+    {
+      "id": "d2-enc-0026",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-encryption",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "Why can't you index a RANDOMIZED Always Encrypted column with a regular B-tree (without enclaves)?" },
+      "options": [
+        { "id": "a", "text": { "en": "Index order would be meaningless: ciphertexts don't preserve plaintext order, and identical values differ in ciphertext" } },
+        { "id": "b", "text": { "en": "Indexes are disabled database-wide by AE" } },
+        { "id": "c", "text": { "en": "The column is too long" } },
+        { "id": "d", "text": { "en": "You can — it works normally" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "B-trees need stable, order-preserving keys; randomized encryption destroys both properties by design. Other columns index normally (b). Length (c) isn't the principle. Deterministic columns CAN be indexed (for equality) — randomized cannot (d). Enclave-enabled indexes change this story on supported platforms." },
+      "example": { "en": "Encryption type choice = queryability choice. Decide per column at design time." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/encryption/always-encrypted-database-engine"]
+    },
+    {
+      "id": "d2-enc-0027",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-encryption",
+      "type": "dragdrop-order", "difficulty": "medium",
+      "text": { "en": "Order the setup steps for Always Encrypted on a new application." },
+      "items": [
+        { "id": "i1", "text": { "en": "Provision the CMK in Azure Key Vault / cert store" } },
+        { "id": "i2", "text": { "en": "Create the CEK, encrypted by the CMK" } },
+        { "id": "i3", "text": { "en": "Define columns ENCRYPTED WITH the CEK (type + algorithm)" } },
+        { "id": "i4", "text": { "en": "Enable Column Encryption Setting in app connection strings" } }
+      ],
+      "answer": ["i1", "i2", "i3", "i4"],
+      "explanation": { "en": "Key hierarchy top-down: master key → column key → column definitions → client enablement. Each step depends on the previous; apps without step 4 receive ciphertext even with permissions." },
+      "example": { "en": "Forgetting step 4 is the classic 'my app shows binary garbage' ticket." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/encryption/configure-always-encrypted-using-sql-server-management-studio"]
+    },
+    {
+      "id": "d2-enc-0028",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-encryption",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A report user WITHOUT access to the CMK queries an AE-protected column through an enabled connection. What happens?" },
+      "options": [
+        { "id": "a", "text": { "en": "The query fails (or returns ciphertext on a non-enabled connection) — key access is required for decryption" } },
+        { "id": "b", "text": { "en": "The server decrypts for them" } },
+        { "id": "c", "text": { "en": "They see masked values" } },
+        { "id": "d", "text": { "en": "They see NULLs" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Decryption requires CMK access (Key Vault permission / cert private key); without it the driver can't unwrap the CEK — errors on enabled connections, raw varbinary on plain ones. The server never decrypts (b). Masking (c) and NULLs (d) are different mechanisms." },
+      "example": { "en": "AE adds a second authorization layer: database permission AND key permission." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/encryption/always-encrypted-database-engine"]
+    },
+    {
+      "id": "d2-enc-0029",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-encryption",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which is NOT an encryption feature?" },
+      "options": [
+        { "id": "a", "text": { "en": "Dynamic Data Masking" } },
+        { "id": "b", "text": { "en": "Always Encrypted" } },
+        { "id": "c", "text": { "en": "TDE" } },
+        { "id": "d", "text": { "en": "ENCRYPTBYKEY" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "DDM rewrites RESULTS for display; the stored data remains plaintext and any permitted query path can reveal it — obfuscation, not cryptography. The other three perform real encryption at different layers." },
+      "example": { "en": "Masking vs encryption is a guaranteed discriminator question — DDM protects from accidental viewing, not from attackers." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/dynamic-data-masking"]
+    },
+    {
+      "id": "d2-enc-0030",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-encryption",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "ENCRYPTBYPASSPHRASE('secret', Data) compared with the key-hierarchy approach:" },
+      "options": [
+        { "id": "a", "text": { "en": "Simpler (no key objects) but the passphrase must be managed by the caller and appears in T-SQL — weaker operationally" } },
+        { "id": "b", "text": { "en": "More secure in every way" } },
+        { "id": "c", "text": { "en": "It is asymmetric encryption" } },
+        { "id": "d", "text": { "en": "It cannot be decrypted" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Passphrase functions trade infrastructure for exposure: the secret rides in statements (plan cache, traces, logs!) and rotation is manual. The hierarchy centralizes and protects keys. (b) inverts the trade; it's symmetric (c); DECRYPTBYPASSPHRASE exists (d)." },
+      "example": { "en": "If you see a passphrase literal in code, flag it in review — observability surfaces leak it." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/encryptbypassphrase-transact-sql"]
+    },
+    {
+      "id": "d2-enc-0031",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-encryption",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "Which requirements point to Always Encrypted (vs alternatives)? Answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "'Data must be protected from the cloud provider's operators.'" } },
+        { "id": "s2", "text": { "en": "'Encrypt everything at rest with no app changes.'" } },
+        { "id": "s3", "text": { "en": "'Separation of duties: security officers manage keys, DBAs manage the database, neither sees both.'" } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "no", "s3": "yes" },
+      "explanation": { "en": "Cloud-operator protection and key/data duty separation are AE's defining scenarios (keys live with security officers, data with DBAs). Whole-database, zero-app-change at-rest encryption is TDE's sentence." },
+      "example": { "en": "Requirement-phrase pattern matching wins these questions quickly and safely." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/encryption/always-encrypted-database-engine"]
+    },
+    {
+      "id": "d2-enc-0032",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-encryption",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What does the AEAD_AES_256_CBC_HMAC_SHA_256 algorithm name tell you about AE's encryption?" },
+      "options": [
+        { "id": "a", "text": { "en": "Authenticated encryption: AES-256 confidentiality plus HMAC integrity — tampering with ciphertext is detected" } },
+        { "id": "b", "text": { "en": "It is a hashing-only scheme" } },
+        { "id": "c", "text": { "en": "It uses 56-bit DES" } },
+        { "id": "d", "text": { "en": "The algorithm is configurable per query" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "AEAD = authenticated encryption with associated data: modification of stored ciphertext fails decryption rather than yielding garbage silently. It encrypts (not hash-only, b), uses AES-256 (not DES, c), and is fixed per column at definition time (d)." },
+      "example": { "en": "Integrity protection matters: an attacker who can WRITE ciphertext still can't forge values." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/encryption/always-encrypted-cryptography"]
+    },
+    {
+      "id": "d2-enc-0033",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-encryption",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A company needs AE-protected data searchable by exact account number AND the security team worries about ciphertext pattern analysis across the 10M-row table. Reasonable mitigation?" },
+      "options": [
+        { "id": "a", "text": { "en": "Accept deterministic for the high-cardinality account number (patterns reveal little when values are unique) while using randomized for low-cardinality sensitive columns" } },
+        { "id": "b", "text": { "en": "Use randomized everywhere and drop the search requirement silently" } },
+        { "id": "c", "text": { "en": "Use deterministic everywhere including status flags" } },
+        { "id": "d", "text": { "en": "Store plaintext but rename the column" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Deterministic leakage is equality patterns; for near-unique values that leakage approximates nothing useful, while low-cardinality columns (flags, categories) genuinely suffer — so split the strategy per column. (b) breaks requirements unilaterally, (c) maximizes leakage, (d) is security theater." },
+      "example": { "en": "Cardinality-aware encryption-type selection is the designed 'hard' version of the deterministic/randomized question." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/encryption/always-encrypted-database-engine"]
+    },
+    {
+      "id": "d2-enc-0034",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-encryption",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which catalog view lists the column encryption keys defined in a database?" },
+      "options": [
+        { "id": "a", "text": { "en": "sys.column_encryption_keys" } },
+        { "id": "b", "text": { "en": "sys.aes_keys" } },
+        { "id": "c", "text": { "en": "sys.security_keys" } },
+        { "id": "d", "text": { "en": "INFORMATION_SCHEMA.KEYS" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "sys.column_encryption_keys (with sys.column_encryption_key_values and sys.column_master_keys) expose AE metadata. The other names don't exist." },
+      "example": { "en": "SELECT * FROM sys.column_master_keys; -- where does each CMK live?" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-column-encryption-keys-transact-sql"]
+    },
+    {
+      "id": "d2-enc-0035",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-encryption",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "The dev team wants to log decrypted card numbers 'temporarily for debugging'. Correct response?" },
+      "options": [
+        { "id": "a", "text": { "en": "Refuse: logs are an unprotected copy outside every encryption boundary; debug with masked/last-4 values" } },
+        { "id": "b", "text": { "en": "Allow it since the database is encrypted" } },
+        { "id": "c", "text": { "en": "Allow if the log file is renamed .tmp" } },
+        { "id": "d", "text": { "en": "Encrypt the whole log server with TDE" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Encryption protects the database; plaintext exfiltrated into logs recreates the exposure elsewhere (and violates PCI-style rules outright). 'Database is encrypted' (b) is the classic fallacy; file renaming (c) is nothing; TDE on a log server (d) still leaves authorized-read exposure and misses the point." },
+      "example": { "en": "Data protection follows the DATA, not the original container." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/encryption/sql-server-encryption"]
+    },
+    {
+      "id": "d2-enc-0036",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-encryption",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Always Encrypted is supported by which client stack component?" },
+      "options": [
+        { "id": "a", "text": { "en": "Modern Microsoft drivers (ADO.NET/Microsoft.Data.SqlClient, JDBC, ODBC) with column encryption enabled" } },
+        { "id": "b", "text": { "en": "Any driver automatically" } },
+        { "id": "c", "text": { "en": "Only SSMS" } },
+        { "id": "d", "text": { "en": "A browser plug-in" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "AE lives in the driver; supported Microsoft drivers implement the key retrieval and crypto. Arbitrary/old drivers see ciphertext (b). SSMS is just one AE-capable client (c). Browsers (d) don't speak TDS." },
+      "example": { "en": "Driver support is a deployment-checklist item for AE adoption." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/encryption/always-encrypted-client-development"]
+    },
+    {
+      "id": "d2-enc-0037",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-encryption",
+      "type": "dragdrop-match", "difficulty": "hard",
+      "text": { "en": "Match the key to its role." },
+      "items": [
+        { "id": "i1", "text": { "en": "Column Master Key (CMK)" } },
+        { "id": "i2", "text": { "en": "Column Encryption Key (CEK)" } },
+        { "id": "i3", "text": { "en": "Database Master Key (DMK)" } },
+        { "id": "i4", "text": { "en": "Database Encryption Key (DEK)" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "Protects CEKs; stored outside the database (AE)" } },
+        { "id": "t2", "text": { "en": "Encrypts column data; stored encrypted in the database (AE)" } },
+        { "id": "t3", "text": { "en": "Root of the database's internal key hierarchy (certs, symmetric keys)" } },
+        { "id": "t4", "text": { "en": "Encrypts data files for TDE" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "Four similarly-named keys, three different features: CMK/CEK belong to Always Encrypted, DMK to the classic hierarchy, DEK to TDE. Mixing them up is the question's design." },
+      "example": { "en": "Feature → key vocabulary: AE (CMK, CEK) | hierarchy (SMK, DMK, certs) | TDE (DEK)." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/encryption/encryption-hierarchy"]
+    },
+    {
+      "id": "d2-enc-0038",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-encryption",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Enclave attestation in Always Encrypted with secure enclaves serves to:" },
+      "options": [
+        { "id": "a", "text": { "en": "Prove to the client that a genuine, untampered enclave is running before keys are shared with it" } },
+        { "id": "b", "text": { "en": "Speed up queries" } },
+        { "id": "c", "text": { "en": "Compress enclave memory" } },
+        { "id": "d", "text": { "en": "Authenticate end users" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Attestation is trust bootstrapping: the client verifies enclave identity/integrity (via an attestation service) before releasing CEKs into it. It's security, not performance (b) or memory management (c), and user auth (d) is a separate layer." },
+      "example": { "en": "No successful attestation → no keys → no enclave computations. Fail-closed." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/encryption/always-encrypted-enclaves"]
+    },
+    {
+      "id": "d2-enc-0039",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-encryption",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "After enabling AE on columns, application INSERTs via an OLD driver (no AE support) behave how?" },
+      "options": [
+        { "id": "a", "text": { "en": "They fail — the driver sends plaintext where ciphertext is required (and reads return raw binary)" } },
+        { "id": "b", "text": { "en": "They work transparently" } },
+        { "id": "c", "text": { "en": "The server encrypts on their behalf" } },
+        { "id": "d", "text": { "en": "Data is silently stored unencrypted" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Without an AE-aware driver, writes mismatch the column's encryption requirements and error out; the server never encrypts for clients (c — it has no keys), nothing bypasses the column definition (d). Driver upgrades are part of AE rollout planning (b is the wish, not the reality)." },
+      "example": { "en": "Inventory every consuming app's driver version before flipping columns to ENCRYPTED." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/encryption/always-encrypted-client-development"]
+    },
+    {
+      "id": "d2-enc-0040",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-encryption",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "Performance: what's the main query-plan consequence of filtering on a deterministic AE column vs a plaintext column?" },
+      "options": [
+        { "id": "a", "text": { "en": "Equality still seeks (ciphertext index), but the optimizer loses histogram insight into plaintext value distribution, and only equality predicates are usable" } },
+        { "id": "b", "text": { "en": "All queries become table scans forever" } },
+        { "id": "c", "text": { "en": "Plans are identical in every way" } },
+        { "id": "d", "text": { "en": "The server decrypts per row to evaluate predicates" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Deterministic equality is index-seekable on ciphertext, but ranges/LIKE/functions are gone and statistics describe ciphertext, not business values. Not everything scans (b), plans aren't identical (c), and the server never decrypts (d) — that's the entire model." },
+      "example": { "en": "Capacity planning for AE: audit every query pattern against the allowed-operations list first." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/encryption/always-encrypted-database-engine"]
+    },
+    {
+      "id": "d2-enc-0041",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-encryption",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which statement about backing up the Database Master Key (DMK) is correct?" },
+      "options": [
+        { "id": "a", "text": { "en": "BACKUP MASTER KEY TO FILE ... ENCRYPTION BY PASSWORD — without a backup, losing it makes hierarchy-encrypted data unrecoverable" } },
+        { "id": "b", "text": { "en": "DMKs regenerate automatically with the same value" } },
+        { "id": "c", "text": { "en": "DMKs never need backups" } },
+        { "id": "d", "text": { "en": "DMK backups are part of every database backup" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Key loss = data loss for ENCRYPTBYKEY data; explicit key backups (stored separately and securely) are mandatory operational practice. Keys don't regenerate to the same value (b), 'never' (c) is how disasters happen, and database backups include the encrypted key but recovery scenarios (restore elsewhere) still demand the password/backup (d oversimplifies)." },
+      "example": { "en": "BACKUP CERTIFICATE / BACKUP SYMMETRIC KEY equivalents round out the key-recovery kit." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/backup-master-key-transact-sql"]
+    },
+    {
+      "id": "d2-enc-0042",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-encryption",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "Does each scenario require Always Encrypted specifically? Answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "Compliance: encrypt backups so lost media is unreadable." } },
+        { "id": "s2", "text": { "en": "SaaS: tenant data must be cryptographically hidden from your own operations staff." } },
+        { "id": "s3", "text": { "en": "Analysts should see XXX-XX-1234 instead of full SSNs in reports." } }
+      ],
+      "answerMap": { "s1": "no", "s2": "yes", "s3": "no" },
+      "explanation": { "en": "Backup/media protection = TDE (or backup encryption). Hiding from your own ops = AE's defining case. Display-level redaction = Dynamic Data Masking. Only s2 needs client-side encryption's threat model." },
+      "example": { "en": "Three lookalike requirements, three different features — the core triage skill." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/encryption/sql-server-encryption"]
+    },
+    {
+      "id": "d2-enc-0043",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-encryption",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "OPEN SYMMETRIC KEY must happen before DECRYPTBYKEY because:" },
+      "options": [
+        { "id": "a", "text": { "en": "The key must be decrypted (via its certificate/password) into the session's key ring before use" } },
+        { "id": "b", "text": { "en": "It locks the table" } },
+        { "id": "c", "text": { "en": "It starts a transaction" } },
+        { "id": "d", "text": { "en": "It is optional ceremony" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Symmetric keys are stored encrypted; OPEN unwraps them into session scope (CLOSE removes them). No table locks (b) or transactions (c) are involved, and skipping it makes DECRYPTBYKEY return NULL — not optional (d)." },
+      "example": { "en": "DECRYPTBYKEYAUTOCERT combines open+decrypt in one call for convenience." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/open-symmetric-key-transact-sql"]
+    },
+    {
+      "id": "d2-enc-0044",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-encryption",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "DECRYPTBYKEY returns NULL for rows that definitely contain encrypted data. Common causes include:" },
+      "options": [
+        { "id": "a", "text": { "en": "The key isn't open, the wrong key is open, or the ciphertext was produced by a different key" } },
+        { "id": "b", "text": { "en": "The data is too old" } },
+        { "id": "c", "text": { "en": "NULL means success" } },
+        { "id": "d", "text": { "en": "The table needs reindexing" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "DECRYPTBYKEY fails soft: wrong/missing key → NULL, not an error — a notorious silent-failure design. Age (b), success-NULL (c) and indexes (d) have nothing to do with it." },
+      "example": { "en": "Debug: SELECT * FROM sys.openkeys; -- is the right key open in this session?" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/decryptbykey-transact-sql"]
+    },
+    {
+      "id": "d2-enc-0045",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-encryption",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "The study guide bullet reads 'design and implement data encryption, including Always Encrypted and column-level encryption'. Which pairing matches those two names?" },
+      "options": [
+        { "id": "a", "text": { "en": "Client-side AE (CMK/CEK) and server-side ENCRYPTBYKEY with the key hierarchy" } },
+        { "id": "b", "text": { "en": "TLS and HTTPS" } },
+        { "id": "c", "text": { "en": "Masking and RLS" } },
+        { "id": "d", "text": { "en": "BitLocker and EFS" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The bullet's two named techniques are exactly this subtopic's two halves. Transit protocols (b), access-control features (c) and OS disk encryption (d) are different exam bullets or out of scope." },
+      "example": { "en": "When a bullet names features, know each one's threat model, syntax and limitations." },
+      "sources": ["https://learn.microsoft.com/en-us/credentials/certifications/resources/study-guides/dp-800"]
+    },
+    {
+      "id": "d2-enc-0046",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-encryption",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A migration to AE stalls: one consuming service is a reporting tool that cannot use AE-enabled drivers but must aggregate over the encrypted amounts. Architecturally sound resolution?" },
+      "options": [
+        { "id": "a", "text": { "en": "Re-evaluate the column split: keep aggregable measures unencrypted (protected by other controls) or introduce an authorized decryption service that feeds the tool — don't break AE's model with workarounds" } },
+        { "id": "b", "text": { "en": "Give the reporting tool the CMK password in its config" } },
+        { "id": "c", "text": { "en": "Switch those columns to deterministic so SUM works" } },
+        { "id": "d", "text": { "en": "Have a trigger decrypt into a shadow table" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "SUM over ciphertext doesn't work under ANY AE type — deterministic enables equality only (c is a false fix). Shipping master key material into tool configs (b) or building server-side plaintext shadows (d — impossible under AE anyway, and a leak by design) destroy the guarantee. Right answer: revisit what truly needs AE, or build a controlled decryption tier." },
+      "example": { "en": "Feature limits sometimes mean redesign — the exam rewards recognizing when a workaround is a hole." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/encryption/always-encrypted-database-engine"]
+    },
+    {
+      "id": "d2-enc-0047",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-encryption",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which permission model applies to USING an existing CEK-protected column (reading plaintext) in an app with AE?" },
+      "options": [
+        { "id": "a", "text": { "en": "SELECT on the column + VIEW ANY COLUMN ENCRYPTION KEY DEFINITION metadata access + access to the CMK in its store" } },
+        { "id": "b", "text": { "en": "db_owner only" } },
+        { "id": "c", "text": { "en": "Just SELECT, nothing else" } },
+        { "id": "d", "text": { "en": "Windows admin rights" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Three gates: data permission, AE metadata visibility, and real key access (e.g. Key Vault policy). SELECT alone (c) yields ciphertext at best. db_owner (b) without key access still reads nothing. OS rights (d) are orthogonal (unless the CMK is in the local cert store — then ACLs on it matter)." },
+      "example": { "en": "The key-access gate is what makes AE's separation of duties real." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/encryption/always-encrypted-database-engine"]
+    },
+    {
+      "id": "d2-enc-0048",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-encryption",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Complete the decision table entries." },
+      "code": "Requirement                                        → Feature\n'Encrypt data files and backups, app untouched'     → [BLANK1]\n'Values hidden from DBAs, equality lookups needed'  → Always Encrypted ([BLANK2])",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "TDE" } },
+            { "id": "c2", "text": { "en": "DDM" } },
+            { "id": "c3", "text": { "en": "RLS" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "deterministic" } },
+            { "id": "c2", "text": { "en": "randomized" } },
+            { "id": "c3", "text": { "en": "symmetric" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "Files/backups + transparency = TDE; admin-proof + equality = AE deterministic. DDM/RLS aren't encryption; randomized forbids lookups; 'symmetric' isn't an AE encryption type name." },
+      "example": { "en": "Practice building this table from memory — it answers half the subtopic." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/encryption/sql-server-encryption"]
+    },
+    {
+      "id": "d2-enc-0049",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-encryption",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Where do Always Encrypted and the ledger feature differ in purpose?" },
+      "options": [
+        { "id": "a", "text": { "en": "AE provides confidentiality (hiding values); ledger provides integrity evidence (proving values weren't tampered with)" } },
+        { "id": "b", "text": { "en": "They are interchangeable" } },
+        { "id": "c", "text": { "en": "Ledger encrypts more strongly" } },
+        { "id": "d", "text": { "en": "AE proves tamper-evidence" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Confidentiality vs integrity — orthogonal goals, combinable features (noting vector/ledger/AE cross-feature limits). Ledger doesn't encrypt at all (c), and AE makes no tamper-evidence claims (d)." },
+      "example": { "en": "CIA triad mapping: AE→C, ledger→I, availability→HA/DR features." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/ledger/ledger-overview"]
+    },
+    {
+      "id": "d2-enc-0050",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-encryption",
+      "type": "dragdrop-order", "difficulty": "hard",
+      "text": { "en": "Order the data-protection review for a new PII table, from first decision to last." },
+      "items": [
+        { "id": "i1", "text": { "en": "Classify columns: which are sensitive, who may see them, who must not" } },
+        { "id": "i2", "text": { "en": "Choose per-column mechanisms (AE type / hierarchy / none) from the threat model" } },
+        { "id": "i3", "text": { "en": "Design key management (stores, identities, rotation)" } },
+        { "id": "i4", "text": { "en": "Validate every consumer's query patterns and drivers against the chosen restrictions" } }
+      ],
+      "answer": ["i1", "i2", "i3", "i4"],
+      "explanation": { "en": "Classification defines the problem; mechanisms answer it; keys operationalize it; consumer validation prevents the late surprises (unsupported operations, old drivers). Starting with mechanisms before classification — a common failure — produces over- and under-protection simultaneously." },
+      "example": { "en": "This ordering generalizes to every security design question in Domain 2." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/encryption/sql-server-encryption"]
+    }
+  ]
+}

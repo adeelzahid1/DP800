@@ -1,0 +1,64 @@
+{
+  "subtopic": "d2-endpoint-security",
+  "title": { "en": "Securing model, REST, GraphQL & MCP endpoints" },
+  "prerequisiteRecap": [
+    {
+      "heading": { "en": "Which endpoints are we talking about?" },
+      "body": {
+        "en": "Modern SQL solutions talk to the outside world in two directions:\n- **Outbound**: the database CALLS endpoints — AI model inference endpoints via `CREATE EXTERNAL MODEL` / `AI_GENERATE_EMBEDDINGS`, or any REST API via `sp_invoke_external_rest_endpoint`.\n- **Inbound**: clients call the database through APIs — **Data API builder (DAB)** exposes tables, views and procedures as **REST** and **GraphQL** endpoints, and can expose an **MCP** endpoint for AI agents.\nEach direction has its own authentication, authorization and network controls. The study guide asks you to secure model endpoints (including Managed Identity) and GraphQL/REST/MCP endpoints."
+      }
+    }
+  ],
+  "sections": [
+    {
+      "heading": { "en": "Securing outbound calls: database scoped credentials" },
+      "body": {
+        "en": "Outbound calls authenticate with a **DATABASE SCOPED CREDENTIAL** whose NAME is the target URL (prefix). The credential IDENTITY determines how secrets are sent:\n- `'Managed Identity'` — the database's (Azure SQL logical server's / Arc-enabled SQL Server's) managed identity obtains an Entra token; SECRET holds only the resource id, e.g. `{\"resourceid\":\"https://cognitiveservices.azure.com\"}`. **Preferred: no keys at all.**\n- `'HTTPEndpointHeaders'` — secret JSON is sent as HTTP headers (e.g. `{\"api-key\":\"…\"}`).\n- `'HTTPEndpointQueryString'` — secret sent as query parameters.\n- `'Shared Access Signature'` — for Azure Storage-style SAS.\nRules: HTTPS/TLS only; the credential name must be a valid URL without a query string, must match the called URL's protocol + FQDN, and must be a path prefix of it; in Azure SQL Database/Managed Instance the target domain must be on the allowed list (e.g. *.openai.azure.com, *.azurewebsites.net — use API Management to front anything else), and outbound firewall rules can restrict further. Permissions: `EXECUTE ANY EXTERNAL ENDPOINT` to call sp_invoke_external_rest_endpoint, `REFERENCES` on the database scoped credential to use it, and `EXECUTE ON EXTERNAL MODEL::name` for AI functions — grant only to principals that need them."
+      },
+      "code": "-- Managed identity: no key stored anywhere\nCREATE DATABASE SCOPED CREDENTIAL [https://contoso-ai.openai.azure.com/]\n    WITH IDENTITY = 'Managed Identity',\n         SECRET = '{\"resourceid\":\"https://cognitiveservices.azure.com\"}';\n\nCREATE EXTERNAL MODEL EmbeddingModel\nWITH (\n    LOCATION = 'https://contoso-ai.openai.azure.com/openai/deployments/text-embedding-3-small/embeddings?api-version=2024-02-01',\n    API_FORMAT = 'Azure OpenAI',\n    MODEL_TYPE = EMBEDDINGS,\n    MODEL = 'text-embedding-3-small',\n    CREDENTIAL = [https://contoso-ai.openai.azure.com/]\n);\n\nGRANT EXECUTE ON EXTERNAL MODEL::EmbeddingModel TO [search-api];"
+    },
+    {
+      "heading": { "en": "Managed identity setup for model endpoints" },
+      "body": {
+        "en": "Azure SQL Database: enable the logical server's system- or user-assigned managed identity, then grant that identity an RBAC role on the target resource — for Azure OpenAI typically **Cognitive Services OpenAI User** (least privilege for inference). SQL Server 2025: connect the instance to **Azure Arc**, enable its primary managed identity, and enable `sp_configure 'allow server scoped db credentials', 1` so database credentials can use it. Also for SQL Server 2025, outbound REST calls require `sp_configure 'external rest endpoint enabled', 1`. Network: prefer **private endpoints** to the model resource, and restrict its public network access."
+      }
+    },
+    {
+      "heading": { "en": "Securing Data API builder (REST/GraphQL)" },
+      "body": {
+        "en": "DAB config (`dab-config.json`) has layered controls:\n- **Authentication provider** (runtime.host.authentication): JWT bearer providers such as `EntraID`/`AzureAD` (or `Custom` JWT) with **audience** and **issuer** validation; EasyAuth `AppService`; `Simulator` for local development only (treats requests as authenticated without validating a token).\n- **Roles**: every request gets exactly ONE effective role — `anonymous` (no token), `authenticated` (valid token, no role header), or a custom role selected with the `X-MS-API-ROLE` header, which must appear in the token's `roles` claim (otherwise 403; invalid token = 401).\n- **Per-entity permissions**: for each role, allowed **actions** — create, read, update, delete for tables/views; execute for stored procedures; `*` means all actions for that entity type.\n- **Field-level** include/exclude lists to hide columns per role and action.\n- **Database policies**: OData-like predicates such as `@item.OwnerId eq @claims.userId`, supported for **read, update and delete** (not create or execute).\n- **Database identity**: DAB connects with a connection string — use **managed identity** (`Authentication=Active Directory Default`), least-privileged grants, and optionally pass claims to SQL via **session context** so RLS enforces rows in the database too.\nSecure by default: no role has permissions until configured, and database objects not referenced in the config aren't exposed. DAB 2.0 adds **role inheritance** (named role → authenticated → anonymous) for unconfigured roles — so permissions granted to `anonymous` flow to broader roles; check with `dab configure --show-effective-permissions`. Never give `anonymous` write actions on production data; avoid `\"*\"` for broad roles."
+      },
+      "code": "\"entities\": {\n  \"Order\": {\n    \"source\": { \"object\": \"dbo.Orders\", \"type\": \"table\" },\n    \"permissions\": [\n      { \"role\": \"anonymous\", \"actions\": [] },\n      { \"role\": \"authenticated\",\n        \"actions\": [ { \"action\": \"read\",\n                       \"fields\": { \"include\": [\"*\"], \"exclude\": [\"InternalNotes\"] },\n                       \"policy\": { \"database\": \"@claims.oid eq @item.OwnerOid\" } } ] },\n      { \"role\": \"OrderAdmin\", \"actions\": [\"create\", \"read\", \"update\", \"delete\"] }\n    ]\n  }\n}",
+      "codeLang": "json"
+    },
+    {
+      "heading": { "en": "Securing MCP endpoints" },
+      "body": {
+        "en": "When DAB (or another server) exposes an **MCP endpoint** so AI agents can call database tools, apply the same principles: authenticate callers (Entra tokens), authorize per role with minimal actions (read-only where possible), restrict which entities/procedures are exposed, keep the server's database identity least-privileged, and log/audit tool usage. Remember the agent risks from Domain 1: tool output is untrusted input, so narrow, parameterized tools (e.g. procedures) are safer than generic query execution."
+      }
+    },
+    {
+      "heading": { "en": "Network and transport controls" },
+      "body": {
+        "en": "Defense in depth beyond identity: TLS everywhere; **private endpoints** for Azure SQL, Azure OpenAI and DAB hosting; firewall rules / disable public network access; API gateways (Azure API Management) for throttling and centralized auth in front of DAB; CORS settings in DAB restricted to known origins. Rate limiting protects both the API and the downstream model costs."
+      }
+    }
+  ],
+  "examTips": [
+    { "en": "Outbound auth = DATABASE SCOPED CREDENTIAL named after the URL; IDENTITY = 'Managed Identity' is the keyless, preferred option." },
+    { "en": "Managed identity for Azure OpenAI needs an RBAC role (e.g. Cognitive Services OpenAI User) on the resource." },
+    { "en": "SQL Server 2025: Azure Arc + primary managed identity + 'allow server scoped db credentials'; 'external rest endpoint enabled' for REST calls." },
+    { "en": "Permissions: EXECUTE ANY EXTERNAL ENDPOINT (sp_invoke_external_rest_endpoint), REFERENCES on the credential, EXECUTE ON EXTERNAL MODEL::x (AI functions)." },
+    { "en": "Azure SQL outbound calls are limited to an allowed-domain list; front other services with API Management." },
+    { "en": "DAB: auth provider + JWT audience/issuer; one effective role per request (anonymous/authenticated/X-MS-API-ROLE); per-action permissions; field include/exclude; database policies with @claims/@item on read/update/delete only." },
+    { "en": "Simulator auth provider is for development only." },
+    { "en": "Push row security into SQL with session context + RLS when the API uses one shared identity." }
+  ],
+  "sources": [
+    "https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-invoke-external-rest-endpoint-transact-sql",
+    "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-external-model-transact-sql",
+    "https://learn.microsoft.com/en-us/azure/data-api-builder/authorization",
+    "https://learn.microsoft.com/en-us/azure/data-api-builder/authentication-azure-ad",
+    "https://learn.microsoft.com/en-us/azure/data-api-builder/azure-sql-session-context-rls"
+  ]
+}

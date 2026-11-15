@@ -1,0 +1,68 @@
+{
+  "subtopic": "d2-encryption",
+  "title": { "en": "Encryption (Always Encrypted, column-level)" },
+  "prerequisiteRecap": [
+    {
+      "heading": { "en": "The encryption landscape" },
+      "body": {
+        "en": "Three layers protect data differently: **in transit** (TLS on the connection), **at rest** (TDE — Transparent Data Encryption of files/backups), and **in use** (Always Encrypted — data stays encrypted even inside the engine). Column-level encryption with ENCRYPTBYKEY sits between: encrypted at rest per column, but decrypted BY the server. Pick based on WHO must not see the data: disk thieves → TDE; network sniffers → TLS; DBAs and cloud operators → Always Encrypted."
+      }
+    }
+  ],
+  "sections": [
+    {
+      "heading": { "en": "Always Encrypted: the model" },
+      "body": {
+        "en": "Always Encrypted (AE) encrypts data **client-side in the driver**; the server stores and processes only ciphertext and never holds the keys. Two keys:\n- **Column Master Key (CMK)**: stored OUTSIDE the database (Windows cert store, **Azure Key Vault**, HSM); the database only stores metadata pointing to it.\n- **Column Encryption Key (CEK)**: encrypts the data; stored in the database but itself encrypted by the CMK.\nThe client driver (with `Column Encryption Setting=Enabled`) fetches the CEK, decrypts it via the CMK, and transparently encrypts parameters / decrypts results. The server-side DBA sees only binary gibberish — that's the point: protection from high-privileged users and the hosting platform."
+      },
+      "code": "-- Column definition (created via wizard/PowerShell normally)\nCREATE TABLE dbo.Patients (\n    PatientId INT IDENTITY PRIMARY KEY,\n    SSN CHAR(11) COLLATE Latin1_General_BIN2\n        ENCRYPTED WITH (COLUMN_ENCRYPTION_KEY = CEK1,\n                        ENCRYPTION_TYPE = DETERMINISTIC,\n                        ALGORITHM = 'AEAD_AES_256_CBC_HMAC_SHA_256'),\n    Diagnosis NVARCHAR(200)\n        ENCRYPTED WITH (COLUMN_ENCRYPTION_KEY = CEK1,\n                        ENCRYPTION_TYPE = RANDOMIZED,\n                        ALGORITHM = 'AEAD_AES_256_CBC_HMAC_SHA_256')\n);"
+    },
+    {
+      "heading": { "en": "Deterministic vs randomized" },
+      "body": {
+        "en": "- **Deterministic**: same plaintext → same ciphertext. Enables **equality** comparisons, equality joins, GROUP BY and point lookups on the encrypted column (requires a BIN2 collation for strings). Leaks patterns: identical values are visibly identical — risky for low-cardinality data (gender, yes/no).\n- **Randomized**: same plaintext → different ciphertext each time. Maximum protection, but the column supports NO server-side operations (no WHERE, no joins, no indexing) in classic AE.\nRule: deterministic for lookup keys (SSN, account number), randomized for everything sensitive you don't filter by. **Always Encrypted with secure enclaves** extends capability: rich computations (ranges, LIKE) and in-place encryption inside a trusted enclave (VBS or SGX) on supported platforms."
+      }
+    },
+    {
+      "heading": { "en": "What breaks under Always Encrypted" },
+      "body": {
+        "en": "Because the server can't read plaintext: no server-side functions on encrypted columns (UPPER, LIKE, +, CAST), no triggers computing on them, no CHECK constraints on their contents, no columns in computed columns/indexes (except index on deterministic equality), and T-SQL in SSMS can't insert literals without the driver doing encryption (use parameterized queries from an enabled connection; SSMS supports parameterization for AE). Data types and features: vector type not supported; some type/collation restrictions apply. Migrations: encrypt existing columns via the SSMS wizard or PowerShell, which re-writes the table through a client that holds the keys."
+      }
+    },
+    {
+      "heading": { "en": "Column-level encryption with the SQL encryption hierarchy" },
+      "body": {
+        "en": "Classic (server-side) column encryption uses the database's key hierarchy: Service Master Key → Database Master Key (password-protected) → Certificate / Asymmetric key → **Symmetric key** → `ENCRYPTBYKEY`/`DECRYPTBYKEY` in T-SQL. The SERVER performs the cryptography, so admins with enough rights can decrypt — weaker threat model than AE, but flexible (any T-SQL can use it) and fully server-side. Data is stored as varbinary; apps call OPEN SYMMETRIC KEY + DECRYPTBYKEY, or you wrap access in procedures."
+      },
+      "code": "CREATE MASTER KEY ENCRYPTION BY PASSWORD = '<strong password>';\nCREATE CERTIFICATE CardCert WITH SUBJECT = 'Card protection';\nCREATE SYMMETRIC KEY CardKey WITH ALGORITHM = AES_256\n    ENCRYPTION BY CERTIFICATE CardCert;\n\nOPEN SYMMETRIC KEY CardKey DECRYPTION BY CERTIFICATE CardCert;\nUPDATE dbo.Cards SET CardNoEnc = ENCRYPTBYKEY(KEY_GUID('CardKey'), CardNo);\nSELECT CONVERT(CHAR(16), DECRYPTBYKEY(CardNoEnc)) FROM dbo.Cards;\nCLOSE SYMMETRIC KEY CardKey;"
+    },
+    {
+      "heading": { "en": "TDE in one paragraph (context)" },
+      "body": {
+        "en": "Transparent Data Encryption encrypts data files, log and backups at rest with a Database Encryption Key — zero application changes, zero protection from anyone who can log in (data is decrypted on read into memory). On by default for new Azure SQL databases. Exam contrast lines: TDE = stolen-disk/backup protection; AE = protection from privileged users; column-level ENCRYPTBYKEY = selective server-side encryption; TLS/strict encryption = transit."
+      }
+    },
+    {
+      "heading": { "en": "Choosing: the decision table" },
+      "body": {
+        "en": "- 'DBAs/cloud operators must never see values' → **Always Encrypted** (keys client-side / Key Vault).\n- '…and we need range/LIKE queries on it' → **AE with secure enclaves**.\n- 'Encrypt a column, server-side processing acceptable' → **ENCRYPTBYKEY** hierarchy.\n- 'Protect files and backups wholesale' → **TDE**.\n- 'Mask what users SEE without encrypting' → that's **Dynamic Data Masking** (next subtopic) — not encryption at all.\n- Keys governance: CMK in **Azure Key Vault** gives rotation, access policies and audit; AE supports CMK rotation without re-encrypting data (re-encrypt CEKs only)."
+      }
+    }
+  ],
+  "examTips": [
+    { "en": "AE: encryption/decryption happens in the CLIENT driver; server never sees plaintext or keys. CMK outside DB, CEK inside (encrypted)." },
+    { "en": "Deterministic = equality operations possible, patterns leak; randomized = nothing computable server-side (without enclaves)." },
+    { "en": "Deterministic string columns require BIN2 collation." },
+    { "en": "Secure enclaves unlock ranges/LIKE/in-place encryption — keywords 'rich computations on encrypted data'." },
+    { "en": "ENCRYPTBYKEY hierarchy: DMK → cert → symmetric key; server-side decryption = DBAs can get plaintext." },
+    { "en": "TDE ≠ access control: anyone who can query sees plaintext. AE is the 'protect from admins' answer." },
+    { "en": "Vector data type is NOT supported with Always Encrypted." },
+    { "en": "CMK rotation re-encrypts CEKs, not the data." }
+  ],
+  "sources": [
+    "https://learn.microsoft.com/en-us/sql/relational-databases/security/encryption/always-encrypted-database-engine",
+    "https://learn.microsoft.com/en-us/sql/relational-databases/security/encryption/always-encrypted-enclaves",
+    "https://learn.microsoft.com/en-us/sql/relational-databases/security/encryption/encrypt-a-column-of-data",
+    "https://learn.microsoft.com/en-us/sql/relational-databases/security/encryption/transparent-data-encryption"
+  ]
+}

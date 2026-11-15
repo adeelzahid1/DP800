@@ -1,0 +1,52 @@
+{
+  "subtopic": "d3-vector-data",
+  "title": { "en": "Vector data type, functions & indexes" },
+  "prerequisiteRecap": [
+    {
+      "heading": { "en": "Where vectors live" },
+      "body": {
+        "en": "SQL Server 2025, Azure SQL Database, Azure SQL Managed Instance (SQL Server 2025 / Always-up-to-date policy) and SQL database in Fabric have a native **`vector`** type plus scalar vector functions. Vectors sit next to relational data, so one query can combine similarity with joins and filters. The Foundations lesson on vectors explains distance intuitively; this lesson covers the **type, the functions and the index DDL** you design with."
+      }
+    }
+  ],
+  "sections": [
+    {
+      "heading": { "en": "The vector data type" },
+      "body": {
+        "en": "- Syntax: `VECTOR(dimensions [, base_type])`. Default base type **float32** (4 bytes per element, up to **1,998** dimensions); **float16** (2 bytes, up to **3,996**) is GA in Azure SQL Database, Managed Instance and Fabric and preview in SQL Server 2025 (`PREVIEW_FEATURES`).\n- Size: ≈ dimensions × bytes per element — `VECTOR(1536)` ≈ 6 KB per row; multiply by rows (and chunks) when planning storage and memory.\n- Stored in an optimized binary format, **displayed as a JSON array**. Converts implicitly/explicitly to and from `varchar`, `nvarchar` and `json`; the JSON array must have exactly the declared number of elements (error 42204 otherwise). Converting between vectors requires the same dimensions and base type.\n- **Limitations**: only `NULL`/`NOT NULL` constraints (no DEFAULT, CHECK, PRIMARY/FOREIGN KEY, UNIQUE); no comparison or arithmetic operators; no B-tree or columnstore index on the column (it can be an `INCLUDE` column); not in memory-optimized tables; not with Always Encrypted; can't be a `sql_variant`; no alias types.\n- **Clients**: Microsoft.Data.SqlClient 6.1+ (`SqlVector<float>`) and JDBC 13.1+ send vectors in binary over TDS 7.4+; older clients see `varchar(max)` JSON. `sp_describe_first_result_set` reports vectors as varchar/nvarchar."
+      },
+      "code": "CREATE TABLE dbo.ProductEmbeddings\n(\n    ProductId  INT NOT NULL PRIMARY KEY REFERENCES dbo.Products(ProductId),\n    Embedding  VECTOR(1536) NOT NULL,            -- float32, ~6 KB\n    Compact    VECTOR(1536, float16) NULL         -- ~3 KB\n);\n\nDECLARE @v VECTOR(3) = '[0.1, 2, 30]';\nSELECT CAST(@v AS NVARCHAR(MAX)) AS as_text,   -- scientific notation\n       CAST(@v AS JSON)          AS as_json;   -- decimal notation"
+    },
+    {
+      "heading": { "en": "Vector functions and when to use them" },
+      "body": {
+        "en": "- **`VECTOR_DISTANCE(metric, v1, v2)`** — exact distance, never uses an index. Metrics: `cosine` (0 identical … 2 opposite), `euclidean` (0 … ∞), `dot` (**negative** dot product, smaller = more similar). Use for exact (kNN) search with `TOP (n) … ORDER BY distance`, threshold filters, or re-ranking.\n- **`VECTOR_SEARCH(TABLE=…, COLUMN=…, SIMILAR_TO=…, METRIC=…)`** — table-valued; returns the table's columns plus `distance`; with `SELECT TOP (n) WITH APPROXIMATE` it uses a matching vector index (ANN).\n- **`VECTOR_NORM(v, norm_type)`** — returns the length (magnitude) as a float.\n- **`VECTOR_NORMALIZE(v, norm_type)`** — returns a unit-length vector in the same direction. Norm types: `norm1` (sum of absolute values), `norm2` (Euclidean, most common), `norminf` (max absolute value). Azure OpenAI embeddings are already normalized; normalize outputs from models that aren't, so dot product and cosine rank consistently.\n- **`VECTORPROPERTY(v, 'Dimensions' | 'BaseType')`** — inspect dimensions or base type, useful for validating data and troubleshooting mismatches.\nAll vectors in one comparison must have the same dimensions (and come from the same model)."
+      },
+      "code": "DECLARE @v VECTOR(3) = '[3, 4, 0]';\nSELECT VECTOR_NORM(@v, 'norm2')               AS magnitude,   -- 5\n       VECTOR_NORMALIZE(@v, 'norm2')          AS unit,        -- [0.6, 0.8, 0]\n       VECTORPROPERTY(@v, 'Dimensions')       AS dims,        -- 3\n       VECTOR_DISTANCE('cosine', @v, @v)      AS self_dist;   -- 0"
+    },
+    {
+      "heading": { "en": "Vector indexes" },
+      "body": {
+        "en": "`CREATE VECTOR INDEX name ON table(vector_column) WITH (METRIC = 'cosine' | 'dot' | 'euclidean' [, TYPE = 'DiskANN'] [, MAXDOP = n]) [ON filegroup]` builds an **approximate** (ANN) index based on **DiskANN**, a graph that navigates quickly to close vectors using SSD and limited memory. Requirements and behavior:\n- Base tables only (no views or temp tables); needs **ALTER** on the table; the table needs at least **100 rows** with non-NULL vectors (error 42266 otherwise).\n- The index metric must match the query's `METRIC`, or `VECTOR_SEARCH` can't use it.\n- **Latest version** (Azure SQL Database, Fabric, MI Always-up-to-date): full DML support with automatic maintenance, iterative filtering, optimizer chooses index vs kNN, built-in quantization. Check the version in `sys.vector_indexes` (`build_parameters` `$.Version` = 3) and maintenance with `sys.dm_db_vector_indexes`.\n- **Earlier versions** (still seen in SQL Server 2025 preview): table becomes **read-only** (unless `ALLOW_STALE_VECTOR_INDEX`), needs a clustered **int** primary key, post-filtering with `TOP_N`. Upgrade by dropping and recreating.\n- Limitations: no partitioning, not replicated, no `TRUNCATE TABLE` (drop index, truncate, reload ≥ 100 rows, recreate), not deployed by DACPAC (BACPAC supported with recent DacFx).\n- Status: GA in Azure SQL Database, Fabric and MI Always-up-to-date; preview in SQL Server 2025 (`PREVIEW_FEATURES`).\n- Add normal B-tree indexes on filter columns; deduplicate data; recreate the index after replacing most embeddings."
+      },
+      "code": "CREATE VECTOR INDEX vix_ProductEmbeddings\n    ON dbo.ProductEmbeddings (Embedding)\n    WITH (METRIC = 'cosine', TYPE = 'DiskANN', MAXDOP = 8);\n\nSELECT i.name, JSON_VALUE(v.build_parameters, '$.Version') AS index_version\nFROM sys.vector_indexes AS v\nJOIN sys.indexes AS i ON i.object_id = v.object_id AND i.index_id = v.index_id;"
+    }
+  ],
+  "examTips": [
+    { "en": "VECTOR(n) float32: ≤ 1,998 dims, 4 bytes each; float16: ≤ 3,996 dims, 2 bytes (preview in SQL Server 2025)." },
+    { "en": "Vector columns: only NULL/NOT NULL constraints; no keys, CHECK, DEFAULT, comparisons, B-tree/columnstore indexes, memory-optimized tables or Always Encrypted." },
+    { "en": "VECTOR_DISTANCE = exact, no index; VECTOR_SEARCH = ANN with matching-metric vector index; dot returns the NEGATIVE dot product." },
+    { "en": "VECTOR_NORM = magnitude; VECTOR_NORMALIZE = unit vector (norm1/norm2/norminf); VECTORPROPERTY = Dimensions/BaseType." },
+    { "en": "CREATE VECTOR INDEX … WITH (METRIC, TYPE = 'DiskANN', MAXDOP); ≥ 100 non-NULL rows; ALTER permission; no partitioning or TRUNCATE." },
+    { "en": "Latest index version: DML + iterative filtering; earlier: read-only table, int clustered PK, post-filtering with TOP_N." }
+  ],
+  "sources": [
+    "https://learn.microsoft.com/en-us/sql/t-sql/data-types/vector-data-type",
+    "https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-functions-transact-sql",
+    "https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-distance-transact-sql",
+    "https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-normalize-transact-sql",
+    "https://learn.microsoft.com/en-us/sql/t-sql/functions/vectorproperty-transact-sql",
+    "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-vector-index-transact-sql",
+    "https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/04-prepare-sql-vector-search"
+  ]
+}

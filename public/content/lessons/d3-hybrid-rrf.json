@@ -1,0 +1,55 @@
+{
+  "subtopic": "d3-hybrid-rrf",
+  "title": { "en": "Hybrid search, RRF & performance evaluation" },
+  "prerequisiteRecap": [
+    {
+      "heading": { "en": "Two ranked lists, one answer" },
+      "body": {
+        "en": "Full-text search ranks by keyword relevance (`RANK`, 0–1000, higher = better); vector search ranks by distance (cosine 0–2, lower = better). The scales are different, so you can't simply add the numbers. **Hybrid search** runs both searches over the same data and merges the two ranked lists — usually with **Reciprocal Rank Fusion (RRF)**, which uses only each item's *position*."
+      }
+    }
+  ],
+  "sections": [
+    {
+      "heading": { "en": "Reciprocal Rank Fusion" },
+      "body": {
+        "en": "`RRF_score(d) = Σ 1 / (k + rank_i(d))` over the lists where *d* appears; missing lists contribute 0. **k = 60** is the standard constant from the original RRF research (also used by Azure AI Search).\n- No score normalization needed; neither source dominates.\n- Items found by **both** searches rise to the top. Example: rank 1 in full-text and rank 3 in vector → 1/61 + 1/63 ≈ 0.0164 + 0.0159 = **0.0323**, beating an item ranked 1 in vector only (≈ 0.0164).\n- **Smaller k** amplifies the advantage of top positions; **larger k** smooths differences.\n- **Weights**: multiply a source's contribution (e.g., `2.0 / (k + vec_rank)`) when one signal should count more.\n- Ties are possible; add a deterministic tie-breaker in the final ORDER BY."
+      }
+    },
+    {
+      "heading": { "en": "Implementing hybrid search in T-SQL" },
+      "body": {
+        "en": "1. Embed the query text once.\n2. **Keyword branch**: `FREETEXTTABLE`/`CONTAINSTABLE` (optionally `top_n_by_rank`) and `ROW_NUMBER()` (or `RANK()`) `OVER (ORDER BY [RANK] DESC)`.\n3. **Vector branch**: approximate search in a subquery (`SELECT TOP (@n) WITH APPROXIMATE … ORDER BY r.distance`), then `ROW_NUMBER() OVER (ORDER BY distance)` outside it — window functions need the subquery pattern. For small candidate sets use `VECTOR_DISTANCE` instead.\n4. `FULL OUTER JOIN` the branches on the key so items found by either search are kept; compute RRF with `ISNULL/COALESCE(…, 0)`.\n5. `ORDER BY rrf DESC`, take the final top N, join back for details.\nApply business filters (price, tenant, category) **inside both branches**, before fusion; filtering after RRF can remove highly ranked results and leave too few."
+      },
+      "code": "DECLARE @q  NVARCHAR(400) = N'lightweight hiking boots', @n INT = 50, @k INT = 60;\nDECLARE @qv VECTOR(1536)  = AI_GENERATE_EMBEDDINGS(@q USE MODEL ProductEmbedder);\n\nWITH kw AS (\n    SELECT ft.[KEY] AS ProductID,\n           ROW_NUMBER() OVER (ORDER BY ft.[RANK] DESC) AS kw_rank\n    FROM FREETEXTTABLE(dbo.Products, (Name, Description), @q, @n) AS ft\n),\nvec AS (\n    SELECT v.ProductID, ROW_NUMBER() OVER (ORDER BY v.distance) AS vec_rank\n    FROM (SELECT TOP (@n) WITH APPROXIMATE t.ProductID, r.distance\n          FROM VECTOR_SEARCH(TABLE = dbo.Products AS t, COLUMN = DescriptionVector,\n                             SIMILAR_TO = @qv, METRIC = 'cosine') AS r\n          ORDER BY r.distance) AS v\n),\nfused AS (\n    SELECT COALESCE(kw.ProductID, vec.ProductID) AS ProductID, kw.kw_rank, vec.vec_rank,\n           ISNULL(1.0 / (@k + kw.kw_rank), 0) + ISNULL(1.0 / (@k + vec.vec_rank), 0) AS rrf\n    FROM kw FULL OUTER JOIN vec ON kw.ProductID = vec.ProductID\n)\nSELECT TOP (10) p.ProductID, p.Name, f.kw_rank, f.vec_rank, f.rrf\nFROM fused AS f JOIN dbo.Products AS p ON p.ProductID = f.ProductID\nORDER BY f.rrf DESC, p.ProductID;"
+    },
+    {
+      "heading": { "en": "Tuning" },
+      "body": {
+        "en": "- **Candidates per branch (@n)**: more candidates give RRF more to work with but cost time — start around 50 and adjust after relevance testing; keep @n larger than the final N.\n- **k**: 60 is the standard starting point.\n- **Weights**: favor keywords when users mostly type codes, favor vectors for descriptive queries.\n- **Filters**: inside both branches.\n- **Cost control**: hybrid runs two searches plus an embedding call; cache embeddings for frequent queries, keep indexes healthy (vector index metric matches, full-text index populated)."
+      }
+    },
+    {
+      "heading": { "en": "Evaluating relevance and performance" },
+      "body": {
+        "en": "**Relevance** — build a test set of queries with known relevant documents and compare full-text only, vector only and hybrid:\n- **Precision** = relevant returned ÷ returned; **Recall** = relevant returned ÷ all relevant; **MRR** (Mean Reciprocal Rank) = average of 1/(position of the first relevant result).\n- For ANN, also measure **recall@k against exact search**.\nHybrid typically raises recall with little precision loss.\n**Performance** — measure end-to-end latency and each part: query embedding call, keyword branch, vector branch, fusion. Use `SET STATISTICS TIME/IO`, actual execution plans (is the vector index used, or a kNN scan? is the full-text operator present?), **Query Store** for regressions over time, and `sys.dm_db_vector_indexes` for index maintenance health. Re-test after data growth, model changes or index recreation."
+      }
+    }
+  ],
+  "examTips": [
+    { "en": "RRF = Σ 1/(k + rank), k = 60; uses positions, not raw scores; missing list contributes 0." },
+    { "en": "Items found by both searches get the highest RRF scores." },
+    { "en": "Smaller k favors top ranks; larger k smooths; weights multiply a source's contribution." },
+    { "en": "Keyword branch: FREETEXTTABLE/CONTAINSTABLE + ROW_NUMBER over RANK DESC; vector branch: TOP … WITH APPROXIMATE in a subquery + ROW_NUMBER over distance." },
+    { "en": "FULL OUTER JOIN branches; filter inside branches (before fusion)." },
+    { "en": "Evaluate with labeled queries: precision, recall, MRR; ANN recall vs exact; latency via STATISTICS TIME/IO, plans, Query Store." }
+  ],
+  "sources": [
+    "https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/06-implement-hybrid-search-ranking",
+    "https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/02-choose-intelligent-search-approach",
+    "https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-search-transact-sql",
+    "https://learn.microsoft.com/en-us/sql/relational-databases/system-functions/freetexttable-transact-sql",
+    "https://learn.microsoft.com/en-us/ef/core/providers/sql-server/vector-search",
+    "https://learn.microsoft.com/en-us/azure/search/hybrid-search-ranking"
+  ]
+}

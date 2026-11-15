@@ -1,0 +1,857 @@
+{
+  "subtopic": "d2-endpoint-security",
+  "questions": [
+    {
+      "id": "d2-endp-0001",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-endpoint-security",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which database object stores the authentication information used when Azure SQL calls an external model or REST endpoint?" },
+      "options": [
+        { "id": "a", "text": { "en": "A DATABASE SCOPED CREDENTIAL" } },
+        { "id": "b", "text": { "en": "A server login" } },
+        { "id": "c", "text": { "en": "A certificate-mapped user" } },
+        { "id": "d", "text": { "en": "An application role" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Outbound calls from sp_invoke_external_rest_endpoint and external models use database scoped credentials, named after the endpoint URL. Logins, certificate users and application roles control inbound access, not outbound authentication." },
+      "example": { "en": "CREATE DATABASE SCOPED CREDENTIAL [https://contoso.openai.azure.com/] WITH IDENTITY = 'Managed Identity', SECRET = '{\"resourceid\":\"https://cognitiveservices.azure.com\"}';" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-invoke-external-rest-endpoint-transact-sql"]
+    },
+    {
+      "id": "d2-endp-0002",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-endpoint-security",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "You want Azure SQL Database to call Azure OpenAI without storing any API key. Which credential IDENTITY should you use?" },
+      "options": [
+        { "id": "a", "text": { "en": "'Managed Identity'" } },
+        { "id": "b", "text": { "en": "'HTTPEndpointHeaders'" } },
+        { "id": "c", "text": { "en": "'HTTPEndpointQueryString'" } },
+        { "id": "d", "text": { "en": "'Shared Access Signature'" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "With 'Managed Identity', the server's managed identity obtains an Entra token; the SECRET contains only the resource id. The header and query-string options carry keys in the secret, and SAS is for storage-style signed URLs." },
+      "example": { "en": "SECRET = '{\"resourceid\":\"https://cognitiveservices.azure.com\"}'" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-invoke-external-rest-endpoint-transact-sql"]
+    },
+    {
+      "id": "d2-endp-0003",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-endpoint-security",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "After creating a managed-identity credential, calls to Azure OpenAI return 401/403. The logical server's identity is enabled. What is most likely missing?" },
+      "options": [
+        { "id": "a", "text": { "en": "An RBAC role assignment (e.g. Cognitive Services OpenAI User) for the server's identity on the Azure OpenAI resource" } },
+        { "id": "b", "text": { "en": "A SQL login for Azure OpenAI" } },
+        { "id": "c", "text": { "en": "TDE on the database" } },
+        { "id": "d", "text": { "en": "A larger service tier" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The token proves identity, but the target resource must authorize it through RBAC. Azure OpenAI doesn't use SQL logins (b); TDE (c) and service tier (d) don't affect outbound authorization." },
+      "example": { "en": "az role assignment create --assignee <server-principal-id> --role \"Cognitive Services OpenAI User\" --scope <aoai-resource-id>" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-invoke-external-rest-endpoint-transact-sql"]
+    },
+    {
+      "id": "d2-endp-0004",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-endpoint-security",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which permission allows a user to execute sp_invoke_external_rest_endpoint?" },
+      "options": [
+        { "id": "a", "text": { "en": "EXECUTE ANY EXTERNAL ENDPOINT" } },
+        { "id": "b", "text": { "en": "ALTER ANY EXTERNAL DATA SOURCE" } },
+        { "id": "c", "text": { "en": "CONTROL SERVER" } },
+        { "id": "d", "text": { "en": "VIEW DATABASE STATE" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "EXECUTE ANY EXTERNAL ENDPOINT is the documented database permission. External data sources relate to data virtualization; CONTROL SERVER is excessive; VIEW DATABASE STATE is for DMVs." },
+      "example": { "en": "GRANT EXECUTE ANY EXTERNAL ENDPOINT TO [rag-worker];" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-invoke-external-rest-endpoint-transact-sql"]
+    },
+    {
+      "id": "d2-endp-0005",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-endpoint-security",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Besides EXECUTE ANY EXTERNAL ENDPOINT, what does a user need to call an endpoint using a specific database scoped credential?" },
+      "options": [
+        { "id": "a", "text": { "en": "REFERENCES permission on that credential" } },
+        { "id": "b", "text": { "en": "ALTER on the credential" } },
+        { "id": "c", "text": { "en": "db_owner membership" } },
+        { "id": "d", "text": { "en": "Nothing else" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Using a credential requires REFERENCES on it. ALTER would let the user change the secret — more than needed — and db_owner is excessive." },
+      "example": { "en": "GRANT REFERENCES ON DATABASE SCOPED CREDENTIAL::[https://contoso.openai.azure.com/] TO [rag-worker];" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-invoke-external-rest-endpoint-transact-sql"]
+    },
+    {
+      "id": "d2-endp-0006",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-endpoint-security",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "For each statement about credential names used with sp_invoke_external_rest_endpoint, answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "The credential name must be a valid URL without a query string." } },
+        { "id": "s2", "text": { "en": "A credential for https://api.contoso.com/customers can be used to call https://api.contoso.com/." } },
+        { "id": "s3", "text": { "en": "The protocol and FQDN of the called URL must match the credential name." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "no", "s3": "yes" },
+      "explanation": { "en": "The credential name must be a URL (no query string) whose protocol and host match the call and whose path is more generic than (a prefix of) the called path. A credential for /customers can't be used for the root, which is broader." },
+      "example": { "en": "Credential [https://api.contoso.com/] can serve calls to /customers and /orders." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-invoke-external-rest-endpoint-transact-sql"]
+    },
+    {
+      "id": "d2-endp-0007",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-endpoint-security",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "On SQL Server 2025, sp_invoke_external_rest_endpoint fails because it's disabled. Which command enables it?" },
+      "options": [
+        { "id": "a", "text": { "en": "EXEC sp_configure 'external rest endpoint enabled', 1; RECONFIGURE;" } },
+        { "id": "b", "text": { "en": "ALTER DATABASE SCOPED CONFIGURATION SET REST = ON;" } },
+        { "id": "c", "text": { "en": "EXEC sp_configure 'clr enabled', 1;" } },
+        { "id": "d", "text": { "en": "It can't be used on SQL Server" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The procedure is disabled by default on SQL Server 2025 (and Managed Instance) and enabled with the 'external rest endpoint enabled' server option. It's enabled by default in Azure SQL Database and SQL database in Fabric. CLR is unrelated." },
+      "example": { "en": "Changing the option requires ALTER SETTINGS (sysadmin/serveradmin)." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-invoke-external-rest-endpoint-transact-sql"]
+    },
+    {
+      "id": "d2-endp-0008",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-endpoint-security",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "SQL Server 2025 on-premises must call Azure OpenAI using a managed identity. Which prerequisites apply?" },
+      "options": [
+        { "id": "a", "text": { "en": "Connect the instance to Azure Arc, enable its primary managed identity, and enable 'allow server scoped db credentials'" } },
+        { "id": "b", "text": { "en": "Install the Azure CLI on every client" } },
+        { "id": "c", "text": { "en": "Managed identity is impossible on SQL Server" } },
+        { "id": "d", "text": { "en": "Create a Windows local administrator for Azure" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "SQL Server gets a managed identity through Azure Arc; the server option lets database credentials use it. The identity also needs an RBAC role on the Azure OpenAI resource. Client tooling (b) and Windows accounts (d) aren't involved." },
+      "example": { "en": "EXEC sp_configure 'allow server scoped db credentials', 1; RECONFIGURE WITH OVERRIDE;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-external-model-transact-sql"]
+    },
+    {
+      "id": "d2-endp-0009",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-endpoint-security",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "In Azure SQL Database, a call to https://api.thirdparty.io fails although the credential is correct. Why, and what's the supported workaround?" },
+      "options": [
+        { "id": "a", "text": { "en": "Only allow-listed Azure service domains can be called; expose the third-party API through Azure API Management (*.azure-api.net)" } },
+        { "id": "b", "text": { "en": "Third-party APIs need TLS 1.0" } },
+        { "id": "c", "text": { "en": "Increase @timeout to 230" } },
+        { "id": "d", "text": { "en": "Use HTTP instead of HTTPS" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Azure SQL Database and Managed Instance only allow calls to listed domains (Azure Functions, Azure OpenAI, API Management, Storage…). API Management can securely front other services. Older TLS (b), longer timeouts (c) or plain HTTP (d — not supported at all) don't help." },
+      "example": { "en": "Outbound firewall rules can further restrict which allowed domains are reachable." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-invoke-external-rest-endpoint-transact-sql"]
+    },
+    {
+      "id": "d2-endp-0010",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-endpoint-security",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Complete the keyless setup for an embedding model." },
+      "code": "CREATE DATABASE SCOPED CREDENTIAL [https://contoso-ai.openai.azure.com/]\n    WITH IDENTITY = '[BLANK1]',\n         SECRET = '{\"resourceid\":\"https://cognitiveservices.azure.com\"}';\n\nGRANT [BLANK2] ON EXTERNAL MODEL::EmbeddingModel TO [search-api];",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "Managed Identity" } },
+            { "id": "c2", "text": { "en": "HTTPEndpointHeaders" } },
+            { "id": "c3", "text": { "en": "SQL Login" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "EXECUTE" } },
+            { "id": "c2", "text": { "en": "ALTER" } },
+            { "id": "c3", "text": { "en": "CONTROL" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "'Managed Identity' with a resourceid secret is keyless; HTTPEndpointHeaders would contain an API key. Callers need only EXECUTE on the model; ALTER/CONTROL would let them change it." },
+      "example": { "en": "Creators need CREATE EXTERNAL MODEL or ALTER ANY EXTERNAL MODEL." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-external-model-transact-sql"]
+    },
+    {
+      "id": "d2-endp-0011",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-endpoint-security",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "In Data API builder, which role is assigned to a request that has no Authorization header?" },
+      "options": [
+        { "id": "a", "text": { "en": "Anonymous" } },
+        { "id": "b", "text": { "en": "Authenticated" } },
+        { "id": "c", "text": { "en": "Administrator" } },
+        { "id": "d", "text": { "en": "The request is always rejected" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Requests without a token get the anonymous system role. Whether they succeed depends on whether the entity grants actions to anonymous. 'Administrator' isn't a system role." },
+      "example": { "en": "\"permissions\": [ { \"role\": \"anonymous\", \"actions\": [\"read\"] } ]" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/authorization"]
+    },
+    {
+      "id": "d2-endp-0012",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-endpoint-security",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A client sends a valid token and the header X-MS-API-ROLE: auditor, but the token's roles claim doesn't include 'auditor'. What does DAB return?" },
+      "options": [
+        { "id": "a", "text": { "en": "403 Forbidden" } },
+        { "id": "b", "text": { "en": "The request runs as anonymous" } },
+        { "id": "c", "text": { "en": "The request runs as authenticated" } },
+        { "id": "d", "text": { "en": "401 Unauthorized" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "DAB rejects role headers the token doesn't support with 403. An invalid token would produce 401. DAB doesn't silently fall back to another role." },
+      "example": { "en": "Role header must match a value in the token's 'roles' claim." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/authorization"]
+    },
+    {
+      "id": "d2-endp-0013",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-endpoint-security",
+      "type": "multiple", "difficulty": "medium", "selectCount": 2,
+      "text": { "en": "Which two actions does the '*' wildcard represent for a stored-procedure entity versus a table entity in DAB? (Select the two correct statements)" },
+      "options": [
+        { "id": "a", "text": { "en": "For tables and views, * means create, read, update, delete" } },
+        { "id": "b", "text": { "en": "For stored procedures, * means execute" } },
+        { "id": "c", "text": { "en": "For stored procedures, * means create, read, update, delete" } },
+        { "id": "d", "text": { "en": "For tables, * includes execute and admin" } }
+      ],
+      "answer": ["a", "b"],
+      "explanation": { "en": "The wildcard expands to all actions supported by the entity type: CRUD for tables/views, execute for procedures. There's no 'admin' action." },
+      "example": { "en": "{ \"role\": \"OrderAdmin\", \"actions\": [\"*\"] }" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/authorization"]
+    },
+    {
+      "id": "d2-endp-0014",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-endpoint-security",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Users of the 'free' role must never read the Salary column through REST or GraphQL. How do you configure DAB?" },
+      "options": [
+        { "id": "a", "text": { "en": "Add a read action with fields.exclude: [\"Salary\"] for that role" } },
+        { "id": "b", "text": { "en": "Rename the column" } },
+        { "id": "c", "text": { "en": "Use a database policy on create" } },
+        { "id": "d", "text": { "en": "Set the role to anonymous" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Field-level include/exclude restricts columns per role and action; requests referencing excluded fields are rejected. Renaming (b) is not security, database policies filter rows (and don't support create), and anonymous (d) is unrelated." },
+      "example": { "en": "{ \"action\": \"read\", \"fields\": { \"include\": [\"*\"], \"exclude\": [\"Salary\"] } }" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/authorization"]
+    },
+    {
+      "id": "d2-endp-0015",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-endpoint-security",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which DAB actions support database policies (item-level @item/@claims predicates)?" },
+      "options": [
+        { "id": "a", "text": { "en": "read, update, delete" } },
+        { "id": "b", "text": { "en": "create and execute only" } },
+        { "id": "c", "text": { "en": "All actions" } },
+        { "id": "d", "text": { "en": "None — policies are GraphQL-only" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Database policies apply to read, update and delete; they're not supported for create or execute. They work for both REST and GraphQL." },
+      "example": { "en": "\"policy\": { \"database\": \"@item.OwnerId eq @claims.userId\" }" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/authorization"]
+    },
+    {
+      "id": "d2-endp-0016",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-endpoint-security",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Complete the DAB permission so authenticated users only read their own orders." },
+      "code": "{\n  \"role\": \"[BLANK1]\",\n  \"actions\": [ {\n    \"action\": \"read\",\n    \"policy\": { \"database\": \"@item.OwnerOid eq [BLANK2].oid\" }\n  } ]\n}",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "authenticated" } },
+            { "id": "c2", "text": { "en": "anonymous" } },
+            { "id": "c3", "text": { "en": "everyone" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "@claims" } },
+            { "id": "c2", "text": { "en": "@user" } },
+            { "id": "c3", "text": { "en": "@session" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "Signed-in users get the authenticated role; anonymous users have no claims to compare. Policies reference token claims with @claims.<name> and row fields with @item.<field>. 'everyone', @user and @session aren't DAB tokens." },
+      "example": { "en": "The predicate becomes a WHERE condition in the SQL DAB generates." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/authorization"]
+    },
+    {
+      "id": "d2-endp-0017",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-endpoint-security",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which DAB authentication provider is appropriate only for local development and testing?" },
+      "options": [
+        { "id": "a", "text": { "en": "Simulator" } },
+        { "id": "b", "text": { "en": "EntraID / AzureAD" } },
+        { "id": "c", "text": { "en": "AppService" } },
+        { "id": "d", "text": { "en": "Custom JWT" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Simulator treats requests as authenticated without validating real tokens — fine for local testing, never for production. The others validate real identities." },
+      "example": { "en": "Use environment-specific config files: dab-config.Development.json vs production." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/authorization"]
+    },
+    {
+      "id": "d2-endp-0018",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-endpoint-security",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "For each statement about DAB security defaults, answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "An entity with no permissions configured is accessible to nobody." } },
+        { "id": "s2", "text": { "en": "Database objects not referenced in the config are not exposed." } },
+        { "id": "s3", "text": { "en": "A request may be evaluated against several roles at once." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "yes", "s3": "no" },
+      "explanation": { "en": "DAB is secure by default: no permissions means no access, and unreferenced objects stay hidden. Each request is evaluated in exactly one effective role (default anonymous/authenticated, or the role in X-MS-API-ROLE)." },
+      "example": { "en": "Expose only the entities your API needs." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/authorization"]
+    },
+    {
+      "id": "d2-endp-0019",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-endpoint-security",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "In DAB 2.0, an entity grants read to anonymous only. A request arrives with X-MS-API-ROLE: editor (valid in the token). The entity has no 'editor' or 'authenticated' entries. What happens?" },
+      "options": [
+        { "id": "a", "text": { "en": "The editor role inherits from authenticated, which inherits from anonymous, so read is allowed" } },
+        { "id": "b", "text": { "en": "403 because editor isn't configured" } },
+        { "id": "c", "text": { "en": "Full CRUD is allowed" } },
+        { "id": "d", "text": { "en": "500 error" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "DAB 2.0 role inheritance resolves unconfigured roles along named role → authenticated → anonymous. Inheritance grants only what anonymous has (read), not CRUD. Older versions without inheritance would deny." },
+      "example": { "en": "Check results with dab configure --show-effective-permissions." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/authorization"]
+    },
+    {
+      "id": "d2-endp-0020",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-endpoint-security",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "DAB runs in Azure Container Apps and connects to Azure SQL. How should its database connection be secured?" },
+      "options": [
+        { "id": "a", "text": { "en": "Use the container app's managed identity (e.g. Authentication=Active Directory Default) mapped to a least-privileged database user" } },
+        { "id": "b", "text": { "en": "Put the server admin password in dab-config.json" } },
+        { "id": "c", "text": { "en": "Use a SQL login with db_owner" } },
+        { "id": "d", "text": { "en": "Disable TLS for performance" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Managed identity removes secrets, and least privilege limits damage if the API is abused. Admin passwords in config (b), db_owner (c) and disabling TLS (d) are all anti-patterns." },
+      "example": { "en": "Reference the connection string via @env('SQL_CONNECTION') rather than hard-coding it." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/authentication-azure-ad"]
+    },
+    {
+      "id": "d2-endp-0021",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-endpoint-security",
+      "type": "dragdrop-match", "difficulty": "medium",
+      "text": { "en": "Match each DAB security control to what it restricts." },
+      "items": [
+        { "id": "i1", "text": { "en": "Entity permissions (actions)" } },
+        { "id": "i2", "text": { "en": "Field include/exclude" } },
+        { "id": "i3", "text": { "en": "Database policy" } },
+        { "id": "i4", "text": { "en": "Authentication provider + JWT audience/issuer" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "Which operations a role may perform" } },
+        { "id": "t2", "text": { "en": "Which columns a role may see or set" } },
+        { "id": "t3", "text": { "en": "Which rows a role may read/update/delete" } },
+        { "id": "t4", "text": { "en": "Which tokens are trusted at all" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "DAB layers authentication (who is trusted) with authorization at operation, column and row levels." },
+      "example": { "en": "Add database RLS via session context for defense in depth." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/authorization"]
+    },
+    {
+      "id": "d2-endp-0022",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-endpoint-security",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Why might you enforce row access with SQL RLS (via DAB session context) in addition to DAB database policies?" },
+      "options": [
+        { "id": "a", "text": { "en": "RLS protects every access path to the table, not only requests that go through DAB" } },
+        { "id": "b", "text": { "en": "DAB policies don't work with GraphQL" } },
+        { "id": "c", "text": { "en": "RLS is faster than any API" } },
+        { "id": "d", "text": { "en": "DAB requires RLS to start" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "API-layer policies only apply to API calls; RLS in the database applies to reports, scripts and other apps too. DAB policies do work with GraphQL (b), and RLS isn't required (d)." },
+      "example": { "en": "Defense in depth: DAB policy + RLS predicate reading SESSION_CONTEXT claims." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/azure-sql-session-context-rls"]
+    },
+    {
+      "id": "d2-endp-0023",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-endpoint-security",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which transport does sp_invoke_external_rest_endpoint support?" },
+      "options": [
+        { "id": "a", "text": { "en": "HTTPS with TLS only" } },
+        { "id": "b", "text": { "en": "Plain HTTP and HTTPS" } },
+        { "id": "c", "text": { "en": "FTP" } },
+        { "id": "d", "text": { "en": "Raw TCP sockets" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Only HTTPS endpoints configured with TLS are supported, protecting payloads (and credentials) in transit." },
+      "example": { "en": "External models also require HTTPS locations (except local ONNX paths)." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-invoke-external-rest-endpoint-transact-sql"]
+    },
+    {
+      "id": "d2-endp-0024",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-endpoint-security",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A procedure sends customer data to an external endpoint. Which risk does Microsoft explicitly warn about for sp_invoke_external_rest_endpoint?" },
+      "options": [
+        { "id": "a", "text": { "en": "Data exfiltration — data can be transferred to external entities, so restrict who can call it and audit usage" } },
+        { "id": "b", "text": { "en": "Index fragmentation" } },
+        { "id": "c", "text": { "en": "Plan cache bloat" } },
+        { "id": "d", "text": { "en": "Deadlocks on system tables" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The documentation highlights unauthorized data transfer and recommends least privilege, authentication, monitoring and auditing. The other options aren't the warned risk." },
+      "example": { "en": "Grant EXECUTE ANY EXTERNAL ENDPOINT only to a dedicated worker principal." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-invoke-external-rest-endpoint-transact-sql"]
+    },
+    {
+      "id": "d2-endp-0025",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-endpoint-security",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "An Azure SQL logical server has both a system-assigned and a user-assigned managed identity (the user-assigned one is primary). Answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "A 'Managed Identity' credential authenticates with the primary user-assigned identity." } },
+        { "id": "s2", "text": { "en": "The system-assigned identity is always used when both exist." } },
+        { "id": "s3", "text": { "en": "The chosen identity needs RBAC on the target resource." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "no", "s3": "yes" },
+      "explanation": { "en": "When user-assigned identities exist, the primary one is used; system-assigned is used only if no user-assigned identity is present. Whichever identity is used must be authorized on the target." },
+      "example": { "en": "Grant RBAC to the primary identity's principal id." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-invoke-external-rest-endpoint-transact-sql"]
+    },
+    {
+      "id": "d2-endp-0026",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-endpoint-security",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What is the most important network control to keep Azure OpenAI traffic from Azure SQL off the public internet?" },
+      "options": [
+        { "id": "a", "text": { "en": "Private endpoints for the model resource (and restricting its public network access)" } },
+        { "id": "b", "text": { "en": "Larger timeouts" } },
+        { "id": "c", "text": { "en": "Query hints" } },
+        { "id": "d", "text": { "en": "Columnstore indexes" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Private endpoints place the service on a private IP in your network. Timeouts, hints and indexes have nothing to do with network exposure." },
+      "example": { "en": "Combine private endpoints with managed identity for network + identity defense in depth." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/ai-services/cognitive-services-virtual-networks"]
+    },
+    {
+      "id": "d2-endp-0027",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-endpoint-security",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "An AI agent connects to a DAB-hosted MCP endpoint. Which configuration follows least privilege?" },
+      "options": [
+        { "id": "a", "text": { "en": "Authenticate the agent, give its role only the needed read/execute actions on a few entities, and use a least-privileged database identity" } },
+        { "id": "b", "text": { "en": "Grant anonymous * on all entities so the agent can explore" } },
+        { "id": "c", "text": { "en": "Connect DAB with the server admin account" } },
+        { "id": "d", "text": { "en": "Expose every table so tool discovery is easier" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "MCP endpoints inherit the same authorization model: authenticated callers, minimal actions, minimal exposed entities, least-privileged database identity. Options b–d maximize blast radius." },
+      "example": { "en": "Expose a stored procedure like dbo.SearchProducts(@q) as an execute-only tool instead of whole tables." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/authorization"]
+    },
+    {
+      "id": "d2-endp-0028",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-endpoint-security",
+      "type": "dragdrop-order", "difficulty": "medium",
+      "text": { "en": "Order the steps to let Azure SQL Database call Azure OpenAI with a managed identity." },
+      "items": [
+        { "id": "i1", "text": { "en": "Enable a managed identity on the logical server" } },
+        { "id": "i2", "text": { "en": "Assign the identity 'Cognitive Services OpenAI User' on the Azure OpenAI resource" } },
+        { "id": "i3", "text": { "en": "Create a 'Managed Identity' database scoped credential named after the endpoint" } },
+        { "id": "i4", "text": { "en": "Create the external model (or call sp_invoke_external_rest_endpoint) referencing the credential" } }
+      ],
+      "answer": ["i1", "i2", "i3", "i4"],
+      "explanation": { "en": "Identity, then authorization on the target, then the database credential, then the object that uses it. Testing before step 2 produces 401/403 errors." },
+      "example": { "en": "Finally grant EXECUTE on the model to the app principals that need it." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-invoke-external-rest-endpoint-transact-sql"]
+    },
+    {
+      "id": "d2-endp-0029",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-endpoint-security",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A credential uses IDENTITY = 'HTTPEndpointHeaders' with SECRET = '{\"api-key\":\"…\"}'. What's the main operational drawback compared with managed identity?" },
+      "options": [
+        { "id": "a", "text": { "en": "A long-lived key exists that must be rotated and protected; if leaked it works from anywhere" } },
+        { "id": "b", "text": { "en": "Headers can't carry authentication" } },
+        { "id": "c", "text": { "en": "It disables TLS" } },
+        { "id": "d", "text": { "en": "It only works for GET requests" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Keys are bearer secrets requiring rotation and protection. Header credentials work (b), keep TLS (c), and support all methods (d)." },
+      "example": { "en": "If keys are unavoidable, rotate them regularly and limit who can ALTER the credential." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-invoke-external-rest-endpoint-transact-sql"]
+    },
+    {
+      "id": "d2-endp-0030",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-endpoint-security",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A public website calls DAB from browsers. Which DAB runtime setting limits which websites can call the API from browser JavaScript?" },
+      "options": [
+        { "id": "a", "text": { "en": "CORS allowed origins (runtime.host.cors.origins)" } },
+        { "id": "b", "text": { "en": "Database policies" } },
+        { "id": "c", "text": { "en": "Pagination size" } },
+        { "id": "d", "text": { "en": "Cache TTL" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "CORS origins restrict browser cross-origin requests to known sites. It isn't a substitute for authentication, but it's part of hardening. Policies, pagination and caching serve other purposes." },
+      "example": { "en": "\"cors\": { \"origins\": [\"https://shop.contoso.com\"], \"allow-credentials\": false }" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/configuration/runtime"]
+    },
+    {
+      "id": "d2-endp-0031",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-endpoint-security",
+      "type": "yesno", "difficulty": "easy",
+      "text": { "en": "Is each a sound way to secure an embedding model endpoint used by Azure SQL? Answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "Use the server's managed identity instead of API keys" } },
+        { "id": "s2", "text": { "en": "Grant EXECUTE on the external model only to principals that need it" } },
+        { "id": "s3", "text": { "en": "Paste the API key into every query string" } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "yes", "s3": "no" },
+      "explanation": { "en": "Keyless identity and minimal grants are recommended. Putting keys in query strings exposes them in logs and caches." },
+      "example": { "en": "Keys in URLs leak through proxies, logs and browser histories." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-external-model-transact-sql"]
+    },
+    {
+      "id": "d2-endp-0032",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-endpoint-security",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "To avoid exposing a whole Customers table through GraphQL to partner apps, which DAB design is most restrictive while still useful?" },
+      "options": [
+        { "id": "a", "text": { "en": "Expose a view or stored procedure returning only partner-relevant columns, with a partner role allowed read/execute only" } },
+        { "id": "b", "text": { "en": "Expose the table with anonymous read and rely on obscurity" } },
+        { "id": "c", "text": { "en": "Expose the table with * for authenticated" } },
+        { "id": "d", "text": { "en": "Turn off GraphQL and keep REST open to anonymous" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Shaping the data in SQL (view/procedure) plus a narrowly permitted role exposes only what partners need. Anonymous access (b, d) and broad wildcards (c) overexpose." },
+      "example": { "en": "Entity source type 'view' with key fields defined, role 'partner': actions ['read']." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/authorization"]
+    },
+    {
+      "id": "d2-endp-0033",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-endpoint-security",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which statement about JWT validation in DAB with Microsoft Entra ID is correct?" },
+      "options": [
+        { "id": "a", "text": { "en": "DAB validates the token's issuer and audience against the configured values" } },
+        { "id": "b", "text": { "en": "DAB accepts any JWT" } },
+        { "id": "c", "text": { "en": "DAB validates only the token length" } },
+        { "id": "d", "text": { "en": "DAB requires users to send passwords" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The jwt section configures audience and issuer; tokens not matching are rejected (401). DAB never accepts arbitrary tokens or passwords." },
+      "example": { "en": "\"jwt\": { \"audience\": \"api://orders-api\", \"issuer\": \"https://login.microsoftonline.com/<tenant>/v2.0\" }" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/authentication-azure-ad"]
+    },
+    {
+      "id": "d2-endp-0034",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-endpoint-security",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Many sessions call an external model at once and you see error 10928 from sp_invoke_external_rest_endpoint. What does it indicate?" },
+      "options": [
+        { "id": "a", "text": { "en": "The database's concurrent outbound connection limit was reached" } },
+        { "id": "b", "text": { "en": "The credential is wrong" } },
+        { "id": "c", "text": { "en": "The URL isn't HTTPS" } },
+        { "id": "d", "text": { "en": "A deadlock occurred" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Outbound connections are throttled (a share of worker threads, capped); exceeding it raises 10928 (10936 for elastic pool limits). Credential or URL problems produce different errors." },
+      "example": { "en": "Batch rows into fewer calls (FOR JSON) and use @retry_count for transient errors." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-invoke-external-rest-endpoint-transact-sql"]
+    },
+    {
+      "id": "d2-endp-0035",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-endpoint-security",
+      "type": "dragdrop-match", "difficulty": "hard",
+      "text": { "en": "Match each credential IDENTITY to how authentication data is sent." },
+      "items": [
+        { "id": "i1", "text": { "en": "HTTPEndpointHeaders" } },
+        { "id": "i2", "text": { "en": "HTTPEndpointQueryString" } },
+        { "id": "i3", "text": { "en": "Managed Identity" } },
+        { "id": "i4", "text": { "en": "Shared Access Signature" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "Secret key/value pairs added as request headers" } },
+        { "id": "t2", "text": { "en": "Secret key/value pairs added to the query string" } },
+        { "id": "t3", "text": { "en": "Entra token from the server's identity in the headers" } },
+        { "id": "t4", "text": { "en": "Signed URL token for delegated storage access" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "The four documented IDENTITY options. Only Managed Identity avoids storing a reusable secret in the credential." },
+      "example": { "en": "Azure Functions keys: headers ('x-functions-key') or query string ('code')." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-invoke-external-rest-endpoint-transact-sql"]
+    },
+    {
+      "id": "d2-endp-0036",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-endpoint-security",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which header does a DAB client send to choose a custom role for a request?" },
+      "options": [
+        { "id": "a", "text": { "en": "X-MS-API-ROLE" } },
+        { "id": "b", "text": { "en": "X-ROLE" } },
+        { "id": "c", "text": { "en": "Authorization-Role" } },
+        { "id": "d", "text": { "en": "X-DAB-USER" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "X-MS-API-ROLE selects the effective role, which must be present in the token's roles claim." },
+      "example": { "en": "curl -H 'Authorization: Bearer ey…' -H 'X-MS-API-ROLE: author' https://api/…/Book" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/authorization"]
+    },
+    {
+      "id": "d2-endp-0037",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-endpoint-security",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "You want throttling, IP filtering and centralized authentication in front of several DAB instances. Which Azure service fits?" },
+      "options": [
+        { "id": "a", "text": { "en": "Azure API Management" } },
+        { "id": "b", "text": { "en": "Azure Monitor" } },
+        { "id": "c", "text": { "en": "Azure Key Vault" } },
+        { "id": "d", "text": { "en": "Azure Data Factory" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "API Management provides gateway policies (rate limits, JWT validation, IP filtering) in front of APIs. Monitor observes, Key Vault stores secrets, Data Factory moves data." },
+      "example": { "en": "APIM also fronts non-allow-listed services for sp_invoke_external_rest_endpoint." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/api-management/api-management-key-concepts"]
+    },
+    {
+      "id": "d2-endp-0038",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-endpoint-security",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Where should a DAB connection string be kept instead of hard-coding it into dab-config.json in source control?" },
+      "options": [
+        { "id": "a", "text": { "en": "An environment variable or secret store referenced with @env(...) (or Key Vault references in hosting)" } },
+        { "id": "b", "text": { "en": "A README file" } },
+        { "id": "c", "text": { "en": "A GraphQL comment" } },
+        { "id": "d", "text": { "en": "The database itself" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "DAB supports @env('NAME') substitution so secrets stay out of the repository; with managed identity the connection string contains no password at all." },
+      "example": { "en": "\"connection-string\": \"@env('SQL_CONNECTION_STRING')\"" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/configuration/data-source"]
+    },
+    {
+      "id": "d2-endp-0039",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-endpoint-security",
+      "type": "multiple", "difficulty": "medium", "selectCount": 2,
+      "text": { "en": "Which two settings most reduce risk on a production DAB deployment? (Select 2)" },
+      "options": [
+        { "id": "a", "text": { "en": "Remove write actions from the anonymous role" } },
+        { "id": "b", "text": { "en": "Use a real identity provider instead of Simulator" } },
+        { "id": "c", "text": { "en": "Enable * for anonymous to simplify testing" } },
+        { "id": "d", "text": { "en": "Connect as the server admin" } }
+      ],
+      "answer": ["a", "b"],
+      "explanation": { "en": "Restricting anonymous writes and validating real tokens are fundamental. Wildcards for anonymous (c) and admin connections (d) do the opposite." },
+      "example": { "en": "Review effective permissions before every release." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/authorization"]
+    },
+    {
+      "id": "d2-endp-0040",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-endpoint-security",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A RAG procedure calls a chat model via sp_invoke_external_rest_endpoint and includes retrieved customer records in the prompt. Which control best limits what data can leave the database?" },
+      "options": [
+        { "id": "a", "text": { "en": "Select only the needed columns into the payload (no PII unless required), run the procedure under a least-privileged principal, and audit calls" } },
+        { "id": "b", "text": { "en": "Send full rows for better answers" } },
+        { "id": "c", "text": { "en": "Disable auditing to improve latency" } },
+        { "id": "d", "text": { "en": "Grant EXECUTE ANY EXTERNAL ENDPOINT to public" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Data minimization in the payload, least privilege and auditing directly limit exfiltration risk. Sending full rows (b), disabling auditing (c) and broad grants (d) increase it." },
+      "example": { "en": "SELECT Title, Summary FROM … FOR JSON PATH — not SELECT *." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-invoke-external-rest-endpoint-transact-sql"]
+    },
+    {
+      "id": "d2-endp-0041",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-endpoint-security",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which statement about sp_invoke_external_rest_endpoint and HTTP redirects is true?" },
+      "options": [
+        { "id": "a", "text": { "en": "It doesn't follow redirects automatically" } },
+        { "id": "b", "text": { "en": "It follows up to 10 redirects" } },
+        { "id": "c", "text": { "en": "It follows redirects only to other domains" } },
+        { "id": "d", "text": { "en": "Redirects cause the credential to be resent anywhere" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The procedure doesn't follow redirects, which also prevents credentials being forwarded to unexpected hosts." },
+      "example": { "en": "Call the final URL directly." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-invoke-external-rest-endpoint-transact-sql"]
+    },
+    {
+      "id": "d2-endp-0042",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-endpoint-security",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "For each statement about DAB roles, answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "A valid token without X-MS-API-ROLE is evaluated as the authenticated role." } },
+        { "id": "s2", "text": { "en": "An invalid token results in 401 Unauthorized." } },
+        { "id": "s3", "text": { "en": "Custom roles come from the token's roles claim." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "yes", "s3": "yes" },
+      "explanation": { "en": "DAB's role evaluation matrix: no token → anonymous; valid token → authenticated; valid token + allowed X-MS-API-ROLE → that role; invalid token → 401." },
+      "example": { "en": "Define app roles in Entra and assign users/groups to them." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/authorization"]
+    },
+    {
+      "id": "d2-endp-0043",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-endpoint-security",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "In SQL Server 2025, an ONNX model runs locally via CREATE EXTERNAL MODEL with API_FORMAT = 'ONNX Runtime'. Which security consideration does Microsoft emphasize?" },
+      "options": [
+        { "id": "a", "text": { "en": "Only use models and libraries from trusted sources — a malicious model could exfiltrate data or run unauthorized code" } },
+        { "id": "b", "text": { "en": "Local models are always safe because they're offline" } },
+        { "id": "c", "text": { "en": "ONNX models must use API keys" } },
+        { "id": "d", "text": { "en": "ONNX requires TDE" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The documentation warns that third-party models aren't validated by Microsoft; you're responsible for vetting them, securing the runtime and applying least privilege. Being local doesn't make them safe (b)." },
+      "example": { "en": "Restrict folder permissions on the runtime path and audit AI_GENERATE_EMBEDDINGS use." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-external-model-transact-sql"]
+    },
+    {
+      "id": "d2-endp-0044",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-endpoint-security",
+      "type": "dropdown", "difficulty": "hard",
+      "text": { "en": "Complete the DAB configuration snippet for Entra authentication." },
+      "code": "\"authentication\": {\n  \"provider\": \"[BLANK1]\",\n  \"jwt\": {\n    \"[BLANK2]\": \"api://orders-api\",\n    \"issuer\": \"https://login.microsoftonline.com/<tenant-id>/v2.0\"\n  }\n}",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "EntraID" } },
+            { "id": "c2", "text": { "en": "Simulator" } },
+            { "id": "c3", "text": { "en": "Basic" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "audience" } },
+            { "id": "c2", "text": { "en": "secret" } },
+            { "id": "c3", "text": { "en": "password" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "EntraID (also accepted as AzureAD) validates Entra-issued JWTs; audience + issuer define which tokens are accepted. Simulator is dev-only, Basic isn't a provider, and no secret/password goes in this section." },
+      "example": { "en": "The audience must match the app registration's Application ID URI." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/authentication-azure-ad"]
+    },
+    {
+      "id": "d2-endp-0045",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-endpoint-security",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which approach restricts outbound calls from Azure SQL Database to a specific set of FQDNs beyond the default allow list?" },
+      "options": [
+        { "id": "a", "text": { "en": "Outbound firewall rules on the logical server" } },
+        { "id": "b", "text": { "en": "Inbound firewall rules" } },
+        { "id": "c", "text": { "en": "Dynamic data masking" } },
+        { "id": "d", "text": { "en": "Query Store" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Outbound firewall rules ('restrict outbound networking') limit which FQDNs the server can reach. Inbound rules control client connections; masking and Query Store are unrelated." },
+      "example": { "en": "Allow only contoso-ai.openai.azure.com for the RAG workload." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-sql/database/outbound-firewall-rule-overview"]
+    },
+    {
+      "id": "d2-endp-0046",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-endpoint-security",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which DAB endpoint types can be secured with the same entity permissions?" },
+      "options": [
+        { "id": "a", "text": { "en": "Both REST and GraphQL (and MCP tools built on the same entities)" } },
+        { "id": "b", "text": { "en": "Only REST" } },
+        { "id": "c", "text": { "en": "Only GraphQL" } },
+        { "id": "d", "text": { "en": "Neither — each needs separate code" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Permissions are defined per entity and enforced across the endpoints that expose it, so one configuration secures REST and GraphQL consistently." },
+      "example": { "en": "An excluded field fails in GET /api/Order and in GraphQL selections alike." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/authorization"]
+    },
+    {
+      "id": "d2-endp-0047",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-endpoint-security",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which statement about headers in sp_invoke_external_rest_endpoint is correct?" },
+      "options": [
+        { "id": "a", "text": { "en": "Headers are passed as flat JSON; forbidden headers are ignored, and credential headers are added from the database scoped credential" } },
+        { "id": "b", "text": { "en": "Headers must be XML" } },
+        { "id": "c", "text": { "en": "API keys should always be passed in @headers literals" } },
+        { "id": "d", "text": { "en": "Headers aren't supported" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "@headers takes flat JSON; forbidden headers are discarded/replaced. Putting keys in @headers literals (c) exposes them in code — credentials should come from a database scoped credential." },
+      "example": { "en": "@headers = N'{\"Accept\":\"application/json\"}', @credential = [https://…]" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-invoke-external-rest-endpoint-transact-sql"]
+    },
+    {
+      "id": "d2-endp-0048",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-endpoint-security",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What does the 'Secure by default' principle mean for objects in the database that aren't listed in dab-config.json?" },
+      "options": [
+        { "id": "a", "text": { "en": "They're not exposed by DAB at all" } },
+        { "id": "b", "text": { "en": "They're exposed read-only" } },
+        { "id": "c", "text": { "en": "They're exposed to authenticated users" } },
+        { "id": "d", "text": { "en": "They're exposed but hidden from docs" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "DAB ignores database objects not referenced in the configuration. Exposure is opt-in per entity." },
+      "example": { "en": "Adding a table to the database never silently creates an API." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/authorization"]
+    },
+    {
+      "id": "d2-endp-0049",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-endpoint-security",
+      "type": "dragdrop-order", "difficulty": "medium",
+      "text": { "en": "Order the request-processing steps DAB applies to an incoming authenticated request." },
+      "items": [
+        { "id": "i1", "text": { "en": "Validate the token (issuer, audience, signature)" } },
+        { "id": "i2", "text": { "en": "Determine the effective role (authenticated or X-MS-API-ROLE)" } },
+        { "id": "i3", "text": { "en": "Check entity permissions and fields for that role and action" } },
+        { "id": "i4", "text": { "en": "Apply database policy predicates and run the query" } }
+      ],
+      "answer": ["i1", "i2", "i3", "i4"],
+      "explanation": { "en": "Authentication, role resolution, action/field authorization, then row-level policy and execution. Failures stop the pipeline early with 401/403." },
+      "example": { "en": "A 403 means the token was valid but the role/action wasn't allowed." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/authorization"]
+    },
+    {
+      "id": "d2-endp-0050",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-endpoint-security",
+      "type": "dragdrop-match", "difficulty": "medium",
+      "text": { "en": "Match each endpoint scenario to its key security mechanism." },
+      "items": [
+        { "id": "i1", "text": { "en": "Azure SQL calling Azure OpenAI" } },
+        { "id": "i2", "text": { "en": "Browser app calling DAB GraphQL" } },
+        { "id": "i3", "text": { "en": "Calling a non-Azure API from Azure SQL" } },
+        { "id": "i4", "text": { "en": "Per-user rows behind DAB's shared identity" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "Managed identity credential + RBAC" } },
+        { "id": "t2", "text": { "en": "Entra JWT + role permissions + CORS" } },
+        { "id": "t3", "text": { "en": "Front it with API Management (allow-listed domain)" } },
+        { "id": "t4", "text": { "en": "Session context + RLS" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "Outbound model calls use managed identity; inbound APIs use token validation and role permissions; non-allow-listed services go through API Management; per-user data behind shared connections uses session context with RLS." },
+      "example": { "en": "These four patterns cover most endpoint-security questions." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-invoke-external-rest-endpoint-transact-sql", "https://learn.microsoft.com/en-us/azure/data-api-builder/authorization"]
+    }
+  ]
+}

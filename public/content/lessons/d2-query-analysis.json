@@ -1,0 +1,63 @@
+{
+  "subtopic": "d2-query-analysis",
+  "title": { "en": "Query analysis (plans, DMVs, Query Store, Query Performance Insight)" },
+  "prerequisiteRecap": [
+    {
+      "heading": { "en": "How a query becomes a plan" },
+      "body": {
+        "en": "The query optimizer turns T-SQL into an **execution plan**: a tree of operators (seeks, scans, joins, sorts) chosen by estimated cost, which depends on **statistics** (histograms of column value distribution). Plans are cached and reused. Most performance problems come from bad estimates, missing indexes, non-SARGable predicates, or a cached plan that suits some parameter values but not others."
+      }
+    }
+  ],
+  "sections": [
+    {
+      "heading": { "en": "Reading execution plans" },
+      "body": {
+        "en": "- **Estimated plan**: what the optimizer intends (no execution). **Actual plan**: includes runtime row counts, executions and warnings — always use actual plans to diagnose.\n- Compare **Estimated vs Actual Number of Rows**: large gaps point to stale/missing statistics, non-SARGable predicates or parameter sniffing.\n- Watch for **warnings**: spills to tempdb (sort/hash), implicit conversions affecting seeks (CONVERT_IMPLICIT), missing index suggestions, excessive memory grants.\n- Key operators: Index Seek vs Scan, Key Lookup (consider INCLUDE columns), Nested Loops (good for small inputs), Hash Match (large unsorted inputs), Merge Join (sorted inputs), Sort, Parallelism.\n- `SET STATISTICS IO, TIME ON` shows logical reads and CPU/elapsed time per statement — logical reads are the most stable measure of work.\n- **Live Query Statistics** shows in-flight progress; the lightweight profiling infrastructure enables `sys.dm_exec_query_statistics_xml` for running queries."
+      },
+      "code": "SET STATISTICS IO, TIME ON;\nSELECT o.OrderId, o.Total\nFROM dbo.Orders AS o\nWHERE o.CustomerId = 42;\n-- Messages: Table 'Orders'. Scan count 1, logical reads 3 ...\n--           CPU time = 0 ms, elapsed time = 1 ms."
+    },
+    {
+      "heading": { "en": "DMVs for performance" },
+      "body": {
+        "en": "Dynamic management views expose live and cumulative state:\n- `sys.dm_exec_requests` — what's running now (status, wait_type, blocking_session_id, cpu_time).\n- `sys.dm_exec_sessions`, `sys.dm_exec_connections` — who is connected.\n- `sys.dm_exec_query_stats` + `sys.dm_exec_sql_text` + `sys.dm_exec_query_plan` — cumulative stats for cached plans (top CPU/IO queries). Resets when plans leave the cache.\n- `sys.dm_os_wait_stats` (instance) / `sys.dm_db_wait_stats` (Azure SQL Database) — what the engine is waiting on.\n- `sys.dm_db_index_usage_stats`, `sys.dm_db_missing_index_details` — index usage and suggestions.\n- `sys.dm_db_resource_stats` (Azure SQL Database) — CPU, data IO, log IO, memory as % of limits, every 15 seconds for about an hour.\nPermissions: VIEW SERVER STATE / VIEW DATABASE STATE (Azure SQL: VIEW DATABASE PERFORMANCE STATE / ##MS_ServerStateReader##)."
+      },
+      "code": "-- Top 10 queries by total CPU since cached\nSELECT TOP (10)\n    qs.total_worker_time / 1000 AS total_cpu_ms,\n    qs.execution_count,\n    qs.total_logical_reads,\n    SUBSTRING(st.text, qs.statement_start_offset/2 + 1,\n        (CASE qs.statement_end_offset WHEN -1 THEN DATALENGTH(st.text)\n              ELSE qs.statement_end_offset END - qs.statement_start_offset)/2 + 1) AS statement_text\nFROM sys.dm_exec_query_stats AS qs\nCROSS APPLY sys.dm_exec_sql_text(qs.sql_handle) AS st\nORDER BY qs.total_worker_time DESC;"
+    },
+    {
+      "heading": { "en": "Query Store" },
+      "body": {
+        "en": "Query Store is the database's flight recorder: it persists queries, their plans and runtime statistics (duration, CPU, reads, memory, waits) in time intervals, surviving restarts and plan cache flushes. It's ON by default in Azure SQL and new SQL Server 2022+ databases.\nUses:\n- **Regressed queries** report: find queries whose performance got worse (often a plan change).\n- **Plan forcing**: `sp_query_store_force_plan @query_id, @plan_id` pins a known good plan (unforce with sp_query_store_unforce_plan).\n- **Query Store hints**: `sp_query_store_set_hints` applies hints (e.g. RECOMPILE, MAXDOP, legacy CE) to a query without changing code — ideal for vendor apps.\n- **Wait statistics per query** (sys.query_store_wait_stats).\n- Feeds automatic plan correction (FORCE_LAST_GOOD_PLAN).\nKey settings: OPERATION_MODE (READ_WRITE / READ_ONLY — it switches to READ_ONLY when MAX_STORAGE_SIZE_MB is reached), QUERY_CAPTURE_MODE (ALL / AUTO / NONE / CUSTOM), retention (stale query threshold, size-based cleanup). Catalog views: sys.query_store_query, sys.query_store_plan, sys.query_store_runtime_stats, sys.query_store_query_text."
+      },
+      "code": "-- Find a query's plans and force the good one\nSELECT q.query_id, p.plan_id, rs.avg_duration\nFROM sys.query_store_query AS q\nJOIN sys.query_store_plan AS p ON p.query_id = q.query_id\nJOIN sys.query_store_runtime_stats AS rs ON rs.plan_id = p.plan_id\nWHERE q.query_id = 42;\n\nEXEC sp_query_store_force_plan @query_id = 42, @plan_id = 7;\n\n-- Hint without changing application code\nEXEC sp_query_store_set_hints @query_id = 42, @query_hints = N'OPTION(RECOMPILE)';"
+    },
+    {
+      "heading": { "en": "Query Performance Insight and Azure tooling" },
+      "body": {
+        "en": "**Query Performance Insight** (Azure SQL Database portal) visualizes Query Store data: top resource-consuming queries by CPU, data IO, log IO or duration over a chosen period, with drill-down per query. It requires Query Store to be active. **Database watcher** / Azure Monitor metrics give fleet-level monitoring; **Intelligent Insights** detects performance anomalies; **automatic tuning** applies index and plan recommendations. In SSMS, Query Store reports (Top Resource Consuming Queries, Regressed Queries, Tracked Queries, Queries with Forced Plans) provide the same analysis on any platform."
+      }
+    },
+    {
+      "heading": { "en": "A diagnostic workflow" },
+      "body": {
+        "en": "1. Is it happening NOW? → dm_exec_requests (waits, blocking).\n2. Historical / regression? → Query Store (Top Resource / Regressed Queries) or Query Performance Insight.\n3. What does the engine wait on overall? → wait stats.\n4. Why is this query slow? → actual plan: estimates vs actuals, scans, lookups, spills, implicit conversions.\n5. Fix: index/statistics/query rewrite; or force plan / Query Store hint as a safe, reversible mitigation.\n6. Verify with Query Store runtime stats after the change."
+      }
+    }
+  ],
+  "examTips": [
+    { "en": "Actual plan > estimated plan for diagnosis; look for estimate-vs-actual row gaps, spills, CONVERT_IMPLICIT, key lookups." },
+    { "en": "dm_exec_query_stats is cumulative for CACHED plans only (lost on eviction/restart); Query Store persists history." },
+    { "en": "Plan regression → Query Store Regressed Queries + sp_query_store_force_plan (or automatic FORCE_LAST_GOOD_PLAN)." },
+    { "en": "Can't change vendor code? → Query Store hints (sp_query_store_set_hints)." },
+    { "en": "Query Store goes READ_ONLY when it hits MAX_STORAGE_SIZE_MB — check actual_state_desc." },
+    { "en": "Query Performance Insight = Azure SQL Database portal view over Query Store (top CPU/IO/duration queries)." },
+    { "en": "sys.dm_db_resource_stats (Azure SQL DB) shows resource % of the service tier limits at 15-second granularity." }
+  ],
+  "sources": [
+    "https://learn.microsoft.com/en-us/sql/relational-databases/performance/execution-plans",
+    "https://learn.microsoft.com/en-us/sql/relational-databases/performance/monitoring-performance-by-using-the-query-store",
+    "https://learn.microsoft.com/en-us/sql/relational-databases/performance/query-store-hints",
+    "https://learn.microsoft.com/en-us/azure/azure-sql/database/query-performance-insight-use",
+    "https://learn.microsoft.com/en-us/azure/azure-sql/database/monitoring-with-dmvs"
+  ]
+}

@@ -1,0 +1,847 @@
+{
+  "subtopic": "d3-external-models",
+  "cases": [
+    {
+      "id": "case-xm-support",
+      "title": { "en": "Northwind multilingual support portal" },
+      "scenario": {
+        "en": "Northwind stores 2 million support tickets in **Azure SQL Database**. Tickets are written in English, Spanish and German, and agents search in their own language.\n- Security policy: **no API keys** in the database; use Microsoft Entra identities.\n- Only the `SupportApp` database role may generate embeddings.\n- Storage must stay modest, so the team wants vectors that fit the default **float32** `vector` type.\n- A nightly job asks a chat model to classify each new ticket and must parse the answer in T-SQL."
+      }
+    }
+  ],
+  "questions": [
+    {
+      "id": "d3-xm-0001",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-external-models",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "What does an external model object store in the database?" },
+      "options": [
+        { "id": "a", "text": { "en": "The location, authentication method and purpose of an AI model inference endpoint" } },
+        { "id": "b", "text": { "en": "The model's weights, downloaded into a table" } },
+        { "id": "c", "text": { "en": "A cached copy of every embedding the model ever produced" } },
+        { "id": "d", "text": { "en": "A linked server to Azure OpenAI" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "CREATE EXTERNAL MODEL registers where the endpoint is, which credential to use and the model type so AI functions can call it. It doesn't import weights, cache results or create a linked server." },
+      "example": { "en": "AI_GENERATE_EMBEDDINGS(@text USE MODEL ProductEmbedder) uses the stored definition." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-external-model-transact-sql"]
+    },
+    {
+      "id": "d3-xm-0002",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-external-models",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which MODEL_TYPE value does CREATE EXTERNAL MODEL accept?" },
+      "options": [
+        { "id": "a", "text": { "en": "EMBEDDINGS" } },
+        { "id": "b", "text": { "en": "CHAT_COMPLETIONS" } },
+        { "id": "c", "text": { "en": "IMAGE_GENERATION" } },
+        { "id": "d", "text": { "en": "CLASSIFICATION" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "EMBEDDINGS is currently the only accepted model type, used by AI_GENERATE_EMBEDDINGS. To call chat models from T-SQL, use sp_invoke_external_rest_endpoint." },
+      "example": { "en": "MODEL_TYPE = EMBEDDINGS" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-external-model-transact-sql"]
+    },
+    {
+      "id": "d3-xm-0003",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-external-models",
+      "type": "multiple", "difficulty": "medium", "selectCount": 4,
+      "text": { "en": "Which four values are accepted for API_FORMAT in CREATE EXTERNAL MODEL? (Select 4)" },
+      "options": [
+        { "id": "a", "text": { "en": "Azure OpenAI" } },
+        { "id": "b", "text": { "en": "OpenAI" } },
+        { "id": "c", "text": { "en": "Ollama" } },
+        { "id": "d", "text": { "en": "ONNX Runtime" } },
+        { "id": "e", "text": { "en": "Hugging Face Hub" } },
+        { "id": "f", "text": { "en": "TensorFlow Serving" } }
+      ],
+      "answer": ["a", "b", "c", "d"],
+      "explanation": { "en": "The documented API formats are Azure OpenAI, OpenAI, Ollama and ONNX Runtime (local). Hugging Face Hub and TensorFlow Serving aren't accepted formats (you can still run a Hugging Face ONNX model through ONNX Runtime)." },
+      "example": { "en": "API_FORMAT = 'Ollama' for a local development model." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-external-model-transact-sql"]
+    },
+    {
+      "id": "d3-xm-0004",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-external-models",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which LOCATION format is correct for an Azure OpenAI embeddings deployment?" },
+      "options": [
+        { "id": "a", "text": { "en": "https://{endpoint}/openai/deployments/{deployment-id}/embeddings?api-version={date}" } },
+        { "id": "b", "text": { "en": "https://{endpoint}/v1/chat/completions" } },
+        { "id": "c", "text": { "en": "sqlserver://{endpoint}/embeddings" } },
+        { "id": "d", "text": { "en": "https://localhost:{port}/api/embed" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Azure OpenAI embeddings use the deployments/{deployment}/embeddings path with an api-version. Chat completions isn't an embeddings endpoint, sqlserver:// isn't a valid protocol (HTTPS is required), and /api/embed is the Ollama format." },
+      "example": { "en": "https://contoso-ai.openai.azure.com/openai/deployments/text-embedding-3-small/embeddings?api-version=2024-02-01" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-external-model-transact-sql"]
+    },
+    {
+      "id": "d3-xm-0005",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-external-models",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "How must the database scoped credential used by an Azure OpenAI external model be named?" },
+      "options": [
+        { "id": "a", "text": { "en": "As a URL whose protocol and host match the endpoint, without a query string, and no more specific than the called path" } },
+        { "id": "b", "text": { "en": "Any name, as long as it starts with cred_" } },
+        { "id": "c", "text": { "en": "The deployment name only" } },
+        { "id": "d", "text": { "en": "The full LOCATION including ?api-version=" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The credential name must be a valid URL on an allowed domain, with matching protocol and FQDN, no query string, and a path equal to or more generic than the request URL. Arbitrary names, bare deployment names and names with a query string don't satisfy the rules." },
+      "example": { "en": "CREATE DATABASE SCOPED CREDENTIAL [https://contoso-ai.openai.azure.com/] …" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-external-model-transact-sql"]
+    },
+    {
+      "id": "d3-xm-0006",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-external-models",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Complete the credential so the database authenticates to Azure OpenAI with its managed identity." },
+      "code": "CREATE DATABASE SCOPED CREDENTIAL [https://contoso-ai.openai.azure.com/]\n    WITH IDENTITY = '[BLANK1]',\n         SECRET   = '[BLANK2]';",
+      "blanks": [
+        { "id": "b1", "label": { "en": "BLANK1" }, "choices": [
+          { "id": "c1", "text": { "en": "Managed Identity" } },
+          { "id": "c2", "text": { "en": "HTTPEndpointHeaders" } },
+          { "id": "c3", "text": { "en": "SHARED ACCESS SIGNATURE" } }
+        ] },
+        { "id": "b2", "label": { "en": "BLANK2" }, "choices": [
+          { "id": "c1", "text": { "en": "{\"api-key\":\"…\"}" } },
+          { "id": "c2", "text": { "en": "{\"resourceid\":\"https://cognitiveservices.azure.com\"}" } },
+          { "id": "c3", "text": { "en": "{\"tenant\":\"common\"}" } }
+        ] }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c2" },
+      "explanation": { "en": "For managed identity, IDENTITY is 'Managed Identity' and the secret names the resource to get a token for (Cognitive Services). HTTPEndpointHeaders with an api-key is key-based auth; SAS is for storage-style endpoints." },
+      "example": { "en": "Grant the server's identity an Azure OpenAI role on the resource so token calls succeed." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-external-model-transact-sql"]
+    },
+    {
+      "id": "d3-xm-0007",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-external-models",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A dev environment must use an Azure OpenAI API key for the external model. How is the key supplied?" },
+      "options": [
+        { "id": "a", "text": { "en": "A database scoped credential WITH IDENTITY = 'HTTPEndpointHeaders', SECRET = '{\"api-key\":\"…\"}'" } },
+        { "id": "b", "text": { "en": "In the LOCATION query string (?api-key=…)" } },
+        { "id": "c", "text": { "en": "In the MODEL argument" } },
+        { "id": "d", "text": { "en": "In a SQL login password" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "HTTPEndpointHeaders credentials add the secret as request headers. Keys in URLs leak into logs, MODEL names the model, and SQL logins don't authenticate to Azure OpenAI. Prefer managed identity in production." },
+      "example": { "en": "For OpenAI (not Azure), the header secret is {\"Bearer\":\"YOUR_OPENAI_KEY\"}." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-external-model-transact-sql"]
+    },
+    {
+      "id": "d3-xm-0008",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-external-models",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "The user app_reader gets a permission error when running AI_GENERATE_EMBEDDINGS(… USE MODEL ProductEmbedder). What should you grant?" },
+      "options": [
+        { "id": "a", "text": { "en": "GRANT EXECUTE ON EXTERNAL MODEL::ProductEmbedder TO app_reader;" } },
+        { "id": "b", "text": { "en": "GRANT CONTROL SERVER TO app_reader;" } },
+        { "id": "c", "text": { "en": "GRANT SELECT ON sys.external_models TO app_reader;" } },
+        { "id": "d", "text": { "en": "ALTER ROLE db_owner ADD MEMBER app_reader;" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Using a model in an AI function requires EXECUTE on that external model. CONTROL SERVER and db_owner are far too broad, and SELECT on the catalog view only shows metadata." },
+      "example": { "en": "GRANT EXECUTE ON EXTERNAL MODEL::ProductEmbedder TO SupportApp; -- a role" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-external-model-transact-sql"]
+    },
+    {
+      "id": "d3-xm-0009",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-external-models",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which permission allows a developer to create external models in a database without making them db_owner?" },
+      "options": [
+        { "id": "a", "text": { "en": "CREATE EXTERNAL MODEL (or ALTER ANY EXTERNAL MODEL)" } },
+        { "id": "b", "text": { "en": "EXECUTE ANY EXTERNAL ENDPOINT only" } },
+        { "id": "c", "text": { "en": "CREATE TABLE" } },
+        { "id": "d", "text": { "en": "VIEW DATABASE STATE" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Creating and altering external models needs CREATE EXTERNAL MODEL or ALTER ANY EXTERNAL MODEL. EXECUTE ANY EXTERNAL ENDPOINT governs sp_invoke_external_rest_endpoint, and the others are unrelated." },
+      "example": { "en": "GRANT CREATE EXTERNAL MODEL TO [ai_dev];" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-external-model-transact-sql"]
+    },
+    {
+      "id": "d3-xm-0010",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-external-models",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which catalog view lists the external models defined in a database?" },
+      "options": [
+        { "id": "a", "text": { "en": "sys.external_models" } },
+        { "id": "b", "text": { "en": "sys.external_data_sources" } },
+        { "id": "c", "text": { "en": "sys.ai_models" } },
+        { "id": "d", "text": { "en": "sys.database_scoped_credentials" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "sys.external_models returns external model metadata you have access to. external_data_sources is for PolyBase, sys.ai_models doesn't exist, and the credentials view lists credentials, not models." },
+      "example": { "en": "SELECT name, model, api_format FROM sys.external_models;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-external-model-transact-sql"]
+    },
+    {
+      "id": "d3-xm-0011",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-external-models",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "You want the existing external model myAImodel to use text-embedding-3-large instead. Which statement changes it?" },
+      "options": [
+        { "id": "a", "text": { "en": "ALTER EXTERNAL MODEL myAImodel SET (MODEL = 'text-embedding-3-large');" } },
+        { "id": "b", "text": { "en": "UPDATE sys.external_models SET model = 'text-embedding-3-large' WHERE name = 'myAImodel';" } },
+        { "id": "c", "text": { "en": "ALTER EXTERNAL MODEL myAImodel MODIFY MODEL 'text-embedding-3-large';" } },
+        { "id": "d", "text": { "en": "sp_rename 'myAImodel', 'text-embedding-3-large';" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "ALTER EXTERNAL MODEL … SET (…) changes LOCATION, API_FORMAT, MODEL, CREDENTIAL or PARAMETERS. Catalog views can't be updated, MODIFY isn't the syntax, and sp_rename only renames objects. Remember to update LOCATION if the deployment name changes, and re-embed stored data." },
+      "example": { "en": "ALTER EXTERNAL MODEL myAImodel SET (LOCATION = '…/deployments/text-embedding-3-large/embeddings?api-version=…', MODEL = 'text-embedding-3-large');" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-external-model-transact-sql"]
+    },
+    {
+      "id": "d3-xm-0012",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-external-models",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "DROP EXTERNAL MODEL OldEmbedder fails. A view created WITH SCHEMABINDING calls AI_GENERATE_EMBEDDINGS(… USE MODEL OldEmbedder). What must you do?" },
+      "options": [
+        { "id": "a", "text": { "en": "Alter or drop the schema-bound view first, then drop the model" } },
+        { "id": "b", "text": { "en": "Drop the database scoped credential first" } },
+        { "id": "c", "text": { "en": "Use DROP EXTERNAL MODEL … WITH FORCE" } },
+        { "id": "d", "text": { "en": "Revoke EXECUTE on the model from all users" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Schema-bound views block dropping the objects they reference, including external models. Remove the dependency first. The credential, a FORCE option (which doesn't exist) and permissions don't remove the binding." },
+      "example": { "en": "ALTER VIEW dbo.vSearch AS … USE MODEL NewEmbedder …; DROP EXTERNAL MODEL OldEmbedder;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-external-model-transact-sql"]
+    },
+    {
+      "id": "d3-xm-0013",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-external-models",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Embedding calls occasionally fail with throttling (HTTP 429). How can the external model retry automatically?" },
+      "options": [
+        { "id": "a", "text": { "en": "PARAMETERS = '{\"sql_rest_options\":{\"retry_count\":3}}'" } },
+        { "id": "b", "text": { "en": "PARAMETERS = '{\"timeout\":0}'" } },
+        { "id": "c", "text": { "en": "Wrap every call in WAITFOR DELAY" } },
+        { "id": "d", "text": { "en": "Set MODEL_TYPE = RETRY" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "sql_rest_options.retry_count (0–10) retries calls that return transient HTTP status codes. A timeout of 0 isn't a retry setting, WAITFOR doesn't retry, and RETRY isn't a model type." },
+      "example": { "en": "PARAMETERS = '{\"dimensions\":1024, \"sql_rest_options\":{\"retry_count\":5}}'" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-external-model-transact-sql"]
+    },
+    {
+      "id": "d3-xm-0014",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-external-models",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "The external model sets retry_count to 2. A batch job calls AI_GENERATE_EMBEDDINGS(… USE MODEL m PARAMETERS @p) with @p = '{\"sql_rest_options\":{\"retry_count\":10}}'. How many retries apply to that call?" },
+      "options": [
+        { "id": "a", "text": { "en": "10, because call-level parameters override the model's" } },
+        { "id": "b", "text": { "en": "2, because the model definition always wins" } },
+        { "id": "c", "text": { "en": "12, because they're added together" } },
+        { "id": "d", "text": { "en": "The call fails because the values conflict" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Optional PARAMETERS passed to AI_GENERATE_EMBEDDINGS override the same parameter in the model definition at run time. Values aren't summed and don't conflict." },
+      "example": { "en": "Use a higher retry count only for overnight batch jobs." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/ai-generate-embeddings-transact-sql"]
+    },
+    {
+      "id": "d3-xm-0015",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-external-models",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "For a quick experiment you want 768-dimension embeddings from a text-embedding-3-small model whose definition has no dimensions setting. What's the simplest way, without altering the model?" },
+      "options": [
+        { "id": "a", "text": { "en": "AI_GENERATE_EMBEDDINGS(@text USE MODEL m PARAMETERS @p) with @p = '{\"dimensions\":768}'" } },
+        { "id": "b", "text": { "en": "CAST the 1,536-dimension result to VECTOR(768)" } },
+        { "id": "c", "text": { "en": "Use VECTOR_NORMALIZE(@v, 'norm2')" } },
+        { "id": "d", "text": { "en": "It isn't possible" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The call-level PARAMETERS JSON is appended to the request, and text-embedding-3 models accept dimensions. Casting between different dimension counts fails (error 42204), and normalizing doesn't change the dimension count." },
+      "example": { "en": "DECLARE @p JSON = N'{\"dimensions\":768}';" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/ai-generate-embeddings-transact-sql"]
+    },
+    {
+      "id": "d3-xm-0016",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-external-models",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "You plan to store text-embedding-3-large output (3,072 dimensions) in a column declared VECTOR(3072). What happens, and what are valid fixes?" },
+      "options": [
+        { "id": "a", "text": { "en": "The declaration fails because float32 vectors allow at most 1,998 dimensions; use VECTOR(3072, float16) or request dimensions ≤ 1,998" } },
+        { "id": "b", "text": { "en": "It works; vectors have no dimension limit" } },
+        { "id": "c", "text": { "en": "SQL silently truncates to 1,998 values" } },
+        { "id": "d", "text": { "en": "It works only on SQL Server 2022" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The default float32 base type supports up to 1,998 dimensions; float16 supports up to 3,996. Shortening with the dimensions parameter also works. SQL never truncates vectors silently, and SQL Server 2022 has no vector type." },
+      "example": { "en": "embedding VECTOR(3072, float16) -- GA in Azure SQL Database; preview in SQL Server 2025" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/data-types/vector-data-type"]
+    },
+    {
+      "id": "d3-xm-0017",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-external-models",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "How many dimensions does text-embedding-3-small return by default?" },
+      "options": [
+        { "id": "a", "text": { "en": "1,536" } },
+        { "id": "b", "text": { "en": "3,072" } },
+        { "id": "c", "text": { "en": "768" } },
+        { "id": "d", "text": { "en": "384" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "text-embedding-3-small (like text-embedding-ada-002) returns 1,536 dimensions; text-embedding-3-large returns 3,072. 768 and 384 are typical of smaller open models (for example, all-MiniLM-L6-v2 returns 384)." },
+      "example": { "en": "embedding VECTOR(1536)" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-distance-transact-sql"]
+    },
+    {
+      "id": "d3-xm-0018",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-external-models",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "For each statement about choosing models, answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "A multilingual embedding model can match a Spanish query to relevant English content." } },
+        { "id": "s2", "text": { "en": "More dimensions always improve results with no extra cost." } },
+        { "id": "s3", "text": { "en": "Query vectors must come from the same embedding model as the stored vectors." } },
+        { "id": "s4", "text": { "en": "Structured (JSON) output makes chat-model responses easier to process in T-SQL." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "no", "s3": "yes", "s4": "yes" },
+      "explanation": { "en": "Multilingual models share one vector space across languages. Bigger vectors cost storage, memory and latency. Different models produce incompatible vector spaces. JSON output can be parsed with OPENJSON and JSON_VALUE." },
+      "example": { "en": "Evaluate on your own queries: measure relevance, latency and cost before choosing." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-models-embeddings-with-sql/02-understand-evaluate-models-sql-database-workloads"]
+    },
+    {
+      "id": "d3-xm-0019",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-external-models",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A retailer wants shoppers to upload a photo and find visually similar products. What kind of embedding model is required?" },
+      "options": [
+        { "id": "a", "text": { "en": "A multimodal model that embeds images (and text) into the same vector space" } },
+        { "id": "b", "text": { "en": "A text-only embedding model applied to file names" } },
+        { "id": "c", "text": { "en": "A chat model with structured output" } },
+        { "id": "d", "text": { "en": "Full-text search on product descriptions" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Modality matters: image search needs a model that accepts images. File names carry little meaning, chat models don't produce search embeddings, and full-text search can't compare pictures." },
+      "example": { "en": "Store image embeddings in a vector column next to the product row." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-models-embeddings-with-sql/02-understand-evaluate-models-sql-database-workloads"]
+    },
+    {
+      "id": "d3-xm-0020",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-external-models",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Product content is in English, but users search in French, Japanese and Arabic. What model characteristic matters most?" },
+      "options": [
+        { "id": "a", "text": { "en": "Multilingual support" } },
+        { "id": "b", "text": { "en": "Image input support" } },
+        { "id": "c", "text": { "en": "The largest possible dimension count" } },
+        { "id": "d", "text": { "en": "Structured output" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Cross-language retrieval needs a model trained to place equivalent meanings from different languages close together. Images, sheer size and JSON output don't solve the language gap." },
+      "example": { "en": "Test with real French/Japanese/Arabic queries against English documents before committing." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-models-embeddings-with-sql/02-understand-evaluate-models-sql-database-workloads"]
+    },
+    {
+      "id": "d3-xm-0021",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-external-models",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Some product manuals are 40,000 tokens long. Current Azure OpenAI embedding models accept up to 8,192 tokens per input. What should you do?" },
+      "options": [
+        { "id": "a", "text": { "en": "Split the manuals into chunks and embed each chunk" } },
+        { "id": "b", "text": { "en": "Send the whole manual; the model truncates safely and keeps the meaning" } },
+        { "id": "c", "text": { "en": "Embed only the manual's title" } },
+        { "id": "d", "text": { "en": "Increase the model's token limit with PARAMETERS" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Input limits drive chunking: each chunk must fit the model, and focused chunks also improve retrieval. Oversized inputs fail, titles alone lose content, and token limits can't be raised with parameters." },
+      "example": { "en": "CROSS APPLY AI_GENERATE_CHUNKS(SOURCE = body, CHUNK_TYPE = FIXED, CHUNK_SIZE = 2000, OVERLAP = 10)" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/foundry/openai/how-to/embeddings"]
+    },
+    {
+      "id": "d3-xm-0022",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-external-models",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A T-SQL job sends ticket text to a chat model and must always get JSON matching a fixed schema. Which request option should the job use?" },
+      "options": [
+        { "id": "a", "text": { "en": "response_format of type json_schema with strict set to true" } },
+        { "id": "b", "text": { "en": "A higher temperature" } },
+        { "id": "c", "text": { "en": "MODEL_TYPE = EMBEDDINGS" } },
+        { "id": "d", "text": { "en": "Asking politely in the prompt only" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Structured outputs enforce your JSON Schema (unlike older JSON mode, which only guaranteed valid JSON). Temperature changes randomness, embeddings aren't chat output, and prompt wording alone isn't a guarantee." },
+      "example": { "en": "\"response_format\": { \"type\": \"json_schema\", \"json_schema\": { \"name\": \"Ticket\", \"strict\": true, \"schema\": { … } } }" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/foundry/openai/how-to/structured-outputs"]
+    },
+    {
+      "id": "d3-xm-0023",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-external-models",
+      "type": "multiple", "difficulty": "hard", "selectCount": 2,
+      "text": { "en": "Your structured-output schema is rejected by Azure OpenAI. Which two rules must a strict JSON Schema follow? (Select 2)" },
+      "options": [
+        { "id": "a", "text": { "en": "Every property must be listed in required" } },
+        { "id": "b", "text": { "en": "Objects must set additionalProperties to false" } },
+        { "id": "c", "text": { "en": "Strings must use maxLength" } },
+        { "id": "d", "text": { "en": "Optional properties are made by leaving them out of required" } },
+        { "id": "e", "text": { "en": "The root object must be anyOf" } }
+      ],
+      "answer": ["a", "b"],
+      "explanation": { "en": "Strict structured outputs require all fields in required (emulate optional fields with a null union) and additionalProperties: false. maxLength isn't supported, and the root can't be anyOf." },
+      "example": { "en": "\"priority\": { \"type\": [\"string\", \"null\"] } with priority still listed as required" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/foundry/openai/how-to/structured-outputs"]
+    },
+    {
+      "id": "d3-xm-0024",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-external-models",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Where can the team compare candidate models' capabilities, benchmarks, versions and retirement dates before wiring one into SQL?" },
+      "options": [
+        { "id": "a", "text": { "en": "The Microsoft Foundry model catalog" } },
+        { "id": "b", "text": { "en": "sys.external_models" } },
+        { "id": "c", "text": { "en": "Query Store" } },
+        { "id": "d", "text": { "en": "The SQL Server error log" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Foundry Models exposes capabilities, benchmarks, versions and lifecycle status. sys.external_models only lists models already registered, and Query Store and the error log are unrelated." },
+      "example": { "en": "Check a model's retirement date so production doesn't break when it's deprecated." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-models-embeddings-with-sql/02-understand-evaluate-models-sql-database-workloads"]
+    },
+    {
+      "id": "d3-xm-0025",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-external-models",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "An on-premises SQL Server 2025 holds data that must never leave the network. Which external model approach fits?" },
+      "options": [
+        { "id": "a", "text": { "en": "A locally hosted model, such as Ollama on the network or ONNX Runtime on the server" } },
+        { "id": "b", "text": { "en": "OpenAI's public API" } },
+        { "id": "c", "text": { "en": "Azure OpenAI over the internet" } },
+        { "id": "d", "text": { "en": "Any model, because embeddings don't contain data" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Local hosting keeps text inside your environment. Cloud APIs send the text out, and embedding requests do carry the source text." },
+      "example": { "en": "API_FORMAT = 'ONNX Runtime' with LOCATION pointing to a local model folder." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-external-model-transact-sql"]
+    },
+    {
+      "id": "d3-xm-0026",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-external-models",
+      "type": "dragdrop-order", "difficulty": "medium",
+      "text": { "en": "On SQL Server 2025, order the steps to make an Azure OpenAI embedding model callable by an app role." },
+      "items": [
+        { "id": "i1", "text": { "en": "EXEC sp_configure 'external rest endpoint enabled', 1; RECONFIGURE" } },
+        { "id": "i2", "text": { "en": "CREATE MASTER KEY in the database" } },
+        { "id": "i3", "text": { "en": "CREATE DATABASE SCOPED CREDENTIAL named with the endpoint URL" } },
+        { "id": "i4", "text": { "en": "CREATE EXTERNAL MODEL referencing the credential" } },
+        { "id": "i5", "text": { "en": "GRANT EXECUTE ON EXTERNAL MODEL to the app role" } }
+      ],
+      "answer": ["i1", "i2", "i3", "i4", "i5"],
+      "explanation": { "en": "Outbound REST must be enabled; the master key protects the credential's secret; the model references the credential; permissions are granted on the existing model." },
+      "example": { "en": "Then test: SELECT AI_GENERATE_EMBEDDINGS(N'test' USE MODEL m);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/ai-generate-embeddings-transact-sql"]
+    },
+    {
+      "id": "d3-xm-0027",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-external-models",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Complete the external model definition for an Azure OpenAI text-embedding-3-small deployment." },
+      "code": "CREATE EXTERNAL MODEL ProductEmbedder\nWITH (\n    LOCATION   = 'https://contoso-ai.openai.azure.com/openai/deployments/text-embedding-3-small/embeddings?api-version=2024-02-01',\n    API_FORMAT = '[BLANK1]',\n    MODEL_TYPE = [BLANK2],\n    MODEL      = 'text-embedding-3-small',\n    CREDENTIAL = [BLANK3]\n);",
+      "blanks": [
+        { "id": "b1", "label": { "en": "BLANK1" }, "choices": [
+          { "id": "c1", "text": { "en": "OpenAI" } },
+          { "id": "c2", "text": { "en": "Azure OpenAI" } },
+          { "id": "c3", "text": { "en": "Ollama" } }
+        ] },
+        { "id": "b2", "label": { "en": "BLANK2" }, "choices": [
+          { "id": "c1", "text": { "en": "EMBEDDINGS" } },
+          { "id": "c2", "text": { "en": "'text-embedding'" } },
+          { "id": "c3", "text": { "en": "VECTOR" } }
+        ] },
+        { "id": "b3", "label": { "en": "BLANK3" }, "choices": [
+          { "id": "c1", "text": { "en": "[https://contoso-ai.openai.azure.com/]" } },
+          { "id": "c2", "text": { "en": "'api-key'" } },
+          { "id": "c3", "text": { "en": "[ProductEmbedder]" } }
+        ] }
+      ],
+      "answerMap": { "b1": "c2", "b2": "c1", "b3": "c1" },
+      "explanation": { "en": "An Azure OpenAI deployment uses API_FORMAT 'Azure OpenAI' (OpenAI is for api.openai.com-style endpoints). MODEL_TYPE is the keyword EMBEDDINGS. CREDENTIAL names the database scoped credential, which is named after the endpoint URL." },
+      "example": { "en": "Add PARAMETERS = '{\"sql_rest_options\":{\"retry_count\":3}}' for resilience." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-external-model-transact-sql"]
+    },
+    {
+      "id": "d3-xm-0028",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-external-models",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "An on-premises SQL Server 2025 instance should use a managed identity credential to call Azure OpenAI. What's required?" },
+      "options": [
+        { "id": "a", "text": { "en": "Connect the server to Azure Arc (primary managed identity) and enable sp_configure 'allow server scoped db credentials'" } },
+        { "id": "b", "text": { "en": "Nothing; every SQL Server has a managed identity" } },
+        { "id": "c", "text": { "en": "Install the Azure Functions runtime on the server" } },
+        { "id": "d", "text": { "en": "Use a SQL login named ManagedIdentity" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "SQL Server 2025 outside Azure PaaS gets a managed identity through Azure Arc, and server-scoped credentials must be allowed. The identity then needs an Azure OpenAI role. On-premises servers don't have an identity by default, and Functions or SQL logins don't provide one." },
+      "example": { "en": "EXECUTE sp_configure 'allow server scoped db credentials', 1; RECONFIGURE WITH OVERRIDE;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-external-model-transact-sql"]
+    },
+    {
+      "id": "d3-xm-0029",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-external-models",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "On a new SQL Server 2025 instance, AI_GENERATE_EMBEDDINGS fails because outbound REST calls are disabled. What do you run?" },
+      "options": [
+        { "id": "a", "text": { "en": "EXECUTE sp_configure 'external rest endpoint enabled', 1; RECONFIGURE WITH OVERRIDE;" } },
+        { "id": "b", "text": { "en": "ALTER DATABASE SET COMPATIBILITY_LEVEL = 150;" } },
+        { "id": "c", "text": { "en": "EXEC sp_configure 'clr enabled', 1;" } },
+        { "id": "d", "text": { "en": "CREATE LINKED SERVER AzureOpenAI;" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "AI_GENERATE_EMBEDDINGS relies on the external REST endpoint capability, which must be enabled in SQL Server 2025 (it's on by default in Azure SQL Database and Fabric). Lowering compatibility, CLR and linked servers don't help." },
+      "example": { "en": "SELECT value_in_use FROM sys.configurations WHERE name = 'external rest endpoint enabled';" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/ai-generate-embeddings-transact-sql"]
+    },
+    {
+      "id": "d3-xm-0030",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-external-models",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "In Azure SQL Database, do you need to enable 'external rest endpoint enabled' before using AI_GENERATE_EMBEDDINGS?" },
+      "options": [
+        { "id": "a", "text": { "en": "No, it's enabled by default in Azure SQL Database and SQL database in Fabric" } },
+        { "id": "b", "text": { "en": "Yes, through a support ticket" } },
+        { "id": "c", "text": { "en": "Yes, with ALTER DATABASE SCOPED CONFIGURATION" } },
+        { "id": "d", "text": { "en": "It isn't available in Azure SQL Database" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The option is on by default in Azure SQL Database and Fabric SQL database; you still need the credential, model and permissions. It's a server option in SQL Server, not a scoped configuration, and no support ticket is needed." },
+      "example": { "en": "Outbound network rules can still block the endpoint; check them if calls time out." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/ai-generate-embeddings-transact-sql"]
+    },
+    {
+      "id": "d3-xm-0031",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-external-models",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "Which set of prerequisites applies to a local ONNX Runtime external model on SQL Server 2025 for Windows?" },
+      "options": [
+        { "id": "a", "text": { "en": "Machine Learning Services installed, 'external AI runtimes enabled' turned on, PREVIEW_FEATURES enabled, and LOCAL_RUNTIME_PATH pointing to the runtime DLLs" } },
+        { "id": "b", "text": { "en": "Only an Azure OpenAI API key" } },
+        { "id": "c", "text": { "en": "SQL Server Agent and Database Mail" } },
+        { "id": "d", "text": { "en": "PolyBase and an external data source" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The documented ONNX path uses the AI runtime host with ML Services, a server option, the preview-features scoped configuration and LOCAL_RUNTIME_PATH. No cloud key is involved, and Agent, Database Mail and PolyBase aren't requirements." },
+      "example": { "en": "LOCATION = 'C:\\onnx_runtime\\model\\all-MiniLM-L6-v2-onnx', LOCAL_RUNTIME_PATH = 'C:\\onnx_runtime\\'" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-external-model-transact-sql"]
+    },
+    {
+      "id": "d3-xm-0032",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-external-models",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "For an ONNX Runtime external model, what should LOCATION point to?" },
+      "options": [
+        { "id": "a", "text": { "en": "The local directory containing the model.onnx and tokenizer.json files" } },
+        { "id": "b", "text": { "en": "A Hugging Face web URL" } },
+        { "id": "c", "text": { "en": "The onnxruntime.dll file" } },
+        { "id": "d", "text": { "en": "A SQL table holding the model" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "LOCATION is the model folder; LOCAL_RUNTIME_PATH is the folder with onnxruntime.dll and the tokenizer DLL. The model isn't read from a URL or table at call time." },
+      "example": { "en": "Grant the MSSQLLaunchpad account access to the folder." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-external-model-transact-sql"]
+    },
+    {
+      "id": "d3-xm-0033",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-external-models",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What security precaution does Microsoft call out for locally hosted ONNX models?" },
+      "options": [
+        { "id": "a", "text": { "en": "Only use models from trusted, verified sources, because a malicious model could exfiltrate data or run unauthorized code" } },
+        { "id": "b", "text": { "en": "None; local models are sandboxed and always safe" } },
+        { "id": "c", "text": { "en": "Store models in a SQL table to encrypt them" } },
+        { "id": "d", "text": { "en": "Run the model as sysadmin for performance" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Microsoft doesn't validate third-party models; you're responsible for vetting them, restricting access and auditing usage. Assuming safety, storing models in tables or granting sysadmin all increase risk." },
+      "example": { "en": "Pin model versions and hash-check files before deployment." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-external-model-transact-sql"]
+    },
+    {
+      "id": "d3-xm-0034",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-external-models",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "You switch the external model from text-embedding-ada-002 to text-embedding-3-small. Both return 1,536 dimensions. What must you do with the 500,000 stored vectors?" },
+      "options": [
+        { "id": "a", "text": { "en": "Re-embed them with the new model (and rebuild vector indexes), because the vector spaces aren't compatible" } },
+        { "id": "b", "text": { "en": "Nothing; same dimension count means compatible vectors" } },
+        { "id": "c", "text": { "en": "Run VECTOR_NORMALIZE on them" } },
+        { "id": "d", "text": { "en": "Cast them to float16" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Each model has its own vector space; comparing new query vectors with old stored vectors gives meaningless distances even when dimensions match. Normalizing or changing precision doesn't translate between models." },
+      "example": { "en": "Track a model_version column so you can re-embed progressively and filter on it." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-models-embeddings-with-sql/05-generate-maintain-embeddings-sql-database-workloads"]
+    },
+    {
+      "id": "d3-xm-0035",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-external-models",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which protocol must an external model's LOCATION use for remote endpoints?" },
+      "options": [
+        { "id": "a", "text": { "en": "HTTPS with TLS" } },
+        { "id": "b", "text": { "en": "HTTP" } },
+        { "id": "c", "text": { "en": "FTP" } },
+        { "id": "d", "text": { "en": "TDS" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Only HTTPS endpoints with TLS encryption are supported for model inference endpoints. Plain HTTP, FTP and TDS aren't accepted." },
+      "example": { "en": "Even a local Ollama example uses https://localhost:11435/api/embed." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-external-model-transact-sql"]
+    },
+    {
+      "id": "d3-xm-0036",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-external-models",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Embedding calls fail intermittently and you need the HTTP status codes and error details. What helps most?" },
+      "options": [
+        { "id": "a", "text": { "en": "An Extended Events session with ai_generate_embeddings_summary (and external_rest_endpoint_summary)" } },
+        { "id": "b", "text": { "en": "DBCC CHECKDB" } },
+        { "id": "c", "text": { "en": "sp_who2" } },
+        { "id": "d", "text": { "en": "Query Store forced plans" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "These extended events record the REST request/response, status codes, errors and model names. CHECKDB checks consistency, sp_who2 shows sessions, and plan forcing doesn't log HTTP errors." },
+      "example": { "en": "CREATE EVENT SESSION ai_trace ON SERVER ADD EVENT ai_generate_embeddings_summary …" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/ai-generate-embeddings-transact-sql"]
+    },
+    {
+      "id": "d3-xm-0037",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-external-models",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "What does AI_GENERATE_EMBEDDINGS return, and where is it usually stored?" },
+      "options": [
+        { "id": "a", "text": { "en": "The embedding as a JSON array of numbers, typically stored in a vector column" } },
+        { "id": "b", "text": { "en": "A generated text summary stored in nvarchar(max)" } },
+        { "id": "c", "text": { "en": "A model ID stored in an int column" } },
+        { "id": "d", "text": { "en": "An image stored in varbinary(max)" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The function returns the vector array as JSON, which converts to the vector type for storage and search. It doesn't summarize text, return IDs or images." },
+      "example": { "en": "UPDATE t SET embedding = AI_GENERATE_EMBEDDINGS(t.description USE MODEL m) FROM dbo.Products AS t;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/ai-generate-embeddings-transact-sql"]
+    },
+    {
+      "id": "d3-xm-0038",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-external-models",
+      "type": "dragdrop-match", "difficulty": "medium",
+      "text": { "en": "Match each requirement to the model characteristic that addresses it." },
+      "items": [
+        { "id": "i1", "text": { "en": "Search catalog photos by similarity" } },
+        { "id": "i2", "text": { "en": "Content and queries in many languages" } },
+        { "id": "i3", "text": { "en": "Cheap, fast embeddings for millions of short texts" } },
+        { "id": "i4", "text": { "en": "Parse a chat model's answer with OPENJSON" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "Multimodal input" } },
+        { "id": "t2", "text": { "en": "Multilingual support" } },
+        { "id": "t3", "text": { "en": "Smaller model / fewer dimensions" } },
+        { "id": "t4", "text": { "en": "Structured output" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "Modality, language coverage, size and output format are the main evaluation axes in the study guide's 'evaluate external models' skill." },
+      "example": { "en": "Document your choice and the trade-offs in the solution design." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-models-embeddings-with-sql/02-understand-evaluate-models-sql-database-workloads"]
+    },
+    {
+      "id": "d3-xm-0039",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-external-models",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "Roughly how much space do the vector values take for one VECTOR(1536) float32 embedding?" },
+      "options": [
+        { "id": "a", "text": { "en": "About 6 KB (1,536 × 4 bytes)" } },
+        { "id": "b", "text": { "en": "About 1.5 KB" } },
+        { "id": "c", "text": { "en": "About 60 KB" } },
+        { "id": "d", "text": { "en": "8 bytes" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Each float32 element uses 4 bytes, so 1,536 elements ≈ 6,144 bytes. At millions of rows this adds up, which is why dimensions and float16 (2 bytes per element) matter when you evaluate models." },
+      "example": { "en": "10 million rows × 6 KB ≈ 60 GB of vector data before indexes." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/data-types/vector-data-type"]
+    },
+    {
+      "id": "d3-xm-0040",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-external-models",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Where can you use half-precision VECTOR(n, float16) without enabling preview features?" },
+      "options": [
+        { "id": "a", "text": { "en": "Azure SQL Database, Azure SQL Managed Instance and SQL database in Fabric (in SQL Server 2025 it needs PREVIEW_FEATURES)" } },
+        { "id": "b", "text": { "en": "Only SQL Server 2025" } },
+        { "id": "c", "text": { "en": "Nowhere; float16 doesn't exist" } },
+        { "id": "d", "text": { "en": "Only in memory-optimized tables" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "float16 vectors are generally available in Azure SQL Database, Managed Instance and Fabric, and in preview in SQL Server 2025 (enable PREVIEW_FEATURES). Vector columns aren't allowed in memory-optimized tables." },
+      "example": { "en": "ALTER DATABASE SCOPED CONFIGURATION SET PREVIEW_FEATURES = ON; -- SQL Server 2025 only" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/data-types/vector-data-type"]
+    },
+    {
+      "id": "d3-xm-0041",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-external-models",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "What does the AUTHORIZATION clause in CREATE EXTERNAL MODEL do?" },
+      "options": [
+        { "id": "a", "text": { "en": "Sets the user or role that owns the external model" } },
+        { "id": "b", "text": { "en": "Supplies the API key" } },
+        { "id": "c", "text": { "en": "Grants EXECUTE to everyone" } },
+        { "id": "d", "text": { "en": "Chooses the Microsoft Entra tenant" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "AUTHORIZATION owner_name sets ownership; without it the current user owns the model. Secrets come from CREDENTIAL, and EXECUTE is granted separately." },
+      "example": { "en": "CREATE EXTERNAL MODEL m AUTHORIZATION AI_Owner WITH (…);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-external-model-transact-sql"]
+    },
+    {
+      "id": "d3-xm-0042",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-external-models",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A credential is named [https://api.contoso.com/models/embeddings]. An external model's LOCATION is https://api.contoso.com/models. Will the credential be used?" },
+      "options": [
+        { "id": "a", "text": { "en": "No; the credential path must be equal to or more generic than the request URL, and this one is more specific" } },
+        { "id": "b", "text": { "en": "Yes; any credential on the same host works" } },
+        { "id": "c", "text": { "en": "Yes, if the database collation is case-insensitive" } },
+        { "id": "d", "text": { "en": "Only for GET requests" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Each path segment of the credential must match the called URL, and the credential must point to a more generic path than the request. A credential for /models/embeddings can't serve /models. Collation affects comparison, not this rule." },
+      "example": { "en": "Name the credential [https://api.contoso.com/] to cover every path on the host." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-external-model-transact-sql"]
+    },
+    {
+      "id": "d3-xm-0043",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-external-models",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "For each statement about managing external models, answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "ALTER EXTERNAL MODEL can change the LOCATION." } },
+        { "id": "s2", "text": { "en": "ALTER EXTERNAL MODEL can change MODEL_TYPE to a chat model type." } },
+        { "id": "s3", "text": { "en": "DROP EXTERNAL MODEL also drops its database scoped credential." } },
+        { "id": "s4", "text": { "en": "Concurrent ALTER statements on the same external model make one wait." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "no", "s3": "no", "s4": "yes" },
+      "explanation": { "en": "ALTER … SET can change LOCATION, API_FORMAT, MODEL, CREDENTIAL and PARAMETERS, but EMBEDDINGS is the only model type. Credentials are separate objects. Modifications to the same model are serialized." },
+      "example": { "en": "DROP DATABASE SCOPED CREDENTIAL [https://…/] when no model uses it." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-external-model-transact-sql"]
+    },
+    {
+      "id": "d3-xm-0044",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-external-models",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which Azure SQL Managed Instance configuration supports CREATE EXTERNAL MODEL?" },
+      "options": [
+        { "id": "a", "text": { "en": "Instances with the Always-up-to-date update policy" } },
+        { "id": "b", "text": { "en": "Any instance with the SQL Server 2022 update policy" } },
+        { "id": "c", "text": { "en": "Only Business Critical instances" } },
+        { "id": "d", "text": { "en": "Managed Instance doesn't support external models" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The docs state CREATE EXTERNAL MODEL is available in Managed Instance with the Always-up-to-date update policy. It isn't tied to the SQL Server 2022 policy or to a specific service tier." },
+      "example": { "en": "Check the instance's update policy before planning in-database embeddings." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-external-model-transact-sql"]
+    },
+    {
+      "id": "d3-xm-0045",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-external-models",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "Which embedding models let you shorten output vectors through the dimensions parameter?" },
+      "options": [
+        { "id": "a", "text": { "en": "text-embedding-3-small and text-embedding-3-large" } },
+        { "id": "b", "text": { "en": "text-embedding-ada-002 only" } },
+        { "id": "c", "text": { "en": "All embedding models" } },
+        { "id": "d", "text": { "en": "None; dimensions are fixed for all models" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The text-embedding-3 family supports a dimensions parameter (the docs' example sets 725 on text-embedding-3-small). ada-002 has a fixed 1,536-dimension output, and other providers' models vary." },
+      "example": { "en": "PARAMETERS = '{\"dimensions\":1024}' on a text-embedding-3-large model fits a float32 VECTOR(1024)." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-external-model-transact-sql"]
+    },
+    {
+      "id": "d3-xm-0046",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-external-models",
+      "type": "single", "difficulty": "medium",
+      "caseId": "case-xm-support",
+      "text": { "en": "Which embedding configuration best fits Northwind's requirements?" },
+      "options": [
+        { "id": "a", "text": { "en": "A multilingual model such as text-embedding-3-small (1,536 dimensions) stored in VECTOR(1536)" } },
+        { "id": "b", "text": { "en": "text-embedding-3-large at 3,072 dimensions in a float32 VECTOR(3072)" } },
+        { "id": "c", "text": { "en": "An English-only model, translating every ticket first" } },
+        { "id": "d", "text": { "en": "A separate model per language" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "A multilingual model keeps all languages in one space, and 1,536 dimensions fit float32 while keeping storage moderate. 3,072 dimensions don't fit float32, translation adds cost and latency, and separate models create incompatible spaces." },
+      "example": { "en": "Test retrieval with Spanish and German queries against mixed tickets." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-models-embeddings-with-sql/02-understand-evaluate-models-sql-database-workloads", "https://learn.microsoft.com/en-us/sql/t-sql/data-types/vector-data-type"]
+    },
+    {
+      "id": "d3-xm-0047",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-external-models",
+      "type": "single", "difficulty": "medium",
+      "caseId": "case-xm-support",
+      "text": { "en": "How should the database authenticate to Azure OpenAI under Northwind's security policy?" },
+      "options": [
+        { "id": "a", "text": { "en": "Give the logical server a managed identity with an Azure OpenAI role, and use a credential WITH IDENTITY = 'Managed Identity'" } },
+        { "id": "b", "text": { "en": "Store the API key in an HTTPEndpointHeaders credential" } },
+        { "id": "c", "text": { "en": "Put the key in the LOCATION URL" } },
+        { "id": "d", "text": { "en": "Use the sa login" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Managed identity uses Entra tokens, so no key is stored. Key-based credentials or URLs violate the policy, and SQL logins can't authenticate to Azure OpenAI." },
+      "example": { "en": "SECRET = '{\"resourceid\":\"https://cognitiveservices.azure.com\"}'" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-external-model-transact-sql"]
+    },
+    {
+      "id": "d3-xm-0048",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-external-models",
+      "type": "single", "difficulty": "easy",
+      "caseId": "case-xm-support",
+      "text": { "en": "How do you make sure only the SupportApp role can generate embeddings with the model TicketEmbedder?" },
+      "options": [
+        { "id": "a", "text": { "en": "GRANT EXECUTE ON EXTERNAL MODEL::TicketEmbedder TO SupportApp, and grant it to no one else" } },
+        { "id": "b", "text": { "en": "GRANT ALTER ANY EXTERNAL MODEL TO SupportApp" } },
+        { "id": "c", "text": { "en": "Add SupportApp to db_owner" } },
+        { "id": "d", "text": { "en": "Grant SELECT on the tickets table" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "EXECUTE on the specific external model is the least-privilege permission for calling it. ALTER ANY lets the role change models, db_owner gives everything, and SELECT on data doesn't control model use." },
+      "example": { "en": "REVOKE EXECUTE ON EXTERNAL MODEL::TicketEmbedder FROM public; -- if previously granted" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-external-model-transact-sql"]
+    },
+    {
+      "id": "d3-xm-0049",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-external-models",
+      "type": "single", "difficulty": "hard",
+      "caseId": "case-xm-support",
+      "text": { "en": "How should the nightly classification job get answers it can reliably parse in T-SQL?" },
+      "options": [
+        { "id": "a", "text": { "en": "Call a chat model through sp_invoke_external_rest_endpoint with a strict json_schema response_format, then read fields with JSON_VALUE/OPENJSON" } },
+        { "id": "b", "text": { "en": "Create an external model with MODEL_TYPE = CLASSIFICATION" } },
+        { "id": "c", "text": { "en": "Use AI_GENERATE_EMBEDDINGS and read the category from the vector" } },
+        { "id": "d", "text": { "en": "Ask for free text and parse it with LIKE" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "External models only cover embeddings; chat calls go through sp_invoke_external_rest_endpoint. Structured outputs guarantee schema-conformant JSON, which T-SQL parses easily. Vectors don't contain labels, and LIKE on free text is brittle." },
+      "example": { "en": "SELECT JSON_VALUE(@response, '$.result.choices[0].message.content')" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/foundry/openai/how-to/structured-outputs", "https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-invoke-external-rest-endpoint-transact-sql"]
+    },
+    {
+      "id": "d3-xm-0050",
+      "domain": "ai-capabilities", "topic": "t-models-embeddings", "subtopic": "d3-external-models",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A developer embeds search queries with a local all-MiniLM model but the stored product vectors came from Azure OpenAI. What happens?" },
+      "options": [
+        { "id": "a", "text": { "en": "The comparison is meaningless (and fails if dimensions differ); queries and data must use the same model" } },
+        { "id": "b", "text": { "en": "Results are slightly less accurate but fine" } },
+        { "id": "c", "text": { "en": "SQL automatically converts between models" } },
+        { "id": "d", "text": { "en": "It works if both vectors are normalized" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Different models produce different vector spaces (here also different dimensions: 384 vs 1,536, so VECTOR_DISTANCE errors). There's no automatic conversion, and normalization doesn't align spaces." },
+      "example": { "en": "Use one external model for both indexing and querying." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-distance-transact-sql"]
+    }
+  ]
+}

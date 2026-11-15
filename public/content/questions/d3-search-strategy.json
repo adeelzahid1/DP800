@@ -1,0 +1,845 @@
+{
+  "subtopic": "d3-search-strategy",
+  "cases": [
+    {
+      "id": "case-ss-outdoor",
+      "title": { "en": "Adventure Works outdoor store search" },
+      "scenario": {
+        "en": "Adventure Works sells 300,000 products from Azure SQL Database (`dbo.Products(ProductID PK, Sku, Name, Description, ListPrice)`).\n- Some shoppers type exact model numbers like `XR-500`.\n- Others describe needs: \"something to keep drinks cold on a hike\".\n- Many mix both: \"XR-500 portable cooler\".\n- Results must be ranked by relevance, and the price filter must always apply."
+      }
+    }
+  ],
+  "questions": [
+    {
+      "id": "d3-ss-0001",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-search-strategy",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Users search a catalog mainly by exact model numbers such as \"Model XR-500\". Which approach fits best?" },
+      "options": [
+        { "id": "a", "text": { "en": "Full-text search (or exact matching on the code column)" } },
+        { "id": "b", "text": { "en": "Semantic vector search only" } },
+        { "id": "c", "text": { "en": "Image similarity search" } },
+        { "id": "d", "text": { "en": "LIKE '%XR%' on every column" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "When users know the exact words or codes, keyword search is precise and fast. Vector search captures meaning and can blur near-identical codes, images are irrelevant, and LIKE with leading wildcards scans and doesn't rank." },
+      "example": { "en": "WHERE CONTAINS(Name, '\"XR-500\"')" },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/02-choose-intelligent-search-approach"]
+    },
+    {
+      "id": "d3-ss-0002",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-search-strategy",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "A shopper types \"something to keep me visible on evening rides\" and should find \"reflective cycling vest\" and \"LED bike lights\". Which approach fits?" },
+      "options": [
+        { "id": "a", "text": { "en": "Semantic vector search" } },
+        { "id": "b", "text": { "en": "Full-text CONTAINS with the exact phrase" } },
+        { "id": "c", "text": { "en": "LIKE '%visible%'" } },
+        { "id": "d", "text": { "en": "A B-tree index on Name" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The query describes a need with words that don't appear in the product text; embeddings capture that meaning. Keyword approaches need overlapping words, and a B-tree index doesn't understand language." },
+      "example": { "en": "Embed the query with AI_GENERATE_EMBEDDINGS and run VECTOR_SEARCH." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/02-choose-intelligent-search-approach"]
+    },
+    {
+      "id": "d3-ss-0003",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-search-strategy",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "You can't predict whether users will type exact terms or describe concepts, and both signals matter. Which approach should you choose?" },
+      "options": [
+        { "id": "a", "text": { "en": "Hybrid search: run full-text and vector search and merge the ranked results" } },
+        { "id": "b", "text": { "en": "Full-text search only" } },
+        { "id": "c", "text": { "en": "Vector search only" } },
+        { "id": "d", "text": { "en": "Alphabetical sorting" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Hybrid search covers both keyword-focused and concept-focused queries, typically merging with Reciprocal Rank Fusion. Either approach alone misses one style of query." },
+      "example": { "en": "\"XR-500 portable cooler\" matches the model number and the concept." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/02-choose-intelligent-search-approach"]
+    },
+    {
+      "id": "d3-ss-0004",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-search-strategy",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Support agents search tickets for exact error messages like \"Error 40613 Database is not currently available\". Which approach fits best?" },
+      "options": [
+        { "id": "a", "text": { "en": "Full-text phrase search" } },
+        { "id": "b", "text": { "en": "Vector search only" } },
+        { "id": "c", "text": { "en": "Random sampling" } },
+        { "id": "d", "text": { "en": "VECTOR_NORMALIZE" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Exact strings and numbers are a keyword task; a phrase query finds them precisely. Vectors may return tickets about similar but different errors, and VECTOR_NORMALIZE isn't a search method." },
+      "example": { "en": "CONTAINS(Body, '\"Error 40613\"')" },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/03-implement-full-text-search"]
+    },
+    {
+      "id": "d3-ss-0005",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-search-strategy",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Articles are in English, but many users search in Portuguese. Which approach handles this best?" },
+      "options": [
+        { "id": "a", "text": { "en": "Vector search with a multilingual embedding model" } },
+        { "id": "b", "text": { "en": "Full-text search with LANGUAGE 1033" } },
+        { "id": "c", "text": { "en": "LIKE with the Portuguese words" } },
+        { "id": "d", "text": { "en": "A Portuguese stoplist" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Multilingual embeddings place equivalent meanings from different languages near each other. Full-text matches words in the indexed language, LIKE matches characters, and stoplists only drop common words." },
+      "example": { "en": "\"sapatos impermeáveis\" can match \"waterproof shoes\"." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-models-embeddings-with-sql/02-understand-evaluate-models-sql-database-workloads"]
+    },
+    {
+      "id": "d3-ss-0006",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-search-strategy",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Why doesn't WHERE Description LIKE '%ride%' satisfy a product search requirement?" },
+      "options": [
+        { "id": "a", "text": { "en": "It matches characters only: no inflections (rode, riding), no relevance ranking, and a leading wildcard prevents index seeks" } },
+        { "id": "b", "text": { "en": "LIKE can't be used on nvarchar(max)" } },
+        { "id": "c", "text": { "en": "LIKE requires a full-text index" } },
+        { "id": "d", "text": { "en": "LIKE always returns semantic matches" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "LIKE is a character pattern match: it misses word forms, can't rank, and with a leading % scans every row. It works on nvarchar(max) and doesn't need a full-text index." },
+      "example": { "en": "FREETEXT(Description, 'ride') also finds 'rides', 'riding' and 'rode'." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/03-implement-full-text-search"]
+    },
+    {
+      "id": "d3-ss-0007",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-search-strategy",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "How do full-text and vector search typically compare on precision and recall?" },
+      "options": [
+        { "id": "a", "text": { "en": "Full-text tends to return fewer, closely matching results (precision); vector search returns more conceptually related results (recall/discovery)" } },
+        { "id": "b", "text": { "en": "Both always return identical results" } },
+        { "id": "c", "text": { "en": "Vector search is always more precise" } },
+        { "id": "d", "text": { "en": "Full-text always has higher recall" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Keyword matching is strict, so results closely match terms; semantic matching widens the net to related concepts. The right choice depends on whether exact matches or discovery matter more." },
+      "example": { "en": "Legal exact-phrase search → precision; shopping inspiration → recall." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/02-choose-intelligent-search-approach"]
+    },
+    {
+      "id": "d3-ss-0008",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-search-strategy",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "What's the main performance trade-off of hybrid search?" },
+      "options": [
+        { "id": "a", "text": { "en": "It runs both a full-text and a vector search, so it takes longer than either alone" } },
+        { "id": "b", "text": { "en": "It disables indexes" } },
+        { "id": "c", "text": { "en": "It can only return 10 rows" } },
+        { "id": "d", "text": { "en": "It requires a separate database" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Hybrid search improves relevance at the cost of executing two searches and a merge. It uses both index types, has no fixed row limit and runs in the same database." },
+      "example": { "en": "Measure latency for each component and the merge step." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/02-choose-intelligent-search-approach"]
+    },
+    {
+      "id": "d3-ss-0009",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-search-strategy",
+      "type": "multiple", "difficulty": "medium", "selectCount": 2,
+      "text": { "en": "Which two data preparations are required to offer both full-text and vector search on product descriptions? (Select 2)" },
+      "options": [
+        { "id": "a", "text": { "en": "A full-text index on the description column(s)" } },
+        { "id": "b", "text": { "en": "Embeddings stored in a vector column, generated with an embedding model" } },
+        { "id": "c", "text": { "en": "A clustered columnstore index on the description" } },
+        { "id": "d", "text": { "en": "A computed column with LEN(Description)" } },
+        { "id": "e", "text": { "en": "Converting descriptions to XML" } }
+      ],
+      "answer": ["a", "b"],
+      "explanation": { "en": "Full-text needs a full-text index; vector search needs stored embeddings (and the same model for queries). Columnstore, length columns and XML don't enable either search." },
+      "example": { "en": "CREATE FULLTEXT INDEX …; ALTER TABLE … ADD DescriptionVector VECTOR(1536);" },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/02-choose-intelligent-search-approach"]
+    },
+    {
+      "id": "d3-ss-0010",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-search-strategy",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Create a full-text index on dbo.Products for English descriptions that updates automatically as rows change." },
+      "code": "CREATE FULLTEXT CATALOG ftCatalog AS DEFAULT;\n\nCREATE FULLTEXT INDEX ON dbo.Products (Description LANGUAGE [BLANK1])\n    [BLANK2] PK_Products\n    ON ftCatalog\n    WITH CHANGE_TRACKING [BLANK3];",
+      "blanks": [
+        { "id": "b1", "label": { "en": "BLANK1" }, "choices": [
+          { "id": "c1", "text": { "en": "1033" } },
+          { "id": "c2", "text": { "en": "'EN'" } },
+          { "id": "c3", "text": { "en": "0" } }
+        ] },
+        { "id": "b2", "label": { "en": "BLANK2" }, "choices": [
+          { "id": "c1", "text": { "en": "KEY INDEX" } },
+          { "id": "c2", "text": { "en": "PRIMARY KEY" } },
+          { "id": "c3", "text": { "en": "CLUSTERED INDEX" } }
+        ] },
+        { "id": "b3", "label": { "en": "BLANK3" }, "choices": [
+          { "id": "c1", "text": { "en": "AUTO" } },
+          { "id": "c2", "text": { "en": "MANUAL" } },
+          { "id": "c3", "text": { "en": "OFF" } }
+        ] }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1", "b3": "c1" },
+      "explanation": { "en": "LANGUAGE takes an LCID such as 1033 (English, US) or a supported name; 0 means neutral (no language-specific stemming). The unique key is named with KEY INDEX. CHANGE_TRACKING AUTO propagates changes automatically (asynchronously); MANUAL needs explicit population, OFF needs full repopulation." },
+      "example": { "en": "SELECT * FROM sys.fulltext_indexes;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-fulltext-index-transact-sql"]
+    },
+    {
+      "id": "d3-ss-0011",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-search-strategy",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which index can serve as the KEY INDEX of a full-text index?" },
+      "options": [
+        { "id": "a", "text": { "en": "A unique, single-column, non-nullable index (often the primary key)" } },
+        { "id": "b", "text": { "en": "Any nonclustered index" } },
+        { "id": "c", "text": { "en": "A composite unique index on two columns" } },
+        { "id": "d", "text": { "en": "A columnstore index" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Full-text maps index entries back to rows through a unique, single-column, non-nullable key. Non-unique, composite and columnstore indexes don't qualify." },
+      "example": { "en": "KEY INDEX PK_Products (ProductID INT NOT NULL PRIMARY KEY)" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-fulltext-index-transact-sql"]
+    },
+    {
+      "id": "d3-ss-0012",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-search-strategy",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "You need full-text search on both Name and Description of dbo.Products. How many full-text indexes do you create?" },
+      "options": [
+        { "id": "a", "text": { "en": "One full-text index that lists both columns (only one is allowed per table)" } },
+        { "id": "b", "text": { "en": "Two, one per column" } },
+        { "id": "c", "text": { "en": "One per language" } },
+        { "id": "d", "text": { "en": "None; full-text indexes are created automatically" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "A table or indexed view can have only one full-text index, which can cover multiple columns (each with its own LANGUAGE). They're never created automatically." },
+      "example": { "en": "CREATE FULLTEXT INDEX ON dbo.Products (Name LANGUAGE 1033, Description LANGUAGE 1033) KEY INDEX PK_Products;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-fulltext-index-transact-sql"]
+    },
+    {
+      "id": "d3-ss-0013",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-search-strategy",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What's the difference between CONTAINS and FREETEXT?" },
+      "options": [
+        { "id": "a", "text": { "en": "CONTAINS gives precise control (terms, phrases, prefixes, proximity, Boolean); FREETEXT matches the meaning of free text more loosely, including inflectional forms automatically" } },
+        { "id": "b", "text": { "en": "FREETEXT performs vector search; CONTAINS performs keyword search" } },
+        { "id": "c", "text": { "en": "CONTAINS works without a full-text index" } },
+        { "id": "d", "text": { "en": "They're identical" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Both use the full-text index. CONTAINS evaluates an explicit search condition; FREETEXT breaks text into words and matches word forms and thesaurus expansions. Neither performs embedding-based semantic search." },
+      "example": { "en": "FREETEXT(Name, 'riding bikes') also finds 'ride' and 'biking'." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/03-implement-full-text-search"]
+    },
+    {
+      "id": "d3-ss-0014",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-search-strategy",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "You need full-text results sorted by relevance. Which construct provides a relevance score, and how do you use it?" },
+      "options": [
+        { "id": "a", "text": { "en": "CONTAINSTABLE or FREETEXTTABLE: join their [KEY] column to the table's key and ORDER BY [RANK] DESC" } },
+        { "id": "b", "text": { "en": "CONTAINS returns a RANK column directly" } },
+        { "id": "c", "text": { "en": "ORDER BY LEN(Description)" } },
+        { "id": "d", "text": { "en": "sys.dm_fts_index_population" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The rowset functions return [KEY] and RANK. CONTAINS and FREETEXT are Boolean predicates without scores; text length and population DMVs aren't relevance." },
+      "example": { "en": "JOIN FREETEXTTABLE(dbo.Products, Description, @q) AS ft ON p.ProductID = ft.[KEY] ORDER BY ft.[RANK] DESC" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-functions/containstable-transact-sql"]
+    },
+    {
+      "id": "d3-ss-0015",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-search-strategy",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "How should you interpret the RANK value returned by CONTAINSTABLE?" },
+      "options": [
+        { "id": "a", "text": { "en": "A 0–1000 relevance value that's meaningful only for ordering rows within that query" } },
+        { "id": "b", "text": { "en": "A percentage comparable across different queries" } },
+        { "id": "c", "text": { "en": "The row's physical position in the table" } },
+        { "id": "d", "text": { "en": "A cosine distance" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "RANK expresses relative relevance within a result set; it isn't comparable across queries or with vector distances, which is why hybrid search fuses ranks (positions) rather than raw scores." },
+      "example": { "en": "Convert to positions with ROW_NUMBER() OVER (ORDER BY ft.[RANK] DESC) before RRF." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-functions/containstable-transact-sql"]
+    },
+    {
+      "id": "d3-ss-0016",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-search-strategy",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which CONTAINS condition matches only the exact phrase \"mountain bike\"?" },
+      "options": [
+        { "id": "a", "text": { "en": "CONTAINS(Description, '\"mountain bike\"')" } },
+        { "id": "b", "text": { "en": "CONTAINS(Description, 'mountain OR bike')" } },
+        { "id": "c", "text": { "en": "CONTAINS(Description, 'mountain*bike')" } },
+        { "id": "d", "text": { "en": "CONTAINS(Description, 'FORMSOF(INFLECTIONAL, mountain)')" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Double quotes inside the condition define a phrase in word order. OR matches either word, the asterisk form isn't a phrase, and FORMSOF matches word forms of one term." },
+      "example": { "en": "Phrase search reduces false positives where the words appear separately." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/contains-transact-sql"]
+    },
+    {
+      "id": "d3-ss-0017",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-search-strategy",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "CONTAINS(Description, 'light*') doesn't find \"lightweight\". Why?" },
+      "options": [
+        { "id": "a", "text": { "en": "A prefix term must be enclosed in double quotes, e.g. '\"light*\"'; otherwise the asterisk isn't treated as a wildcard" } },
+        { "id": "b", "text": { "en": "Prefix searches are unsupported" } },
+        { "id": "c", "text": { "en": "Use % instead of *" } },
+        { "id": "d", "text": { "en": "\"lightweight\" is a stopword" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Full-text prefix terms use the form '\"prefix*\"'. Without the double quotes, the asterisk isn't treated as a wildcard. % is a LIKE wildcard, and 'lightweight' isn't a system stopword." },
+      "example": { "en": "CONTAINS(Description, '\"light*\"') matches light, lights, lighter, lightweight." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/contains-transact-sql"]
+    },
+    {
+      "id": "d3-ss-0018",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-search-strategy",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which CONTAINS condition matches ride, rides, riding and rode?" },
+      "options": [
+        { "id": "a", "text": { "en": "'FORMSOF(INFLECTIONAL, ride)'" } },
+        { "id": "b", "text": { "en": "'\"ride*\"'" } },
+        { "id": "c", "text": { "en": "'NEAR((ride, bike))'" } },
+        { "id": "d", "text": { "en": "'ride' only" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The inflectional generation term uses the language's stemmer to match verb tenses and plurals. A prefix wouldn't match 'rode', NEAR is proximity, and a plain term matches only that word." },
+      "example": { "en": "CONTAINS(Description, 'FORMSOF(INFLECTIONAL, ride)')" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/contains-transact-sql"]
+    },
+    {
+      "id": "d3-ss-0019",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-search-strategy",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "You want products where \"light\" and \"aluminum\" appear close together, suggesting a lightweight aluminum product. Which condition?" },
+      "options": [
+        { "id": "a", "text": { "en": "CONTAINS(Description, 'NEAR((light, aluminum))')" } },
+        { "id": "b", "text": { "en": "CONTAINS(Description, 'light AND NOT aluminum')" } },
+        { "id": "c", "text": { "en": "FREETEXT(Description, 'light') AND LIKE '%aluminum%'" } },
+        { "id": "d", "text": { "en": "CONTAINS(Description, '\"light aluminum*\"')" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "NEAR is the proximity term; you can also specify a maximum distance and order. AND NOT excludes aluminum, and the other forms don't express closeness." },
+      "example": { "en": "NEAR((light, aluminum), 5) — within 5 terms." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/contains-transact-sql"]
+    },
+    {
+      "id": "d3-ss-0020",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-search-strategy",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Users search \"MTB\" but descriptions say \"mountain bike\". Full-text returns nothing. What are valid options?" },
+      "options": [
+        { "id": "a", "text": { "en": "Configure a full-text thesaurus (FORMSOF(THESAURUS, …) / FREETEXT), or use vector or hybrid search" } },
+        { "id": "b", "text": { "en": "Add MTB to the stoplist" } },
+        { "id": "c", "text": { "en": "Use CHANGE_TRACKING OFF" } },
+        { "id": "d", "text": { "en": "Use LANGUAGE 0" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Full-text doesn't know synonyms or abbreviations unless a thesaurus defines them; embeddings may also relate them. Stoplisting MTB would remove it entirely, and change tracking or a neutral language doesn't add synonyms." },
+      "example": { "en": "Thesaurus expansion: <expansion><sub>MTB</sub><sub>mountain bike</sub></expansion>" },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/03-implement-full-text-search"]
+    },
+    {
+      "id": "d3-ss-0021",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-search-strategy",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "In a bike shop, the word \"bike\" appears in nearly every description and drowns out results. What can help?" },
+      "options": [
+        { "id": "a", "text": { "en": "A custom stoplist that treats such domain noise words appropriately, or more specific phrase/proximity queries" } },
+        { "id": "b", "text": { "en": "A second full-text index" } },
+        { "id": "c", "text": { "en": "Removing the KEY INDEX" } },
+        { "id": "d", "text": { "en": "Switching to LIKE" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Stoplists drop words that carry no discriminating value; domain-specific noise may need a custom list, and phrases/proximity sharpen queries. A table can't have a second full-text index, the key index is required, and LIKE has no relevance." },
+      "example": { "en": "CREATE FULLTEXT STOPLIST BikeStoplist FROM SYSTEM STOPLIST; ALTER FULLTEXT STOPLIST BikeStoplist ADD 'bike' LANGUAGE 1033;" },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/03-implement-full-text-search"]
+    },
+    {
+      "id": "d3-ss-0022",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-search-strategy",
+      "type": "dragdrop-match", "difficulty": "medium",
+      "text": { "en": "Match each search need to the full-text syntax." },
+      "items": [
+        { "id": "i1", "text": { "en": "Exact phrase" } },
+        { "id": "i2", "text": { "en": "Words starting with 'light'" } },
+        { "id": "i3", "text": { "en": "All verb forms of 'ride'" } },
+        { "id": "i4", "text": { "en": "Two words close together" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "'\"mountain bike\"'" } },
+        { "id": "t2", "text": { "en": "'\"light*\"'" } },
+        { "id": "t3", "text": { "en": "'FORMSOF(INFLECTIONAL, ride)'" } },
+        { "id": "t4", "text": { "en": "'NEAR((light, aluminum))'" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "Phrase, prefix, inflectional and proximity are the core CONTAINS query patterns." },
+      "example": { "en": "Combine with AND/OR/AND NOT for Boolean logic." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/03-implement-full-text-search"]
+    },
+    {
+      "id": "d3-ss-0023",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-search-strategy",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "You only need the 50 best full-text matches from FREETEXTTABLE for a hybrid pipeline. How do you limit them efficiently?" },
+      "options": [
+        { "id": "a", "text": { "en": "Pass top_n_by_rank: FREETEXTTABLE(dbo.Products, Description, @q, 50)" } },
+        { "id": "b", "text": { "en": "Wrap the query in SET ROWCOUNT 50 after ordering by ProductID" } },
+        { "id": "c", "text": { "en": "Add WHERE RANK < 50" } },
+        { "id": "d", "text": { "en": "It isn't possible" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "CONTAINSTABLE and FREETEXTTABLE accept a top_n_by_rank argument that returns only the highest-ranked matches. Ordering by ID ignores relevance, and RANK < 50 filters by score value rather than keeping the top 50." },
+      "example": { "en": "FREETEXTTABLE(dbo.Products, Description, @q, 50) AS ft" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-functions/freetexttable-transact-sql"]
+    },
+    {
+      "id": "d3-ss-0024",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-search-strategy",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Can a full-text predicate be combined with ordinary filters?" },
+      "options": [
+        { "id": "a", "text": { "en": "Yes, e.g. WHERE CONTAINS(Name, 'mountain') AND ListPrice < 500" } },
+        { "id": "b", "text": { "en": "No, full-text queries can't have other predicates" } },
+        { "id": "c", "text": { "en": "Only with OR" } },
+        { "id": "d", "text": { "en": "Only inside a stored procedure" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "CONTAINS/FREETEXT are predicates that combine with any other WHERE conditions; the regular filter uses ordinary indexes." },
+      "example": { "en": "WHERE FREETEXT(Description, @q) AND CategoryId = 4" },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/03-implement-full-text-search"]
+    },
+    {
+      "id": "d3-ss-0025",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-search-strategy",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "With CHANGE_TRACKING AUTO, a newly updated description doesn't appear in full-text results for a few seconds. Why?" },
+      "options": [
+        { "id": "a", "text": { "en": "Full-text index updates are propagated asynchronously after the change commits" } },
+        { "id": "b", "text": { "en": "AUTO only updates the index nightly" } },
+        { "id": "c", "text": { "en": "The query uses NOLOCK" } },
+        { "id": "d", "text": { "en": "The catalog is offline" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Automatic change tracking applies changes to the full-text index in the background, so there's a short lag. AUTO isn't nightly, and NOLOCK or an offline catalog aren't the cause here." },
+      "example": { "en": "Check sys.dm_fts_index_population for population status." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-fulltext-index-transact-sql"]
+    },
+    {
+      "id": "d3-ss-0026",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-search-strategy",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A full-text index was created WITH CHANGE_TRACKING MANUAL. How do you apply tracked changes to it?" },
+      "options": [
+        { "id": "a", "text": { "en": "ALTER FULLTEXT INDEX ON dbo.Products START UPDATE POPULATION (for example, on a schedule)" } },
+        { "id": "b", "text": { "en": "They're applied automatically every second" } },
+        { "id": "c", "text": { "en": "REBUILD the clustered index" } },
+        { "id": "d", "text": { "en": "UPDATE STATISTICS dbo.Products" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "MANUAL change tracking records changes but applies them only when you start an update population. Index rebuilds and statistics don't populate full-text indexes." },
+      "example": { "en": "Schedule ALTER FULLTEXT INDEX … START UPDATE POPULATION off-peak." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-fulltext-index-transact-sql"]
+    },
+    {
+      "id": "d3-ss-0027",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-search-strategy",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Product descriptions are in German. What should the full-text index specify for the Description column?" },
+      "options": [
+        { "id": "a", "text": { "en": "LANGUAGE 1031 (German), so the German word breaker and stemmer are used" } },
+        { "id": "b", "text": { "en": "Nothing; language doesn't matter" } },
+        { "id": "c", "text": { "en": "A German collation only" } },
+        { "id": "d", "text": { "en": "LANGUAGE 1033 always" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The column language selects linguistic components that determine tokenization and inflections. Collation affects comparison and sorting, not word breaking; English components would mishandle German compounds and forms." },
+      "example": { "en": "(Description LANGUAGE 1031)" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-fulltext-index-transact-sql"]
+    },
+    {
+      "id": "d3-ss-0028",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-search-strategy",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Customers search \"something for rainy commutes\" and expect waterproof jackets. Full-text returns poor results. What does this signal?" },
+      "options": [
+        { "id": "a", "text": { "en": "A query-intent mismatch: users describe concepts, so add vector or hybrid search" } },
+        { "id": "b", "text": { "en": "The full-text catalog is corrupt" } },
+        { "id": "c", "text": { "en": "The stoplist is too short" } },
+        { "id": "d", "text": { "en": "LANGUAGE should be 0" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Full-text matches words, not meaning; concept-style queries need semantic search. The other options don't address the mismatch." },
+      "example": { "en": "Hybrid keeps keyword precision for named products and adds semantic recall." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/03-implement-full-text-search"]
+    },
+    {
+      "id": "d3-ss-0029",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-search-strategy",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What's a known weakness of vector search alone?" },
+      "options": [
+        { "id": "a", "text": { "en": "It can return conceptually related items that lack an important exact term the user specified" } },
+        { "id": "b", "text": { "en": "It can only match exact words" } },
+        { "id": "c", "text": { "en": "It requires a full-text index" } },
+        { "id": "d", "text": { "en": "It can't rank results" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Semantic similarity may rank a related product above the exact one named in the query (e.g., the wrong model number). It doesn't require full-text and does rank by distance." },
+      "example": { "en": "Query 'XR-500' may surface XR-550 or other coolers." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/06-implement-hybrid-search-ranking"]
+    },
+    {
+      "id": "d3-ss-0030",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-search-strategy",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "For each statement about full-text search, answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "It builds an inverted index from words to the rows containing them." } },
+        { "id": "s2", "text": { "en": "It removes common stopwords such as 'the' during indexing." } },
+        { "id": "s3", "text": { "en": "FREETEXT uses embeddings to find semantic matches." } },
+        { "id": "s4", "text": { "en": "It's available in Azure SQL Database." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "yes", "s3": "no", "s4": "yes" },
+      "explanation": { "en": "Full-text tokenizes text into an inverted index and drops stopwords. FREETEXT uses linguistic rules (inflections, thesaurus), not embeddings. Full-text search is supported in Azure SQL Database." },
+      "example": { "en": "Use vector functions for embedding-based semantics." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/search/full-text-search"]
+    },
+    {
+      "id": "d3-ss-0031",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-search-strategy",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "You want CONTAINSTABLE to favor rows where 'waterproof' matters more than 'lightweight'. Which syntax supports weighting terms?" },
+      "options": [
+        { "id": "a", "text": { "en": "ISABOUT (waterproof WEIGHT (0.9), lightweight WEIGHT (0.3))" } },
+        { "id": "b", "text": { "en": "waterproof^2 lightweight" } },
+        { "id": "c", "text": { "en": "PRIORITY(waterproof)" } },
+        { "id": "d", "text": { "en": "Weighting isn't supported" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The weighted term ISABOUT assigns weights (0.0–1.0) that influence RANK in CONTAINSTABLE. The caret syntax belongs to other search engines, and PRIORITY doesn't exist." },
+      "example": { "en": "CONTAINSTABLE(dbo.Products, Description, 'ISABOUT (waterproof WEIGHT (0.9), lightweight WEIGHT (0.3))')" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/contains-transact-sql"]
+    },
+    {
+      "id": "d3-ss-0032",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-search-strategy",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which condition finds bikes that aren't electric?" },
+      "options": [
+        { "id": "a", "text": { "en": "CONTAINS(Description, '\"bike\" AND NOT \"electric\"')" } },
+        { "id": "b", "text": { "en": "CONTAINS(Description, 'bike - electric')" } },
+        { "id": "c", "text": { "en": "CONTAINS(Description, 'NOT electric')" } },
+        { "id": "d", "text": { "en": "FREETEXT(Description, 'bike not electric')" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "CONTAINS supports Boolean AND, OR and AND NOT between terms. A minus sign isn't the operator, NOT alone can't start a condition, and FREETEXT treats 'not' as text rather than logic." },
+      "example": { "en": "Combine with ranking via CONTAINSTABLE for sorted results." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/contains-transact-sql"]
+    },
+    {
+      "id": "d3-ss-0033",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-search-strategy",
+      "type": "dragdrop-order", "difficulty": "medium",
+      "text": { "en": "Order the steps to add ranked full-text search to dbo.Articles." },
+      "items": [
+        { "id": "i1", "text": { "en": "Create a full-text catalog" } },
+        { "id": "i2", "text": { "en": "Ensure a unique, single-column, non-nullable key index exists" } },
+        { "id": "i3", "text": { "en": "CREATE FULLTEXT INDEX with LANGUAGE and CHANGE_TRACKING AUTO" } },
+        { "id": "i4", "text": { "en": "Let the initial population finish" } },
+        { "id": "i5", "text": { "en": "Query with CONTAINSTABLE joined on [KEY], ordered by RANK" } }
+      ],
+      "answer": ["i1", "i2", "i3", "i4", "i5"],
+      "explanation": { "en": "The catalog and key index must exist before the full-text index; the index must be populated before queries return complete results." },
+      "example": { "en": "SELECT FULLTEXTCATALOGPROPERTY('ftCatalog', 'PopulateStatus'); -- 0 = idle" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/search/full-text-search"]
+    },
+    {
+      "id": "d3-ss-0034",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-search-strategy",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "\"lightweight hiking backpack\" vs a product named \"ultralight trail bag\": why does keyword search miss it?" },
+      "options": [
+        { "id": "a", "text": { "en": "The two texts share no words, so there's nothing for a keyword index to match; semantic search can relate them" } },
+        { "id": "b", "text": { "en": "The product name is too short to index" } },
+        { "id": "c", "text": { "en": "Backpack is a stopword" } },
+        { "id": "d", "text": { "en": "Keyword search only works on numbers" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Lexical search needs overlapping terms (or configured synonyms). Embeddings place both phrases near each other because they mean nearly the same thing." },
+      "example": { "en": "This is the motivating example for vector and hybrid search." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/02-choose-intelligent-search-approach"]
+    },
+    {
+      "id": "d3-ss-0035",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-search-strategy",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "You need to validate that a column contains properly formatted email addresses. Is full-text or vector search the right tool?" },
+      "options": [
+        { "id": "a", "text": { "en": "Neither; use a pattern function such as REGEXP_LIKE" } },
+        { "id": "b", "text": { "en": "Vector search" } },
+        { "id": "c", "text": { "en": "Full-text FREETEXT" } },
+        { "id": "d", "text": { "en": "Hybrid search with RRF" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Format validation is a pattern-matching problem, not relevance search. REGEXP_LIKE checks patterns; search approaches rank documents by relevance." },
+      "example": { "en": "WHERE REGEXP_LIKE(Email, '^[^@\\s]+@[^@\\s]+\\.[a-z]{2,}$', 'i')" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/regexp-like-transact-sql"]
+    },
+    {
+      "id": "d3-ss-0036",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-search-strategy",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "In search evaluation, what does precision measure?" },
+      "options": [
+        { "id": "a", "text": { "en": "Of the results returned, the fraction that are relevant" } },
+        { "id": "b", "text": { "en": "Of all relevant documents, the fraction returned" } },
+        { "id": "c", "text": { "en": "How fast the query runs" } },
+        { "id": "d", "text": { "en": "The number of vector dimensions" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Precision = relevant returned ÷ returned. Recall is relevant returned ÷ all relevant. Speed and dimensions are separate concerns." },
+      "example": { "en": "8 relevant of 10 returned → precision 0.8." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/06-implement-hybrid-search-ranking"]
+    },
+    {
+      "id": "d3-ss-0037",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-search-strategy",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "In search evaluation, what does recall measure?" },
+      "options": [
+        { "id": "a", "text": { "en": "Of all relevant documents in the database, the fraction the search found" } },
+        { "id": "b", "text": { "en": "Of the results returned, the fraction that are relevant" } },
+        { "id": "c", "text": { "en": "How high the first relevant result appears" } },
+        { "id": "d", "text": { "en": "How many users repeated the search" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Recall = relevant returned ÷ all relevant. Option B is precision; option C describes Mean Reciprocal Rank." },
+      "example": { "en": "Found 6 of 10 relevant documents → recall 0.6." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/06-implement-hybrid-search-ranking"]
+    },
+    {
+      "id": "d3-ss-0038",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-search-strategy",
+      "type": "single", "difficulty": "medium",
+      "caseId": "case-ss-outdoor",
+      "text": { "en": "Which overall search approach should Adventure Works implement?" },
+      "options": [
+        { "id": "a", "text": { "en": "Hybrid search: full-text plus vector search merged with Reciprocal Rank Fusion, with the price filter applied" } },
+        { "id": "b", "text": { "en": "Full-text only" } },
+        { "id": "c", "text": { "en": "Vector only" } },
+        { "id": "d", "text": { "en": "LIKE on Name and Description" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The shoppers use exact codes, descriptions and mixtures, so both signals matter; RRF merges the ranked lists. Single approaches miss one query style, and LIKE neither understands language nor ranks." },
+      "example": { "en": "Apply WHERE ListPrice <= @max inside both searches." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/02-choose-intelligent-search-approach"]
+    },
+    {
+      "id": "d3-ss-0039",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-search-strategy",
+      "type": "single", "difficulty": "medium",
+      "caseId": "case-ss-outdoor",
+      "text": { "en": "How should the full-text side handle exact model numbers like XR-500?" },
+      "options": [
+        { "id": "a", "text": { "en": "Index Sku/Name in the full-text index and match the code as a phrase (or use an equality lookup on Sku)" } },
+        { "id": "b", "text": { "en": "Embed the SKU and compare cosine distance" } },
+        { "id": "c", "text": { "en": "Add 'XR' to the stoplist" } },
+        { "id": "d", "text": { "en": "Use FORMSOF(INFLECTIONAL, XR-500)" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Codes need exact matching: a phrase query (or equality on Sku) finds them reliably. Embeddings blur codes, stoplisting removes them, and inflectional forms don't apply to codes." },
+      "example": { "en": "CONTAINS((Sku, Name), '\"XR-500\"')" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/contains-transact-sql"]
+    },
+    {
+      "id": "d3-ss-0040",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-search-strategy",
+      "type": "single", "difficulty": "medium",
+      "caseId": "case-ss-outdoor",
+      "text": { "en": "Which full-text index definition supports the store's keyword search?" },
+      "options": [
+        { "id": "a", "text": { "en": "CREATE FULLTEXT INDEX ON dbo.Products (Sku, Name LANGUAGE 1033, Description LANGUAGE 1033) KEY INDEX PK_Products WITH CHANGE_TRACKING AUTO" } },
+        { "id": "b", "text": { "en": "Three full-text indexes, one per column" } },
+        { "id": "c", "text": { "en": "A full-text index on ListPrice" } },
+        { "id": "d", "text": { "en": "KEY INDEX on a non-unique index over Name" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "One full-text index per table can cover the searchable text columns, keyed by the unique primary key, with automatic change tracking. Multiple full-text indexes aren't allowed, numeric prices aren't full-text indexed, and the key must be unique." },
+      "example": { "en": "Price stays a regular filter column." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-fulltext-index-transact-sql"]
+    },
+    {
+      "id": "d3-ss-0041",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-search-strategy",
+      "type": "single", "difficulty": "hard",
+      "caseId": "case-ss-outdoor",
+      "text": { "en": "The keyword branch of the hybrid query must produce a ranked list. Which T-SQL fits?" },
+      "options": [
+        { "id": "a", "text": { "en": "SELECT TOP (50) p.ProductID, ROW_NUMBER() OVER (ORDER BY ft.[RANK] DESC) AS kw_rank FROM dbo.Products p JOIN FREETEXTTABLE(dbo.Products, (Name, Description), @q, 50) ft ON p.ProductID = ft.[KEY] WHERE p.ListPrice <= @max ORDER BY ft.[RANK] DESC" } },
+        { "id": "b", "text": { "en": "SELECT ProductID FROM dbo.Products WHERE FREETEXT(Description, @q) ORDER BY ProductID" } },
+        { "id": "c", "text": { "en": "SELECT ProductID, VECTOR_DISTANCE('cosine', @qv, Embedding) FROM dbo.Products" } },
+        { "id": "d", "text": { "en": "SELECT ProductID FROM dbo.Products WHERE Description LIKE @q" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "FREETEXTTABLE returns RANK; converting it to a position with ROW_NUMBER (or RANK()) prepares the list for RRF, and the price filter applies. Option B has no relevance order, C is the vector branch, and D isn't linguistic or ranked." },
+      "example": { "en": "The vector branch produces vec_rank the same way, ordered by distance." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/06-implement-hybrid-search-ranking"]
+    },
+    {
+      "id": "d3-ss-0042",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-search-strategy",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A user searches \"Azure SQL backup strategies\". Which results would vector search add beyond keyword search?" },
+      "options": [
+        { "id": "a", "text": { "en": "Documents about \"database recovery planning\" or \"disaster recovery for SQL databases\" that don't use the same words" } },
+        { "id": "b", "text": { "en": "Only documents containing all three words" } },
+        { "id": "c", "text": { "en": "Documents sorted alphabetically" } },
+        { "id": "d", "text": { "en": "Nothing; vector search returns the same rows" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Semantic similarity surfaces related concepts with different wording; keyword search finds documents with the actual words. Combining both is the point of hybrid search." },
+      "example": { "en": "Hybrid returns both sets, with documents found by both ranked highest via RRF." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/06-implement-hybrid-search-ranking"]
+    },
+    {
+      "id": "d3-ss-0043",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-search-strategy",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Searching \"brake\" returns many results about \"brake-resistant coatings\" when users want bicycle brakes. How can you improve precision with full-text?" },
+      "options": [
+        { "id": "a", "text": { "en": "Use a more specific phrase or proximity search, such as '\"bicycle brake\"' or NEAR((bicycle, brake))" } },
+        { "id": "b", "text": { "en": "Make 'brake' a stopword" } },
+        { "id": "c", "text": { "en": "Switch CHANGE_TRACKING to OFF" } },
+        { "id": "d", "text": { "en": "Increase top_n_by_rank to 10,000" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Narrower conditions reduce irrelevant matches. Stoplisting 'brake' would make it unsearchable, change tracking doesn't affect relevance, and returning more rows lowers precision further." },
+      "example": { "en": "CONTAINSTABLE(dbo.Products, Description, 'NEAR((bicycle, brake), 3)')" },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/03-implement-full-text-search"]
+    },
+    {
+      "id": "d3-ss-0044",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-search-strategy",
+      "type": "multiple", "difficulty": "medium", "selectCount": 2,
+      "text": { "en": "Which two return a ranked rowset rather than acting as a Boolean predicate? (Select 2)" },
+      "options": [
+        { "id": "a", "text": { "en": "CONTAINSTABLE" } },
+        { "id": "b", "text": { "en": "FREETEXTTABLE" } },
+        { "id": "c", "text": { "en": "CONTAINS" } },
+        { "id": "d", "text": { "en": "FREETEXT" } },
+        { "id": "e", "text": { "en": "LIKE" } }
+      ],
+      "answer": ["a", "b"],
+      "explanation": { "en": "The *TABLE functions return [KEY] and RANK for joining and ordering. CONTAINS, FREETEXT and LIKE are predicates used in WHERE without scores." },
+      "example": { "en": "JOIN CONTAINSTABLE(…) AS ft ON t.Id = ft.[KEY]" },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/03-implement-full-text-search"]
+    },
+    {
+      "id": "d3-ss-0045",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-search-strategy",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "In CONTAINSTABLE results, what does the [KEY] column contain?" },
+      "options": [
+        { "id": "a", "text": { "en": "The value of the full-text key index column for each matching row" } },
+        { "id": "b", "text": { "en": "The encryption key" } },
+        { "id": "c", "text": { "en": "The matched word" } },
+        { "id": "d", "text": { "en": "The row number in the result" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "[KEY] holds the unique key value (e.g., ProductID), which you join back to the base table. It's not a word, an encryption key or a position." },
+      "example": { "en": "ON p.ProductID = ft.[KEY]" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-functions/containstable-transact-sql"]
+    },
+    {
+      "id": "d3-ss-0046",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-search-strategy",
+      "type": "dragdrop-match", "difficulty": "medium",
+      "text": { "en": "Match each scenario to the recommended search approach." },
+      "items": [
+        { "id": "i1", "text": { "en": "Find tickets containing an exact stack-trace line" } },
+        { "id": "i2", "text": { "en": "\"Show me cozy cabins near lakes\" on a rental site" } },
+        { "id": "i3", "text": { "en": "General site search where users type anything" } },
+        { "id": "i4", "text": { "en": "Search in a language different from the content" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "Full-text search" } },
+        { "id": "t2", "text": { "en": "Vector search" } },
+        { "id": "t3", "text": { "en": "Hybrid search with RRF" } },
+        { "id": "t4", "text": { "en": "Vector search with a multilingual model" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "Exact strings → keyword; descriptive needs → semantic; unpredictable mixes → hybrid; cross-language → multilingual embeddings." },
+      "example": { "en": "Many production systems end up with hybrid as the default." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/02-choose-intelligent-search-approach"]
+    },
+    {
+      "id": "d3-ss-0047",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-search-strategy",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "Which statement about combining CONTAINS with a full-text index on multiple columns is correct?" },
+      "options": [
+        { "id": "a", "text": { "en": "You can search one column, a list of columns, or all indexed columns with *, e.g. CONTAINS((Name, Description), 'trail')" } },
+        { "id": "b", "text": { "en": "CONTAINS can only search the first indexed column" } },
+        { "id": "c", "text": { "en": "Each column needs its own catalog" } },
+        { "id": "d", "text": { "en": "Multiple columns require FREETEXT" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "CONTAINS and the *TABLE functions accept a column, a parenthesized column list, or * for all full-text indexed columns. Catalogs aren't per column, and both predicates support multiple columns." },
+      "example": { "en": "CONTAINS(*, '\"trail running\"')" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/contains-transact-sql"]
+    },
+    {
+      "id": "d3-ss-0048",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-search-strategy",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Why is full-text search usually fast for keyword lookups?" },
+      "options": [
+        { "id": "a", "text": { "en": "Its inverted index maps words directly to the rows that contain them, avoiding scans" } },
+        { "id": "b", "text": { "en": "It caches every query result forever" } },
+        { "id": "c", "text": { "en": "It reads only the first 100 rows" } },
+        { "id": "d", "text": { "en": "It uses vector quantization" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The inverted index makes term lookups efficient. It doesn't cache forever, truncate reads or use vector quantization (a vector index technique)." },
+      "example": { "en": "Compare with LIKE '%term%', which scans every row." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/03-implement-full-text-search"]
+    },
+    {
+      "id": "d3-ss-0049",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-search-strategy",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A team wants to add semantic search but has no embeddings yet. What must happen before vector queries return useful results?" },
+      "options": [
+        { "id": "a", "text": { "en": "Choose an embedding model, create an external model, and generate and store embeddings for the content" } },
+        { "id": "b", "text": { "en": "Create a full-text catalog" } },
+        { "id": "c", "text": { "en": "Enable CHANGE_TRACKING AUTO" } },
+        { "id": "d", "text": { "en": "Nothing; VECTOR_SEARCH computes embeddings from text automatically" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Vector search compares stored vectors to a query vector; both must be generated by a model. Full-text artifacts don't produce vectors, and VECTOR_SEARCH doesn't embed text." },
+      "example": { "en": "Then create a vector index for large tables." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/02-choose-intelligent-search-approach"]
+    },
+    {
+      "id": "d3-ss-0050",
+      "domain": "ai-capabilities", "topic": "t-intelligent-search", "subtopic": "d3-search-strategy",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which statement best summarizes how to choose a search approach?" },
+      "options": [
+        { "id": "a", "text": { "en": "Match the approach to how users search and to the precision, recall and performance trade-offs you can accept" } },
+        { "id": "b", "text": { "en": "Always use vector search because it's newest" } },
+        { "id": "c", "text": { "en": "Always use full-text because it's fastest" } },
+        { "id": "d", "text": { "en": "Choose randomly; results are the same" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "No approach is universally better; the right one depends on query intent and acceptable trade-offs. Blanket rules ignore the scenario." },
+      "example": { "en": "Pilot with a labeled query set and compare precision, recall and latency." },
+      "sources": ["https://learn.microsoft.com/en-us/training/modules/design-implement-intelligent-search-with-sql/02-choose-intelligent-search-approach"]
+    }
+  ]
+}

@@ -1,0 +1,74 @@
+{
+  "subtopic": "d2-dab-endpoints",
+  "title": { "en": "DAB endpoints, relationships & deployment" },
+  "prerequisiteRecap": [
+    {
+      "heading": { "en": "From entity to endpoint" },
+      "body": {
+        "en": "Every entity in dab-config.json becomes a REST resource under `/api/{entity}` and a set of GraphQL fields under `/graphql`, filtered by the caller's role permissions. The previous lesson covered the configuration file; this one covers **calling** the endpoints, **stored procedures**, **relationships** and **deploying** DAB to Azure."
+      }
+    }
+  ],
+  "sections": [
+    {
+      "heading": { "en": "REST endpoints" },
+      "body": {
+        "en": "- `GET /api/Book` returns `{ \"value\": [...] }` (paged, with `nextLink`).\n- `GET /api/Book/id/1010` reads by primary key (`/{pk-column}/{value}`; composite keys add more pairs). A missing key returns **200 with an empty `value` array**, not 404.\n- `POST /api/Book` creates; `PUT /api/Book/id/5` **replaces**; `PATCH /api/Book/id/5` **updates** the supplied fields; both PUT and PATCH **upsert** if the row is missing — but only when the key can be supplied explicitly. On an `IDENTITY` key, PUT/PATCH to a missing key returns **404**; use POST, or DAB 2.0 **keyless PUT/PATCH** (`PUT /api/Book` without a key) to insert with a generated key.\n- `DELETE /api/Book/id/5` removes a row.\n- Paths and query parameters are **case sensitive**. DAB 2.0 allows subdirectory paths (`\"rest\": { \"path\": \"shopping-cart/item\" }`).\n- The **OpenAPI** document is at `/api/openapi` (DAB 2.0: permission-aware; `/api/openapi/{role}` only in development). **Swagger UI** is at `/swagger` in **development** mode only."
+      },
+      "code": "GET    /api/Book?$filter=year ge 2020&$first=20\nGET    /api/Book/id/1010\nGET    /api/OrderLine/OrderId/5/LineNo/2      -- composite key\nPOST   /api/Book            { \"title\": \"New\", \"year\": 2026 }\nPATCH  /api/Book/id/1010    { \"price\": 24.99 }\nDELETE /api/Book/id/1010",
+      "codeLang": "text"
+    },
+    {
+      "heading": { "en": "GraphQL endpoints" },
+      "body": {
+        "en": "All GraphQL requests are `POST /graphql` with a JSON body. For each table/view entity DAB generates:\n- queries: `books` (list with `filter`, `orderBy`, `first`, `after` → `items`, `hasNextPage`, `endCursor`) and `book_by_pk(id: 1)`;\n- mutations: `createBook(item: {...})`, `updateBook(id: 1, item: {...})`, `deleteBook(id: 1)` (no `_by_pk` suffix on mutations).\nStored procedures appear as `execute{Entity}` under Mutation (default) or Query. With `runtime.graphql.multiple-mutations.create.enabled`, one mutation can insert a parent and related children (SQL family only)."
+      },
+      "code": "query {\n  book_by_pk(id: 1010) { title year }\n}\n\nmutation {\n  updateBook(id: 1010, item: { price: 24.99 }) { id price }\n}",
+      "codeLang": "text"
+    },
+    {
+      "heading": { "en": "Stored procedures as endpoints" },
+      "body": {
+        "en": "Configure `source.type: stored-procedure`, optional `parameters`, `rest.methods` and the **execute** permission.\n- REST supports only **GET** (parameters in the query string) and **POST** (parameters in a JSON body); default POST.\n- Only the **first result set** is returned.\n- **No pagination, filtering or ordering**, **no relationships**, **no single-item-by-key** read, **no parameter-level authorization**.\n- DAB reads the result shape from `sys.dm_exec_describe_first_result_set`; procedures whose first result set can't be described (for example a final SELECT from a temp table created inside the procedure) fail to load — rewrite so the shape is determinable (a table variable or permanent objects).\n- Procedures are excluded from health checks (they need parameters and may have side effects)."
+      },
+      "code": "GET  /api/GetBooksByAuthor?author=asimov\nPOST /api/GetBooksByAuthor      { \"author\": \"asimov\" }\n\nquery { executeGetBooksByAuthor(author: \"asimov\") { title } }",
+      "codeLang": "text"
+    },
+    {
+      "heading": { "en": "Relationships (GraphQL only)" },
+      "body": {
+        "en": "Relationships let one GraphQL query traverse related entities; **REST doesn't support them**. Define them on the source entity: `cardinality` (`one` or `many`), `target.entity`, optional `source.fields`/`target.fields` (DAB **infers them from a foreign key** when one exists — views need them explicitly), and for many-to-many a **`linking.object`** (join table that isn't exposed) with `linking.source.fields`/`linking.target.fields`. Both entities must be in the same config. For navigation in both directions, define the reciprocal relationship on the target entity too.\n- One-to-many (Category → Books): `many`.\n- Many-to-one (Book → Category): `one`."
+      },
+      "code": "dab update Category --relationship books --target.entity Book --cardinality many --relationship.fields \"id:category_id\"\n\nquery {\n  categories {\n    items {\n      name\n      books { items { title } }\n    }\n  }\n}",
+      "codeLang": "text"
+    },
+    {
+      "heading": { "en": "Deploying DAB to Azure" },
+      "body": {
+        "en": "DAB ships as a container image: `mcr.microsoft.com/azure-databases/data-api-builder`. The documented **Azure Container Apps** pattern:\n1. `dab init` with `@env('DATABASE_CONNECTION_STRING')`, `dab add` entities.\n2. Dockerfile: `FROM` the DAB image and `COPY dab-config.json /App/dab-config.json`; build/push with `az acr build`.\n3. Create the container app from the image, set the connection string env var (store it as a Container Apps **secret** or, better, avoid secrets with **managed identity**), enable HTTP ingress on target port **5000**.\n4. Browse `/` (basic health: always public) and call your entities.\nOther hosts: App Service, Container Instances, AKS. **Static Web Apps database connections (built on DAB) were retired on November 30, 2025** — host DAB yourself and call it from the front end.\n**Production checklist**: `host.mode: production` (no Swagger/Nitro; only log-level hot-reloads), real auth provider (EntraId with audience/issuer; Simulator won't start in production), restricted CORS, introspection off if not needed, least-privilege database user for the managed identity, `/health` with explicit `runtime.health.roles` (otherwise 403 in production), and optionally **Azure API Management** in front for rate limits, keys and versioning."
+      },
+      "code": "# Dockerfile\nFROM mcr.microsoft.com/azure-databases/data-api-builder:latest\nCOPY dab-config.json /App/dab-config.json\n\n-- Azure SQL: user for the container app's managed identity\nCREATE USER [ca-dab-books] FROM EXTERNAL PROVIDER;\nALTER ROLE db_datareader ADD MEMBER [ca-dab-books];\nALTER ROLE db_datawriter ADD MEMBER [ca-dab-books];",
+      "codeLang": "text"
+    }
+  ],
+  "examTips": [
+    { "en": "GET by key: /api/{entity}/{pk}/{value}; missing key → 200 with empty value array." },
+    { "en": "PUT replaces, PATCH updates; both upsert only when the key can be supplied (IDENTITY → 404; use POST or keyless PUT/PATCH in DAB 2.0)." },
+    { "en": "GraphQL: entity_by_pk and plural list queries; createX/updateX/deleteX mutations; procedures → executeX." },
+    { "en": "Procedures: GET (query string) or POST (body); first result set only; no paging/filter/order/relationships/by-key." },
+    { "en": "Relationships are GraphQL-only; cardinality one/many; linking.object for many-to-many; FK lets DAB infer fields." },
+    { "en": "Container image mcr.microsoft.com/azure-databases/data-api-builder, config at /App/dab-config.json, port 5000." },
+    { "en": "SWA database connections retired Nov 30, 2025 — self-host DAB (e.g., Container Apps)." },
+    { "en": "/ = basic public health; /health in production needs runtime.health.roles; Swagger /swagger only in development." }
+  ],
+  "sources": [
+    "https://learn.microsoft.com/en-us/azure/data-api-builder/concept/rest/overview",
+    "https://learn.microsoft.com/en-us/azure/data-api-builder/concept/graphql/overview",
+    "https://learn.microsoft.com/en-us/azure/data-api-builder/concept/rest/stored-procedures",
+    "https://learn.microsoft.com/en-us/azure/data-api-builder/concept/graphql/relationships",
+    "https://learn.microsoft.com/en-us/azure/data-api-builder/concept/rest/openapi",
+    "https://learn.microsoft.com/en-us/azure/data-api-builder/deployment/azure-container-apps",
+    "https://learn.microsoft.com/en-us/azure/data-api-builder/concept/monitor/health-checks",
+    "https://learn.microsoft.com/en-us/azure/static-web-apps/database-overview"
+  ]
+}

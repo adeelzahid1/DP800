@@ -1,0 +1,54 @@
+{
+  "subtopic": "f-vectors-basics",
+  "title": { "en": "Vectors, embeddings & AI concepts from scratch" },
+  "sections": [
+    {
+      "heading": { "en": "The core idea: meaning as numbers" },
+      "body": {
+        "en": "An **embedding** is a list of numbers (a vector) that represents the *meaning* of something — a sentence, a document, an image. An **embedding model** (like `text-embedding-3-small`) converts text into such a vector, typically with hundreds to thousands of dimensions. The magic property: texts with similar meaning get vectors that are *close together*. \"How do I reset my password?\" and \"I forgot my login credentials\" share almost no words, yet their embeddings are close neighbors. That is what makes semantic search possible where keyword search fails."
+      }
+    },
+    {
+      "heading": { "en": "Measuring closeness: distance metrics" },
+      "body": {
+        "en": "Three metrics appear on the exam (they are exactly the ones `VECTOR_DISTANCE` and `VECTOR_SEARCH` support):\n- **Cosine distance** — compares the *direction* of two vectors, ignoring their length. The default choice for text embeddings. Range 0 (identical direction) to 2 (opposite).\n- **Euclidean distance** — straight-line distance between the points. Sensitive to vector magnitude.\n- **Dot product (negative inner product)** — fastest; equivalent in ranking to cosine *when vectors are normalized to length 1*.\nSmaller distance = more similar. Many models (OpenAI's among them) emit normalized vectors, which is why cosine and dot product usually rank identically for them."
+      },
+      "code": "DECLARE @a VECTOR(3) = '[1, 0, 0]';\nDECLARE @b VECTOR(3) = '[0.9, 0.1, 0]';\nSELECT VECTOR_DISTANCE('cosine',    @a, @b) AS CosineDist,\n       VECTOR_DISTANCE('euclidean', @a, @b) AS EuclideanDist,\n       VECTOR_DISTANCE('dot',       @a, @b) AS DotDist;"
+    },
+    {
+      "heading": { "en": "Exact vs approximate search (ENN vs ANN)" },
+      "body": {
+        "en": "To find the 10 nearest vectors to a query among a million rows you can:\n- **ENN / kNN (exact nearest neighbor)**: compute the distance to *every* row and sort. Perfect recall, cost grows linearly — fine for thousands of rows, painful for millions.\n- **ANN (approximate nearest neighbor)**: use a prebuilt **vector index** to jump to the right neighborhood. Dramatically faster, but may occasionally miss a true neighbor (recall < 100%).\nSQL Server's ANN index type is **DiskANN**, a graph-based index designed at Microsoft Research that keeps most of the structure on disk (SSD-friendly) instead of needing everything in RAM. The trade-off triangle — speed, recall, memory — is a recurring exam theme."
+      }
+    },
+    {
+      "heading": { "en": "Chunking: why documents are split" },
+      "body": {
+        "en": "Embedding models have an input limit (token limit), and one vector for a 50-page manual would blur all its topics together. So documents are split into **chunks** (paragraphs, sections, fixed token windows with overlap), each chunk gets its own embedding, and search happens at chunk level. Chunk too large → fuzzy, diluted vectors; too small → fragments with no context. Overlap between adjacent chunks preserves continuity. SQL Server 2025 exposes `AI_GENERATE_CHUNKS` to do this in T-SQL."
+      }
+    },
+    {
+      "heading": { "en": "RAG: retrieval-augmented generation" },
+      "body": {
+        "en": "Large language models answer from what they learned in training — not from *your* database. **RAG** fixes that in three steps: (1) **Retrieve** the most relevant chunks for the user's question using vector search; (2) **Augment** the prompt by inserting those chunks as context; (3) **Generate** — the LLM answers grounded in the supplied context. The whole pipeline can live inside SQL: embeddings via `AI_GENERATE_EMBEDDINGS`, retrieval via `VECTOR_SEARCH`, and the chat-model call via `sp_invoke_external_rest_endpoint`. Domain 3 builds this end to end."
+      }
+    },
+    {
+      "heading": { "en": "Vocabulary you will keep meeting" },
+      "body": {
+        "en": "- **Dimensions**: length of the vector (e.g. 1536 for text-embedding-ada-002).\n- **Model endpoint**: the HTTPS URL where a model is hosted (Azure OpenAI, OpenAI, Ollama, or a local ONNX runtime).\n- **Token**: the unit models read (~4 characters of English); limits and costs are counted in tokens.\n- **Recall**: fraction of true nearest neighbors an approximate search actually finds.\n- **Hybrid search**: combining keyword (full-text) and vector results, typically fused with **RRF** (reciprocal rank fusion).\n- **Semantic search**: search by meaning (vectors) rather than exact words."
+      }
+    }
+  ],
+  "examTips": [
+    { "en": "Cosine = direction only (text default), Euclidean = magnitude matters, Dot = fastest but assumes normalized vectors. Smaller distance = more similar." },
+    { "en": "ENN/kNN = exact + slow at scale; ANN/DiskANN = fast + approximate (recall trade-off). Questions often hinge on data size and recall requirements." },
+    { "en": "Chunking exists because of token limits and semantic dilution; overlap preserves context between chunks." },
+    { "en": "RAG = retrieve (vector search) → augment (prompt) → generate (LLM). The LLM never queries the database itself in basic RAG." }
+  ],
+  "sources": [
+    "https://learn.microsoft.com/en-us/sql/sql-server/ai/vectors",
+    "https://learn.microsoft.com/en-us/sql/t-sql/functions/vector-distance-transact-sql",
+    "https://learn.microsoft.com/en-us/azure/architecture/ai-ml/guide/rag/rag-solution-design-and-evaluation-guide"
+  ]
+}

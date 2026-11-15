@@ -1,0 +1,849 @@
+{
+  "subtopic": "d1-partitioning",
+  "questions": [
+    {
+      "id": "d1-part-0001",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-partitioning",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "A partition function is created with 4 boundary values. How many partitions does it define?" },
+      "options": [
+        { "id": "a", "text": { "en": "5" } },
+        { "id": "b", "text": { "en": "4" } },
+        { "id": "c", "text": { "en": "3" } },
+        { "id": "d", "text": { "en": "8" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Boundaries are fence posts: N values split the domain into N+1 ranges. Four boundaries → five partitions (everything below the first, three middles, everything from the last up). Answering N instead of N+1 is the classic mistake." },
+      "example": { "en": "VALUES ('01-01','02-01','03-01','04-01') → P1 (<Jan), P2 (Jan), P3 (Feb), P4 (Mar), P5 (≥Apr) with RANGE RIGHT." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-partition-function-transact-sql"]
+    },
+    {
+      "id": "d1-part-0002",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-partitioning",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "With RANGE RIGHT and boundary '2026-02-01', into which partition does a row with EventDate = '2026-02-01' go?" },
+      "options": [
+        { "id": "a", "text": { "en": "The partition to the right of the boundary (the one starting at 2026-02-01)" } },
+        { "id": "b", "text": { "en": "The partition to the left (ending before the boundary)" } },
+        { "id": "c", "text": { "en": "Both partitions" } },
+        { "id": "d", "text": { "en": "It raises a boundary conflict error" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "RANGE RIGHT assigns the boundary value itself to the right partition — exactly why first-of-month boundaries with RANGE RIGHT keep each month whole. RANGE LEFT would put the boundary value in the left partition. Rows live in exactly one partition; no errors occur for boundary values." },
+      "example": { "en": "RANGE RIGHT + '2026-02-01' → February's partition starts at and includes Feb 1." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-partition-function-transact-sql"]
+    },
+    {
+      "id": "d1-part-0003",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-partitioning",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "What does a partition scheme define?" },
+      "options": [
+        { "id": "a", "text": { "en": "The mapping of each partition to a filegroup" } },
+        { "id": "b", "text": { "en": "The boundary values" } },
+        { "id": "c", "text": { "en": "The column used for partitioning" } },
+        { "id": "d", "text": { "en": "The compression level per partition" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Scheme = storage mapping (partitions → filegroups). Boundaries live in the partition *function* (b). The column is chosen when the table/index is created ON the scheme (c). Compression is set per partition via ALTER TABLE/INDEX options, not the scheme (d)." },
+      "example": { "en": "CREATE PARTITION SCHEME ps AS PARTITION pf ALL TO ([PRIMARY]);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-partition-scheme-transact-sql"]
+    },
+    {
+      "id": "d1-part-0004",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-partitioning",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Why does CREATE TABLE fail with 'partition column must be part of the unique index' when adding PRIMARY KEY (EventId) to a table partitioned on EventDate?" },
+      "options": [
+        { "id": "a", "text": { "en": "Unique indexes on partitioned tables must include the partition column; use PRIMARY KEY (EventDate, EventId) or a nonaligned index" } },
+        { "id": "b", "text": { "en": "Partitioned tables cannot have primary keys" } },
+        { "id": "c", "text": { "en": "EventId must be the partition column" } },
+        { "id": "d", "text": { "en": "The PK must be nonclustered on partitioned tables" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Each partition is a separate physical structure; enforcing uniqueness across them requires the partition column in the key (or an unaligned index that loses SWITCH capability). PKs are fine (b), the identity column need not drive partitioning (c), and clustered PKs work (d)." },
+      "example": { "en": "CONSTRAINT PK_Events PRIMARY KEY (EventDate, EventId) — the standard composite pattern." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/partitions/partitioned-tables-and-indexes"]
+    },
+    {
+      "id": "d1-part-0005",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-partitioning",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What is the key performance property of ALTER TABLE ... SWITCH PARTITION?" },
+      "options": [
+        { "id": "a", "text": { "en": "It is a metadata-only operation — no rows are physically copied, so it completes in milliseconds regardless of size" } },
+        { "id": "b", "text": { "en": "It copies rows in parallel using all cores" } },
+        { "id": "c", "text": { "en": "It compresses data while moving it" } },
+        { "id": "d", "text": { "en": "It is minimally logged but still moves data" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "SWITCH re-points allocation metadata: a billion-row partition 'moves' instantly. No copying occurs — parallel copy (b), compression (c) and 'moves data' (d) all contradict its nature. That's why staging-table loads and archiving pivot on SWITCH." },
+      "example": { "en": "ALTER TABLE dbo.FactSales SWITCH PARTITION 1 TO dbo.FactSales_Archive PARTITION 1;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-table-transact-sql"]
+    },
+    {
+      "id": "d1-part-0006",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-partitioning",
+      "type": "multiple", "difficulty": "hard", "selectCount": 3,
+      "text": { "en": "Which three conditions must hold for SWITCH PARTITION from staging into a partitioned fact table? (Select 3)" },
+      "options": [
+        { "id": "a", "text": { "en": "Source and target have identical schema and aligned indexes" } },
+        { "id": "b", "text": { "en": "The target partition is empty" } },
+        { "id": "c", "text": { "en": "A trusted CHECK constraint on the staging table restricts rows to the target partition's range" } },
+        { "id": "d", "text": { "en": "The staging table has at least 1 million rows" } },
+        { "id": "e", "text": { "en": "Both tables use different filegroups" } }
+      ],
+      "answer": ["a", "b", "c"],
+      "explanation": { "en": "SWITCH demands structural identity (schema, indexes, constraints alignment), an empty destination partition, residence on the same filegroup, and a trusted CHECK proving the staged rows fit the range. No minimum row count exists (d), and the filegroup must be the SAME, not different (e)." },
+      "example": { "en": "ALTER TABLE Staging WITH CHECK ADD CONSTRAINT CK_Range CHECK (EventDate >= '2026-03-01' AND EventDate < '2026-04-01');" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/partitions/partitioned-tables-and-indexes"]
+    },
+    {
+      "id": "d1-part-0007",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-partitioning",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Why should SPLIT RANGE always target an empty range?" },
+      "options": [
+        { "id": "a", "text": { "en": "Splitting a populated partition physically moves rows between partitions — slow, heavily logged, and blocking" } },
+        { "id": "b", "text": { "en": "Splitting populated partitions is forbidden by the engine" } },
+        { "id": "c", "text": { "en": "Data in split partitions becomes read-only" } },
+        { "id": "d", "text": { "en": "Empty ranges produce more partitions" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "SPLIT on populated data redistributes rows across the new boundary — a size-of-data operation with massive logging. The engine allows it (b), nothing becomes read-only (c), and the partition count increase is the same either way (d). Hence the sliding-window habit: split next month's boundary while it's still empty." },
+      "example": { "en": "Prepare April's boundary in March: ALTER PARTITION FUNCTION pf() SPLIT RANGE ('2026-04-01');" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-partition-function-transact-sql"]
+    },
+    {
+      "id": "d1-part-0008",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-partitioning",
+      "type": "dragdrop-order", "difficulty": "hard",
+      "text": { "en": "Arrange the monthly sliding-window maintenance steps in the standard order." },
+      "items": [
+        { "id": "i1", "text": { "en": "ALTER PARTITION SCHEME ... NEXT USED (designate filegroup)" } },
+        { "id": "i2", "text": { "en": "SPLIT RANGE to add next month's empty boundary" } },
+        { "id": "i3", "text": { "en": "SWITCH the oldest partition out to the archive table" } },
+        { "id": "i4", "text": { "en": "MERGE RANGE to remove the vacated oldest boundary" } }
+      ],
+      "answer": ["i1", "i2", "i3", "i4"],
+      "explanation": { "en": "NEXT USED tells the scheme where the new partition will live; SPLIT creates the upcoming empty period; SWITCH evacuates the oldest data instantly; MERGE collapses the now-empty tail range. Keeping SPLIT before data arrives and MERGE after SWITCH keeps both operations metadata-fast." },
+      "example": { "en": "Automate as a monthly Agent job / Elastic Job ahead of month start." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/partitions/partitioned-tables-and-indexes"]
+    },
+    {
+      "id": "d1-part-0009",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-partitioning",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which statement instantly deletes all rows of partitions 1 and 2 only?" },
+      "options": [
+        { "id": "a", "text": { "en": "TRUNCATE TABLE dbo.Events WITH (PARTITIONS (1, 2));" } },
+        { "id": "b", "text": { "en": "DELETE FROM dbo.Events WHERE $PARTITION.pf(EventDate) IN (1,2);" } },
+        { "id": "c", "text": { "en": "DROP PARTITION 1, 2 ON dbo.Events;" } },
+        { "id": "d", "text": { "en": "ALTER TABLE dbo.Events REMOVE PARTITION (1,2);" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Partition-scoped TRUNCATE is the instant, minimally logged purge. The DELETE (b) produces the same end state but row-by-row with full logging — not 'instant'. (c) and (d) are not T-SQL statements." },
+      "example": { "en": "Retention jobs: truncate expired partitions, then MERGE their boundaries." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/truncate-table-transact-sql"]
+    },
+    {
+      "id": "d1-part-0010",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-partitioning",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which predicate allows partition elimination on a table partitioned by OrderDate?" },
+      "options": [
+        { "id": "a", "text": { "en": "WHERE OrderDate >= '2026-03-01' AND OrderDate < '2026-04-01'" } },
+        { "id": "b", "text": { "en": "WHERE YEAR(OrderDate) = 2026 AND MONTH(OrderDate) = 3" } },
+        { "id": "c", "text": { "en": "WHERE CONVERT(VARCHAR, OrderDate, 112) LIKE '202603%'" } },
+        { "id": "d", "text": { "en": "WHERE DATEDIFF(day, OrderDate, GETDATE()) < 30" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Elimination needs a sargable range on the raw partition column. Wrapping OrderDate in YEAR/MONTH (b), CONVERT (c) or DATEDIFF (d) hides it behind a function, forcing all partitions to be scanned — the same non-SARGable rule that breaks index seeks." },
+      "example": { "en": "Verify in the actual plan: 'Actual Partition Count = 1' instead of the total." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/partitions/partitioned-tables-and-indexes"]
+    },
+    {
+      "id": "d1-part-0011",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-partitioning",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "For each statement about partitioning, answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "Partitioning mainly improves manageability; it is not primarily a query-speed feature." } },
+        { "id": "s2", "text": { "en": "A single index partition can be rebuilt without touching the rest." } },
+        { "id": "s3", "text": { "en": "Different partitions of one table can use different compression settings." } },
+        { "id": "s4", "text": { "en": "Partitioning a 2-GB OLTP table typically yields large performance gains." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "yes", "s3": "yes", "s4": "no" },
+      "explanation": { "en": "Microsoft's guidance: partition for manageability (archiving, loads, maintenance); seeks on a good index are usually as fast or faster. REBUILD PARTITION = n and per-partition DATA_COMPRESSION are core benefits. Small tables gain nothing but complexity — a favorite wrong-answer pattern." },
+      "example": { "en": "ALTER INDEX CCI ON Fact REBUILD PARTITION = 12 WITH (DATA_COMPRESSION = COLUMNSTORE_ARCHIVE);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/partitions/partitioned-tables-and-indexes"]
+    },
+    {
+      "id": "d1-part-0012",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-partitioning",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which built-in function tells you which partition number a given value maps to?" },
+      "options": [
+        { "id": "a", "text": { "en": "$PARTITION.pf_Monthly('2026-02-15')" } },
+        { "id": "b", "text": { "en": "PARTITION_ID('2026-02-15')" } },
+        { "id": "c", "text": { "en": "sys.fn_partition('2026-02-15')" } },
+        { "id": "d", "text": { "en": "PARTITION_NUMBER(pf_Monthly)" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "$PARTITION.<function_name>(value) returns the 1-based partition number for a value — useful in queries and checks. The other three are invented names." },
+      "example": { "en": "SELECT $PARTITION.pf_Monthly(EventDate) AS P, COUNT(*) FROM dbo.Events GROUP BY $PARTITION.pf_Monthly(EventDate);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/partition-transact-sql"]
+    },
+    {
+      "id": "d1-part-0013",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-partitioning",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Complete the monthly partition function and scheme." },
+      "code": "CREATE PARTITION FUNCTION pf_Sales (DATE)\n    AS RANGE [BLANK1] FOR VALUES ('2026-01-01', '2026-02-01');\nGO\nCREATE PARTITION [BLANK2] ps_Sales\n    AS PARTITION pf_Sales ALL TO ([PRIMARY]);",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "RIGHT" } },
+            { "id": "c2", "text": { "en": "UPPER" } },
+            { "id": "c3", "text": { "en": "ASC" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "SCHEME" } },
+            { "id": "c2", "text": { "en": "MAP" } },
+            { "id": "c3", "text": { "en": "LAYOUT" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "RANGE LEFT/RIGHT are the only direction keywords (RIGHT is idiomatic for date boundaries); the storage mapping object is a PARTITION SCHEME. UPPER/ASC and MAP/LAYOUT are decoys." },
+      "example": { "en": "Then: CREATE TABLE dbo.Sales (...) ON ps_Sales(SaleDate);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-partition-function-transact-sql"]
+    },
+    {
+      "id": "d1-part-0014",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-partitioning",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "Loading yesterday's 200M rows into the current fact partition with minimal impact on readers is best done by:" },
+      "options": [
+        { "id": "a", "text": { "en": "Bulk-load into an identically structured staging table, index it, add the range CHECK, then SWITCH it into the fact table" } },
+        { "id": "b", "text": { "en": "INSERT ... SELECT directly into the fact table" } },
+        { "id": "c", "text": { "en": "MERGE the staging rows into the fact table" } },
+        { "id": "d", "text": { "en": "Drop the fact table's indexes, load, recreate them" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The staging+SWITCH pattern does all heavy work off to the side; the production table is touched only by a millisecond metadata switch. Direct INSERT (b) and MERGE (c) hold locks and bloat the log on the live table for the entire load. Dropping indexes (d) takes the whole table effectively offline." },
+      "example": { "en": "This 'load staging, switch in' pattern is THE canonical partitioning exam scenario." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/partitions/partitioned-tables-and-indexes"]
+    },
+    {
+      "id": "d1-part-0015",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-partitioning",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What does ALTER PARTITION SCHEME ps NEXT USED [FG2] do?" },
+      "options": [
+        { "id": "a", "text": { "en": "Designates FG2 as the filegroup that the next SPLIT's new partition will be placed on" } },
+        { "id": "b", "text": { "en": "Moves all partitions to FG2" } },
+        { "id": "c", "text": { "en": "Marks FG2 read-only" } },
+        { "id": "d", "text": { "en": "Merges FG2 into PRIMARY" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "NEXT USED queues one filegroup for the next partition created by SPLIT RANGE. It moves nothing existing (b), sets no read-only flag (c), and doesn't touch filegroup composition (d)." },
+      "example": { "en": "Required before each SPLIT unless the scheme was created with a spare NEXT USED filegroup." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-partition-scheme-transact-sql"]
+    },
+    {
+      "id": "d1-part-0016",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-partitioning",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What is an 'aligned' index on a partitioned table?" },
+      "options": [
+        { "id": "a", "text": { "en": "An index partitioned on the same (or equivalent) partition function as the table" } },
+        { "id": "b", "text": { "en": "An index whose key order matches the clustered index" } },
+        { "id": "c", "text": { "en": "An index stored on the same page as the data" } },
+        { "id": "d", "text": { "en": "An index rebuilt at the same time as the table" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Alignment means the index is partitioned identically to its base table, keeping each partition self-contained — the prerequisite for SWITCH. Key order (b), page placement (c) and maintenance timing (d) have nothing to do with alignment." },
+      "example": { "en": "Indexes created on a partitioned table default to aligned (they inherit the scheme) unless you specify otherwise." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/partitions/partitioned-tables-and-indexes"]
+    },
+    {
+      "id": "d1-part-0017",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-partitioning",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A nonaligned (unpartitioned) unique index was added on Email to a date-partitioned table. What capability is lost?" },
+      "options": [
+        { "id": "a", "text": { "en": "Partition SWITCH operations fail while the nonaligned index exists" } },
+        { "id": "b", "text": { "en": "Partition elimination stops working for all queries" } },
+        { "id": "c", "text": { "en": "The table can no longer be backed up" } },
+        { "id": "d", "text": { "en": "Nothing — nonaligned indexes have no drawbacks" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "SWITCH requires every index to be aligned; a global (nonaligned) index spans all partitions and blocks switching (disable or drop it during window maintenance). Elimination for other queries still works (b). Backups are unaffected (c). The drawback is real (d) — it's the standard trade for enforcing global uniqueness without the partition column." },
+      "example": { "en": "Trade-off: global uniqueness on Email vs. sliding-window SWITCH — scenario questions make you pick." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/partitions/partitioned-tables-and-indexes"]
+    },
+    {
+      "id": "d1-part-0018",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-partitioning",
+      "type": "dragdrop-match", "difficulty": "medium",
+      "text": { "en": "Match the partition operation to its purpose." },
+      "items": [
+        { "id": "i1", "text": { "en": "Add a boundary for the upcoming month" } },
+        { "id": "i2", "text": { "en": "Remove a boundary after archiving" } },
+        { "id": "i3", "text": { "en": "Instantly move a partition's data to another table" } },
+        { "id": "i4", "text": { "en": "Instantly delete the rows of selected partitions" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "SPLIT RANGE" } },
+        { "id": "t2", "text": { "en": "MERGE RANGE" } },
+        { "id": "t3", "text": { "en": "SWITCH PARTITION" } },
+        { "id": "t4", "text": { "en": "TRUNCATE WITH (PARTITIONS)" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "SPLIT adds boundaries, MERGE removes them, SWITCH re-points data between tables, partition-scoped TRUNCATE purges in place. These four verbs cover every partition-maintenance exam scenario." },
+      "example": { "en": "Sliding window = SPLIT (head) + SWITCH + MERGE (tail); retention purge = TRUNCATE + MERGE." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-partition-function-transact-sql"]
+    },
+    {
+      "id": "d1-part-0019",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-partitioning",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which column is the most common and natural partition key for large fact/log tables?" },
+      "options": [
+        { "id": "a", "text": { "en": "A date/time column (load date, event date)" } },
+        { "id": "b", "text": { "en": "A GUID column" } },
+        { "id": "c", "text": { "en": "A free-text description column" } },
+        { "id": "d", "text": { "en": "A bit flag" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Dates give natural ranges, align with retention and loading rhythms, and make sliding windows possible. GUIDs (b) have no meaningful ranges, text (c) doesn't bucket, and a bit (d) yields only two partitions with no lifecycle meaning." },
+      "example": { "en": "Keyword mapping: 'archive by month', 'retain 13 months', 'load daily' → date partitioning." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/partitions/partitioned-tables-and-indexes"]
+    },
+    {
+      "id": "d1-part-0020",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-partitioning",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which DMV/catalog query shows row counts per partition for a table?" },
+      "options": [
+        { "id": "a", "text": { "en": "SELECT partition_number, rows FROM sys.partitions WHERE object_id = OBJECT_ID('dbo.Events')" } },
+        { "id": "b", "text": { "en": "SELECT * FROM sys.dm_exec_partitions" } },
+        { "id": "c", "text": { "en": "DBCC SHOWPARTITIONS('dbo.Events')" } },
+        { "id": "d", "text": { "en": "SELECT * FROM INFORMATION_SCHEMA.PARTITIONS" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "sys.partitions lists every partition (even unpartitioned tables have one row per index) with row counts. The other objects don't exist in SQL Server." },
+      "example": { "en": "Join sys.partitions to sys.dm_db_partition_stats for page-level detail." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-partitions-transact-sql"]
+    },
+    {
+      "id": "d1-part-0021",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-partitioning",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "Answer Yes or No for each SWITCH scenario." },
+      "statements": [
+        { "id": "s1", "text": { "en": "You can SWITCH a partition into a non-empty target partition." } },
+        { "id": "s2", "text": { "en": "You can SWITCH between tables on different filegroups." } },
+        { "id": "s3", "text": { "en": "You can SWITCH an entire unpartitioned table into one partition of a partitioned table." } },
+        { "id": "s4", "text": { "en": "After a SWITCH, the source partition/table is empty." } }
+      ],
+      "answerMap": { "s1": "no", "s2": "no", "s3": "yes", "s4": "yes" },
+      "explanation": { "en": "The destination must be empty and both sides must share a filegroup — the two hard physical rules. Unpartitioned→partition (and partition→unpartitioned) switching is standard (that's how staging tables work). SWITCH transfers ownership of the data, leaving the source empty." },
+      "example": { "en": "ALTER TABLE dbo.Staging SWITCH TO dbo.Fact PARTITION 5;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/partitions/partitioned-tables-and-indexes"]
+    },
+    {
+      "id": "d1-part-0022",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-partitioning",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Your 500M-row fact table fragments only in its newest monthly partition. The nightly window is short. What is the right maintenance?" },
+      "options": [
+        { "id": "a", "text": { "en": "ALTER INDEX ... REBUILD PARTITION = <newest> (optionally ONLINE)" } },
+        { "id": "b", "text": { "en": "Rebuild the entire index every night" } },
+        { "id": "c", "text": { "en": "Drop and recreate the table" } },
+        { "id": "d", "text": { "en": "Shrink the database" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Partition-level rebuild touches only the fragmented slice — minutes instead of hours. Whole-index rebuilds (b) waste the window on static cold partitions. Recreating the table (c) is drastic, and shrinking (d) causes fragmentation rather than fixing it." },
+      "example": { "en": "ALTER INDEX IX_Fact ON dbo.Fact REBUILD PARTITION = 36 WITH (ONLINE = ON);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/indexes/reorganize-and-rebuild-indexes"]
+    },
+    {
+      "id": "d1-part-0023",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-partitioning",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "MERGE RANGE ('2026-01-01') is executed while the January partition still holds rows. What happens?" },
+      "options": [
+        { "id": "a", "text": { "en": "The merge succeeds but physically moves January's rows into the neighboring partition — a slow, logged data operation" } },
+        { "id": "b", "text": { "en": "The statement fails — partitions must be empty to merge" } },
+        { "id": "c", "text": { "en": "January's rows are deleted" } },
+        { "id": "d", "text": { "en": "A new partition is created" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Like SPLIT, MERGE is only metadata-fast when the affected range is empty; merging populated ranges relocates every row. It doesn't fail (b), delete (c), or add partitions (d — MERGE reduces the count). Best practice: SWITCH or TRUNCATE the partition first." },
+      "example": { "en": "Correct order: SWITCH P1 out (or TRUNCATE it) → MERGE its boundary." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-partition-function-transact-sql"]
+    },
+    {
+      "id": "d1-part-0024",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-partitioning",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "How do partitioning and columnstore combine on very large fact tables?" },
+      "options": [
+        { "id": "a", "text": { "en": "Partition by date for lifecycle management; a clustered columnstore within each partition handles analytics" } },
+        { "id": "b", "text": { "en": "They are mutually exclusive" } },
+        { "id": "c", "text": { "en": "Columnstore replaces the need for a partition function" } },
+        { "id": "d", "text": { "en": "Partitioning must use the columnstore key" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The canonical big-data design: date partitions give SWITCH/retention/segment-targeting, columnstore gives compression and batch-mode scans; partition elimination and rowgroup elimination stack. They combine freely (b is false); columnstore doesn't manage lifecycle (c); there is no 'columnstore key' to partition by (d)." },
+      "example": { "en": "CREATE CLUSTERED COLUMNSTORE INDEX CCI ON dbo.Fact ON ps_Monthly(LoadDate);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/indexes/columnstore-indexes-design-guidance"]
+    },
+    {
+      "id": "d1-part-0025",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-partitioning",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "In Azure SQL Database, what do partition schemes usually map partitions to?" },
+      "options": [
+        { "id": "a", "text": { "en": "ALL TO ([PRIMARY]) — a single filegroup, since user filegroups aren't a tuning surface there" } },
+        { "id": "b", "text": { "en": "One storage account per partition" } },
+        { "id": "c", "text": { "en": "Separate databases" } },
+        { "id": "d", "text": { "en": "Blob containers" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Azure SQL Database manages physical storage; partitioning there is about manageability (SWITCH/TRUNCATE/elimination), with everything on PRIMARY. Storage accounts, databases and blobs (b–d) are not partition targets." },
+      "example": { "en": "The value of partitioning survives the cloud: lifecycle operations, not filegroup placement." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/partitions/partitioned-tables-and-indexes"]
+    },
+    {
+      "id": "d1-part-0026",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-partitioning",
+      "type": "dropdown", "difficulty": "hard",
+      "text": { "en": "Complete the archive switch for the oldest partition (partition 1, January) into the archive table." },
+      "code": "ALTER TABLE dbo.Events\n    [BLANK1] PARTITION 1 TO dbo.EventsArchive PARTITION 1;\nGO\nALTER PARTITION FUNCTION pf_Monthly()\n    [BLANK2] RANGE ('2026-01-01');",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "SWITCH" } },
+            { "id": "c2", "text": { "en": "MOVE" } },
+            { "id": "c3", "text": { "en": "EXPORT" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "MERGE" } },
+            { "id": "c2", "text": { "en": "SPLIT" } },
+            { "id": "c3", "text": { "en": "DROP" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "SWITCH evacuates the partition; MERGE then removes the now-redundant January boundary. MOVE/EXPORT aren't partition verbs; SPLIT adds boundaries (the opposite); DROP RANGE doesn't exist." },
+      "example": { "en": "The archive table must be aligned: same scheme-compatible structure and filegroup." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-partition-function-transact-sql"]
+    },
+    {
+      "id": "d1-part-0027",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-partitioning",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What is 'last-partition insert hotspotting' in date-partitioned tables, and is it a partitioning problem?" },
+      "options": [
+        { "id": "a", "text": { "en": "All new rows land in the newest partition; it's the same append-contention pattern any date-ordered index has, not caused by partitioning itself" } },
+        { "id": "b", "text": { "en": "A bug where SPLIT duplicates rows" } },
+        { "id": "c", "text": { "en": "A failure of partition elimination" } },
+        { "id": "d", "text": { "en": "Data loss during SWITCH" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Chronological inserts naturally concentrate in the latest range — true with or without partitioning (same as last-page contention on ascending keys). SPLIT never duplicates (b), elimination is a read-side concept (c), and SWITCH is transactional, never lossy (d)." },
+      "example": { "en": "Mitigations when needed: OPTIMIZE_FOR_SEQUENTIAL_KEY, more granular partitions, or In-Memory OLTP for the hot tail." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/partitions/partitioned-tables-and-indexes"]
+    },
+    {
+      "id": "d1-part-0028",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-partitioning",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Incremental statistics (STATISTICS_INCREMENTAL = ON) on a partitioned table allow:" },
+      "options": [
+        { "id": "a", "text": { "en": "Updating statistics for just the changed partitions instead of rescanning the whole table" } },
+        { "id": "b", "text": { "en": "Statistics on columns not in any index" } },
+        { "id": "c", "text": { "en": "Automatic statistics export" } },
+        { "id": "d", "text": { "en": "Histogram steps beyond 200" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Incremental stats maintain per-partition information and merge it — so refreshing after loading one partition costs one partition's scan. Column stats without indexes exist anyway (b). No export feature (c). The 200-step histogram limit is unchanged (d)." },
+      "example": { "en": "UPDATE STATISTICS dbo.Fact (S1) WITH RESAMPLE ON PARTITIONS (36);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/update-statistics-transact-sql"]
+    },
+    {
+      "id": "d1-part-0029",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-partitioning",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which requirement keyword in a scenario most strongly signals 'use partitioning'?" },
+      "options": [
+        { "id": "a", "text": { "en": "'Purge/archive data older than N months quickly, without blocking the table'" } },
+        { "id": "b", "text": { "en": "'Point lookups must return in under a millisecond'" } },
+        { "id": "c", "text": { "en": "'The table has 10,000 rows'" } },
+        { "id": "d", "text": { "en": "'Full-text search over descriptions'" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Fast, non-blocking retention/archiving is partitioning's signature capability (SWITCH/TRUNCATE partitions). Millisecond lookups (b) are index territory; 10K rows (c) is far too small; full-text (d) is a different feature." },
+      "example": { "en": "'Delete 100M expired rows nightly' with DELETE = hours; with partition TRUNCATE = instant." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/partitions/partitioned-tables-and-indexes"]
+    },
+    {
+      "id": "d1-part-0030",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-partitioning",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A query joins two large tables both partitioned on the same function/column. What optimization can the engine apply?" },
+      "options": [
+        { "id": "a", "text": { "en": "Per-partition (collocated) join processing, joining matching partitions pairwise" } },
+        { "id": "b", "text": { "en": "Skipping the join entirely" } },
+        { "id": "c", "text": { "en": "Converting the join to a UNION" } },
+        { "id": "d", "text": { "en": "Caching the result permanently" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Equal partitioning lets the optimizer process the join partition-by-partition (collocated join), improving parallelism and memory locality. The join still executes (b), is not rewritten to UNION (c), and SQL Server has no permanent result cache (d)." },
+      "example": { "en": "Design hint: partition fact tables that are frequently joined on the same key/function." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/partitions/partitioned-tables-and-indexes"]
+    },
+    {
+      "id": "d1-part-0031",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-partitioning",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "The CHECK constraint on a staging table for SWITCH was added WITH NOCHECK. The SWITCH fails. Why?" },
+      "options": [
+        { "id": "a", "text": { "en": "The constraint is untrusted, so the engine cannot prove the staged rows fit the target partition's range" } },
+        { "id": "b", "text": { "en": "NOCHECK constraints block all DDL" } },
+        { "id": "c", "text": { "en": "SWITCH never uses constraints" } },
+        { "id": "d", "text": { "en": "The constraint must be a DEFAULT instead" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "SWITCH's instant guarantee depends on a *trusted* CHECK proving range membership without scanning. Untrusted constraints can't provide that proof. Re-validate with WITH CHECK CHECK CONSTRAINT. (b) overgeneralizes, (c) is backwards — SWITCH relies on constraints — and DEFAULT (d) is irrelevant." },
+      "example": { "en": "ALTER TABLE Staging WITH CHECK CHECK CONSTRAINT CK_Range; then SWITCH succeeds." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/partitions/partitioned-tables-and-indexes"]
+    },
+    {
+      "id": "d1-part-0032",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-partitioning",
+      "type": "yesno", "difficulty": "easy",
+      "text": { "en": "Answer Yes or No for each statement about partitioned tables." },
+      "statements": [
+        { "id": "s1", "text": { "en": "Applications must change their queries to work with a newly partitioned table." } },
+        { "id": "s2", "text": { "en": "A partition function can be reused by multiple tables (via schemes)." } },
+        { "id": "s3", "text": { "en": "The partition column's data type must be DATE or DATETIME2." } }
+      ],
+      "answerMap": { "s1": "no", "s2": "yes", "s3": "no" },
+      "explanation": { "en": "Partitioning is transparent to queries — no app changes. One function can back many schemes/tables (keeping fact tables consistently partitioned). Most types can partition (int, date, etc.) — dates are merely the most common; text/LOB and a few others are excluded." },
+      "example": { "en": "Shared function = one place to SPLIT for every aligned table… but note SPLIT then affects them all." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/partitions/partitioned-tables-and-indexes"]
+    },
+    {
+      "id": "d1-part-0033",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-partitioning",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which plan property confirms partition elimination occurred for a scan of a table with 60 partitions?" },
+      "options": [
+        { "id": "a", "text": { "en": "Actual Partition Count shows a small number (e.g. 1) instead of 60" } },
+        { "id": "b", "text": { "en": "The scan operator disappears from the plan" } },
+        { "id": "c", "text": { "en": "Estimated Rows equals zero" } },
+        { "id": "d", "text": { "en": "The plan shows a Partition Function operator" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The seek/scan operator's Actual Partitioned/Partition Count properties reveal how many partitions were touched. The operator still exists (b), row estimates measure rows not partitions (c), and there is no 'Partition Function operator' (d)." },
+      "example": { "en": "60 → 1 partition touched = 98% of the I/O avoided." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/partitions/partitioned-tables-and-indexes"]
+    },
+    {
+      "id": "d1-part-0034",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-partitioning",
+      "type": "dragdrop-order", "difficulty": "medium",
+      "text": { "en": "Order the creation steps for a new partitioned table from scratch." },
+      "items": [
+        { "id": "i1", "text": { "en": "CREATE PARTITION FUNCTION (boundaries)" } },
+        { "id": "i2", "text": { "en": "CREATE PARTITION SCHEME (filegroup mapping)" } },
+        { "id": "i3", "text": { "en": "CREATE TABLE ... ON scheme(column)" } },
+        { "id": "i4", "text": { "en": "CREATE aligned indexes" } }
+      ],
+      "answer": ["i1", "i2", "i3", "i4"],
+      "explanation": { "en": "Dependencies force the order: the scheme references the function, the table references the scheme, and indexes on the table inherit (align to) the scheme. Each object must exist before the next." },
+      "example": { "en": "Function → Scheme → Table → Indexes: memorize the chain." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/partitions/create-partitioned-tables-and-indexes"]
+    },
+    {
+      "id": "d1-part-0035",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-partitioning",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Your retention policy keeps 13 monthly partitions. A compliance request requires keeping January 2025 online read-only while purging normally. What's the cleanest approach?" },
+      "options": [
+        { "id": "a", "text": { "en": "SWITCH January 2025 into a separate archive table before the purge cycle removes it" } },
+        { "id": "b", "text": { "en": "Skip all purges until the request ends" } },
+        { "id": "c", "text": { "en": "Copy the rows with INSERT...SELECT and keep purging" } },
+        { "id": "d", "text": { "en": "Mark the partition read-only with ALTER PARTITION" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "SWITCH preserves the data instantly in a separate table, letting the normal sliding window continue. Halting purges (b) breaks policy for all data. INSERT...SELECT (c) works but copies hundreds of millions of rows for no reason. There is no ALTER PARTITION read-only statement (d) — read-only filegroups exist but aren't the clean fit here." },
+      "example": { "en": "Legal holds are the classic SWITCH-to-archive justification." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/partitions/partitioned-tables-and-indexes"]
+    },
+    {
+      "id": "d1-part-0036",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-partitioning",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "RANGE LEFT with boundary '2026-01-31' is proposed for January data. What subtle problem arises with datetime2 values?" },
+      "options": [
+        { "id": "a", "text": { "en": "Times after midnight on Jan 31 (e.g. 23:59) exceed the boundary and land in February's partition" } },
+        { "id": "b", "text": { "en": "RANGE LEFT cannot be used with dates" } },
+        { "id": "c", "text": { "en": "The boundary is stored as February 1" } },
+        { "id": "d", "text": { "en": "No problem — LEFT and RIGHT are interchangeable" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "With RANGE LEFT, the partition includes values ≤ '2026-01-31 00:00:00'; '2026-01-31 18:00' is greater and spills into the next partition. This end-of-month + LEFT pitfall is why the guidance is first-of-month boundaries + RANGE RIGHT. LEFT works with dates (b), boundaries aren't rewritten (c), and the choice matters greatly (d)." },
+      "example": { "en": "Safe pattern: RANGE RIGHT FOR VALUES ('2026-01-01','2026-02-01', …)." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-partition-function-transact-sql"]
+    },
+    {
+      "id": "d1-part-0037",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-partitioning",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "How does partitioning interact with lock escalation?" },
+      "options": [
+        { "id": "a", "text": { "en": "With LOCK_ESCALATION = AUTO, locks can escalate to the partition level instead of the whole table" } },
+        { "id": "b", "text": { "en": "Partitioned tables never escalate locks" } },
+        { "id": "c", "text": { "en": "Partitioning forces table-level locks for all DML" } },
+        { "id": "d", "text": { "en": "Lock escalation is removed in SQL Server 2025" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "ALTER TABLE ... SET (LOCK_ESCALATION = AUTO) permits partition-scoped escalation on partitioned tables, so a bulk update of one month doesn't lock the other months. Escalation still exists (b, d), and partitioning certainly doesn't force table locks (c)." },
+      "example": { "en": "Default is TABLE; AUTO is opt-in because partition escalation can deadlock differently." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-table-transact-sql"]
+    },
+    {
+      "id": "d1-part-0038",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-partitioning",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "True statement about how many partitions a table supports:" },
+      "options": [
+        { "id": "a", "text": { "en": "Up to 15,000 partitions" } },
+        { "id": "b", "text": { "en": "Up to 1,000 partitions" } },
+        { "id": "c", "text": { "en": "Up to 64 partitions" } },
+        { "id": "d", "text": { "en": "Unlimited partitions" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The documented limit is 15,000 partitions per table/index — enough for 41 years of daily partitions. 1,000 was the pre-SQL 2012 limit, 64 and unlimited are wrong." },
+      "example": { "en": "Practical guidance: prefer the coarsest granularity that supports your retention/loading (monthly beats daily unless needed)." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/partitions/partitioned-tables-and-indexes"]
+    },
+    {
+      "id": "d1-part-0039",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-partitioning",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A dev proposes partitioning on CustomerId (hash-like distribution) 'to spread load'. What is the main objection in SQL Server?" },
+      "options": [
+        { "id": "a", "text": { "en": "SQL Server range partitioning doesn't load-balance like hash partitioning; without range-based lifecycle or elimination benefits it adds complexity for nothing" } },
+        { "id": "b", "text": { "en": "CustomerId columns cannot be partition keys" } },
+        { "id": "c", "text": { "en": "It would require one filegroup per customer" } },
+        { "id": "d", "text": { "en": "Partitioning on numbers is slower than on dates" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "SQL Server only offers range partitioning; arbitrary id ranges don't give elimination (queries rarely filter id ranges), don't enable sliding windows, and complicate unique keys. Ids are legal keys (b), filegroup mapping is flexible (c), and the data type isn't the issue (d)." },
+      "example": { "en": "Load-spreading belongs to storage/compute design (or sharding), not partition functions." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/partitions/partitioned-tables-and-indexes"]
+    },
+    {
+      "id": "d1-part-0040",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-partitioning",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which statement about $PARTITION in a WHERE clause is true?" },
+      "options": [
+        { "id": "a", "text": { "en": "WHERE $PARTITION.pf(OrderDate) = 5 restricts a query to partition 5" } },
+        { "id": "b", "text": { "en": "$PARTITION can only be used in SELECT lists" } },
+        { "id": "c", "text": { "en": "$PARTITION physically moves rows" } },
+        { "id": "d", "text": { "en": "$PARTITION requires sysadmin" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "$PARTITION works in predicates, letting you target one partition explicitly (handy for maintenance/verification queries). It's not SELECT-only (b), is purely computational (c), and needs no special permission (d)." },
+      "example": { "en": "SELECT COUNT(*) FROM dbo.Events WHERE $PARTITION.pf_Monthly(EventDate) = 5;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/partition-transact-sql"]
+    },
+    {
+      "id": "d1-part-0041",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-partitioning",
+      "type": "multiple", "difficulty": "medium", "selectCount": 2,
+      "text": { "en": "Which two benefits does table partitioning deliver by design? (Select 2)" },
+      "options": [
+        { "id": "a", "text": { "en": "Near-instant archiving of old ranges via SWITCH" } },
+        { "id": "b", "text": { "en": "Maintenance (rebuild/compression/stats) scoped to individual partitions" } },
+        { "id": "c", "text": { "en": "Automatic doubling of query speed" } },
+        { "id": "d", "text": { "en": "Elimination of transaction logging" } }
+      ],
+      "answer": ["a", "b"],
+      "explanation": { "en": "Lifecycle operations and partition-scoped maintenance are the designed wins. Query speed improves only where elimination applies — never automatically (c). Logging always continues (d)." },
+      "example": { "en": "Manageability first; performance when predicates align — the two-sentence partitioning summary." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/partitions/partitioned-tables-and-indexes"]
+    },
+    {
+      "id": "d1-part-0042",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-partitioning",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "Two fact tables share partition function pf_M. You SPLIT pf_M for next month. What is the side effect to be aware of?" },
+      "options": [
+        { "id": "a", "text": { "en": "The split applies to every table using the function — all must be ready (ideally empty in that range) at the same time" } },
+        { "id": "b", "text": { "en": "Only the first table created is split" } },
+        { "id": "c", "text": { "en": "The second table becomes unpartitioned" } },
+        { "id": "d", "text": { "en": "Nothing — functions are copied per table" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "A partition function is shared metadata: ALTERing it restructures every dependent scheme/table simultaneously. If one table already has data in the split range, that split becomes a data-moving operation for it. (b)–(d) misunderstand the sharing model." },
+      "example": { "en": "Design choice: shared function for lockstep tables; separate functions for independent lifecycles." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-partition-function-transact-sql"]
+    },
+    {
+      "id": "d1-part-0043",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-partitioning",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which feature pairs with partitioning to tier storage cost — e.g. archive-compressed old months?" },
+      "options": [
+        { "id": "a", "text": { "en": "Per-partition DATA_COMPRESSION settings (e.g. COLUMNSTORE_ARCHIVE on cold partitions)" } },
+        { "id": "b", "text": { "en": "Dynamic data masking" } },
+        { "id": "c", "text": { "en": "Row-level security" } },
+        { "id": "d", "text": { "en": "Temporal history tables" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Compression is settable per partition: hot partitions stay fast (ROW/COLUMNSTORE), cold ones shrink (PAGE/COLUMNSTORE_ARCHIVE). Masking (b) and RLS (c) are security features; temporal (d) is history tracking." },
+      "example": { "en": "ALTER TABLE Fact REBUILD PARTITION = 3 WITH (DATA_COMPRESSION = COLUMNSTORE_ARCHIVE);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/data-compression/data-compression"]
+    },
+    {
+      "id": "d1-part-0044",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-partitioning",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "After SWITCHing a staging table into partition 6, how many rows does the staging table contain?" },
+      "options": [
+        { "id": "a", "text": { "en": "Zero — ownership of its rows transferred to the partitioned table" } },
+        { "id": "b", "text": { "en": "The same rows as before (SWITCH copies)" } },
+        { "id": "c", "text": { "en": "Half the rows" } },
+        { "id": "d", "text": { "en": "Only rows that violated the CHECK constraint" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "SWITCH transfers the allocation units — the source ends empty, the destination owns the data. Nothing is copied (b) or filtered (c, d); rows violating the CHECK would have made the SWITCH fail entirely beforehand." },
+      "example": { "en": "The empty staging table is immediately reusable for the next load cycle." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/partitions/partitioned-tables-and-indexes"]
+    },
+    {
+      "id": "d1-part-0045",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-partitioning",
+      "type": "yesno", "difficulty": "hard",
+      "text": { "en": "A table is partitioned monthly with RANGE RIGHT on OrderDate (DATETIME2). Answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "WHERE OrderDate = '2026-02-14' can use partition elimination." } },
+        { "id": "s2", "text": { "en": "WHERE CAST(OrderDate AS DATE) = '2026-02-14' can use partition elimination." } },
+        { "id": "s3", "text": { "en": "An ORDER BY OrderDate query automatically merges partition results correctly." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "no", "s3": "yes" },
+      "explanation": { "en": "A direct equality on the partition column eliminates (one partition). Wrapping the column in CAST generally defeats elimination (non-SARGable against the partition function — note CAST to DATE is the one special case that can stay sargable for *index seeks*, but the dependable exam answer for elimination remains the unwrapped predicate). Ordering across partitions is handled transparently by the engine — results are always correct." },
+      "example": { "en": "Write ranges against the raw column: OrderDate >= '2026-02-14' AND OrderDate < '2026-02-15'." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/partitions/partitioned-tables-and-indexes"]
+    },
+    {
+      "id": "d1-part-0046",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-partitioning",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What happens to existing nonclustered indexes when you build a clustered columnstore ON a partition scheme for a previously unpartitioned heap?" },
+      "options": [
+        { "id": "a", "text": { "en": "Nothing automatic — you must recreate indexes aligned to the scheme for SWITCH scenarios" } },
+        { "id": "b", "text": { "en": "They align automatically to the new scheme" } },
+        { "id": "c", "text": { "en": "They are converted to columnstore" } },
+        { "id": "d", "text": { "en": "They are dropped permanently with no recreate option" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Index alignment is your responsibility when repartitioning: existing nonclustered indexes stay as built (unaligned) until recreated ON the scheme. Nothing re-aligns silently (b), format conversion doesn't happen (c), and recreation is always possible (d)." },
+      "example": { "en": "CREATE INDEX IX ON dbo.Fact(Col) WITH (DROP_EXISTING = ON) ON ps_Monthly(LoadDate);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/partitions/partitioned-tables-and-indexes"]
+    },
+    {
+      "id": "d1-part-0047",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-partitioning",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Daily partitions for 3 years (1,095 partitions) vs monthly (36). The workload: monthly reports, 13-month retention, daily loads via staging SWITCH. Which granularity and why?" },
+      "options": [
+        { "id": "a", "text": { "en": "Daily — the loads switch in day-sized chunks, and retention/queries still work across partitions" } },
+        { "id": "b", "text": { "en": "Monthly — fewer partitions always win" } },
+        { "id": "c", "text": { "en": "Yearly — minimal metadata" } },
+        { "id": "d", "text": { "en": "No partitioning — 3 years never needs it" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Granularity should match the finest lifecycle operation: daily SWITCH loads require daily partitions (you can only switch whole partitions). Monthly (b) would block the daily staging pattern; yearly (c) blocks both loads and 13-month retention; (d) ignores stated operational needs. 1,095 partitions is well within the 15,000 limit." },
+      "example": { "en": "Rule: partition at the grain of your SWITCH/purge operations, not your reports." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/partitions/partitioned-tables-and-indexes"]
+    },
+    {
+      "id": "d1-part-0048",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-partitioning",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Complete the partition-scoped index rebuild with online option." },
+      "code": "ALTER INDEX IX_Fact_Load ON dbo.Fact\n    REBUILD [BLANK1] = 36\n    WITH ( [BLANK2] = ON );",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "PARTITION" } },
+            { "id": "c2", "text": { "en": "SEGMENT" } },
+            { "id": "c3", "text": { "en": "RANGE" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "ONLINE" } },
+            { "id": "c2", "text": { "en": "CONCURRENT" } },
+            { "id": "c3", "text": { "en": "NOLOCK" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "REBUILD PARTITION = n is the partition-scoped syntax, and ONLINE = ON keeps the slice available during the rebuild (supported for single-partition rebuilds in modern versions). SEGMENT/RANGE aren't rebuild keywords; CONCURRENT/NOLOCK aren't index options." },
+      "example": { "en": "Rebuild only the fragmented newest partition in a short nightly window." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-index-transact-sql"]
+    },
+    {
+      "id": "d1-part-0049",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-partitioning",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which object does a table reference directly in its ON clause to become partitioned?" },
+      "options": [
+        { "id": "a", "text": { "en": "The partition scheme (with the partitioning column)" } },
+        { "id": "b", "text": { "en": "The partition function" } },
+        { "id": "c", "text": { "en": "A filegroup list" } },
+        { "id": "d", "text": { "en": "The boundary values" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "CREATE TABLE … ON ps_Name(Column): tables bind to schemes; schemes bind to functions; functions hold the boundaries. Referencing the function or raw boundaries directly isn't valid, and a plain filegroup in ON makes the table unpartitioned." },
+      "example": { "en": "The chain again: table → scheme → function → boundaries." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/partitions/create-partitioned-tables-and-indexes"]
+    },
+    {
+      "id": "d1-part-0050",
+      "domain": "design-develop", "topic": "t-db-objects", "subtopic": "d1-partitioning",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "An ALTER TABLE SWITCH fails with 'SWITCH statement failed. The table ... has a vector index'. Conceptually, why do special index types often restrict SWITCH?" },
+      "options": [
+        { "id": "a", "text": { "en": "SWITCH requires every index structure to be partition-aligned and transferable as metadata; indexes with global or externally maintained structures can't be split along partition lines" } },
+        { "id": "b", "text": { "en": "SWITCH physically rebuilds all indexes" } },
+        { "id": "c", "text": { "en": "Vector data cannot be stored in partitioned tables" } },
+        { "id": "d", "text": { "en": "The error indicates data corruption" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "SWITCH's instant nature depends on cleanly handing over per-partition structures. Index types whose internal graphs/structures span the whole table (like DiskANN vector indexes) can't be sliced per partition, so operations like SWITCH/TRUNCATE get blocked while they exist. SWITCH never rebuilds (b), vector columns can live in partitioned tables (c), and no corruption is implied (d)." },
+      "example": { "en": "Pattern: drop the special index, perform the partition operation, recreate it." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/partitions/partitioned-tables-and-indexes", "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-vector-index-transact-sql"]
+    }
+  ]
+}

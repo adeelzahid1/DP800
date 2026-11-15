@@ -1,0 +1,871 @@
+{
+  "subtopic": "d2-masking-rls",
+  "questions": [
+    {
+      "id": "d2-mask-0001",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-masking-rls",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which feature restricts which ROWS a user can see in a table, based on who they are?" },
+      "options": [
+        { "id": "a", "text": { "en": "Row-Level Security (RLS)" } },
+        { "id": "b", "text": { "en": "Dynamic Data Masking" } },
+        { "id": "c", "text": { "en": "Always Encrypted" } },
+        { "id": "d", "text": { "en": "TDE" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "RLS filters rows through predicate functions bound by a security policy. DDM obfuscates column VALUES, Always Encrypted hides values cryptographically, and TDE encrypts files at rest — none of them remove rows from results." },
+      "example": { "en": "A sales rep querying dbo.Orders sees only rows WHERE SalesRep = USER_NAME()." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/row-level-security"]
+    },
+    {
+      "id": "d2-mask-0002",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-masking-rls",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which masking function displays an email address as aXXX@XXXX.com?" },
+      "options": [
+        { "id": "a", "text": { "en": "email()" } },
+        { "id": "b", "text": { "en": "default()" } },
+        { "id": "c", "text": { "en": "random()" } },
+        { "id": "d", "text": { "en": "hash()" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "email() keeps the first letter and replaces the rest with a fixed pattern ending in .com. default() would show 'xxxx', random() applies only to numeric types, and hash() is not a DDM function." },
+      "example": { "en": "Email VARCHAR(320) MASKED WITH (FUNCTION = 'email()')" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/dynamic-data-masking"]
+    },
+    {
+      "id": "d2-mask-0003",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-masking-rls",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A user without UNMASK sees Salary as 0 but runs: SELECT Name FROM Employees WHERE Salary > 150000. What happens?" },
+      "options": [
+        { "id": "a", "text": { "en": "The query returns the employees earning more than 150,000 — predicates use real values, so masked data can be inferred" } },
+        { "id": "b", "text": { "en": "No rows return, because the masked value 0 is compared" } },
+        { "id": "c", "text": { "en": "The query fails with a permission error" } },
+        { "id": "d", "text": { "en": "The WHERE clause is ignored" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Masking is applied only to output; filters, joins and functions run against real data. That's why DDM is not a security boundary against users who can write ad-hoc queries. No error occurs (c) and predicates are honored (b, d are wrong)." },
+      "example": { "en": "Repeated range queries let a determined user binary-search the true value." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/dynamic-data-masking"]
+    },
+    {
+      "id": "d2-mask-0004",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-masking-rls",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which permission allows a user to see the real values of masked columns?" },
+      "options": [
+        { "id": "a", "text": { "en": "UNMASK" } },
+        { "id": "b", "text": { "en": "VIEW DEFINITION" } },
+        { "id": "c", "text": { "en": "DECRYPT" } },
+        { "id": "d", "text": { "en": "SHOWPLAN" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "UNMASK reveals masked data. VIEW DEFINITION shows object metadata, DECRYPT isn't a SQL permission name, and SHOWPLAN allows viewing execution plans." },
+      "example": { "en": "GRANT UNMASK TO PayrollRole;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/dynamic-data-masking"]
+    },
+    {
+      "id": "d2-mask-0005",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-masking-rls",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Support agents may see full email addresses but NOT phone numbers in dbo.Customers. What is the most precise grant?" },
+      "options": [
+        { "id": "a", "text": { "en": "GRANT UNMASK ON dbo.Customers(Email) TO SupportRole;" } },
+        { "id": "b", "text": { "en": "GRANT UNMASK TO SupportRole;" } },
+        { "id": "c", "text": { "en": "ALTER TABLE ... DROP MASKED on Phone" } },
+        { "id": "d", "text": { "en": "GRANT SELECT ON dbo.Customers TO SupportRole;" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Granular UNMASK (column level, supported in modern SQL Server and Azure SQL) reveals exactly Email. Database-wide UNMASK (b) would also reveal Phone. Removing the phone mask (c) does the opposite of the requirement. SELECT alone (d) still returns masked values." },
+      "example": { "en": "UNMASK scopes: database, schema, table, column." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/dynamic-data-masking"]
+    },
+    {
+      "id": "d2-mask-0006",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-masking-rls",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Complete the column so SSNs display as XXX-XX-1234." },
+      "code": "SSN CHAR(11) MASKED WITH (FUNCTION = '[BLANK1](0, \"XXX-XX-\", [BLANK2])')",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "partial" } },
+            { "id": "c2", "text": { "en": "default" } },
+            { "id": "c3", "text": { "en": "email" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "4" } },
+            { "id": "c2", "text": { "en": "0" } },
+            { "id": "c3", "text": { "en": "11" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "partial(prefix, padding, suffix): keep 0 leading characters, insert 'XXX-XX-', keep the last 4. default() and email() take no such arguments. A suffix of 0 would show no digits; 11 would reveal everything." },
+      "example": { "en": "partial(2,\"****\",2) on 'ABCDEFGH' → AB****GH." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/dynamic-data-masking"]
+    },
+    {
+      "id": "d2-mask-0007",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-masking-rls",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "For each statement about Dynamic Data Masking, answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "The data stored on disk is modified by the mask." } },
+        { "id": "s2", "text": { "en": "Masks can be added to existing columns with ALTER TABLE." } },
+        { "id": "s3", "text": { "en": "DDM protects data from a DBA with full control." } },
+        { "id": "s4", "text": { "en": "Application queries need no changes to benefit from DDM." } }
+      ],
+      "answerMap": { "s1": "no", "s2": "yes", "s3": "no", "s4": "yes" },
+      "explanation": { "en": "DDM is applied at query output; storage is untouched. ALTER TABLE … ALTER COLUMN … ADD MASKED adds masks to existing columns. Administrators effectively bypass masking. Transparency to applications is DDM's main benefit." },
+      "example": { "en": "ALTER TABLE dbo.Customers ALTER COLUMN Phone ADD MASKED WITH (FUNCTION = 'default()');" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/dynamic-data-masking"]
+    },
+    {
+      "id": "d2-mask-0008",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-masking-rls",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What two objects implement Row-Level Security?" },
+      "options": [
+        { "id": "a", "text": { "en": "An inline table-valued predicate function and a SECURITY POLICY" } },
+        { "id": "b", "text": { "en": "A trigger and a view" } },
+        { "id": "c", "text": { "en": "A scalar function and a CHECK constraint" } },
+        { "id": "d", "text": { "en": "A certificate and a symmetric key" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The predicate function (inline TVF, schema-bound) holds the logic; the security policy binds it to tables as filter/block predicates. Triggers/views (b) were the pre-RLS workarounds, CHECK constraints (c) validate values, and keys (d) belong to encryption." },
+      "example": { "en": "CREATE SECURITY POLICY p ADD FILTER PREDICATE Security.fn(TenantId) ON dbo.Orders WITH (STATE = ON);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/row-level-security"]
+    },
+    {
+      "id": "d2-mask-0009",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-masking-rls",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "With only a FILTER predicate on TenantId, a tenant-A user runs INSERT INTO Orders (TenantId, …) VALUES (2, …). What happens?" },
+      "options": [
+        { "id": "a", "text": { "en": "The insert succeeds, and the user then can't see the row — a BLOCK predicate (AFTER INSERT) is needed to prevent it" } },
+        { "id": "b", "text": { "en": "The insert is rejected by the filter predicate" } },
+        { "id": "c", "text": { "en": "TenantId is rewritten to the user's tenant" } },
+        { "id": "d", "text": { "en": "The insert fails with a syntax error" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Filter predicates affect reads (and which rows UPDATE/DELETE can touch); they don't validate new rows. AFTER INSERT block predicates stop users writing rows that violate the predicate. RLS never rewrites values (c)." },
+      "example": { "en": "ADD BLOCK PREDICATE Security.fn_Tenant(TenantId) ON dbo.Orders AFTER INSERT" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/row-level-security"]
+    },
+    {
+      "id": "d2-mask-0010",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-masking-rls",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A web app connects with one shared SQL login for all tenants. How should RLS determine the current tenant?" },
+      "options": [
+        { "id": "a", "text": { "en": "The app calls sp_set_session_context with the tenant id (read-only), and the predicate reads SESSION_CONTEXT" } },
+        { "id": "b", "text": { "en": "The predicate uses USER_NAME()" } },
+        { "id": "c", "text": { "en": "The app adds WHERE TenantId = … to every query" } },
+        { "id": "d", "text": { "en": "Create one database per tenant" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "With a shared login, USER_NAME() (b) is identical for everyone. SESSION_CONTEXT carries per-request identity, and @read_only = 1 prevents later code changing it. App-side WHERE clauses (c) are exactly the fragile pattern RLS replaces. Database-per-tenant (d) is a different architecture, not an RLS mechanism." },
+      "example": { "en": "EXEC sp_set_session_context @key = N'TenantId', @value = 42, @read_only = 1;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-set-session-context-transact-sql"]
+    },
+    {
+      "id": "d2-mask-0011",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-masking-rls",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Complete the RLS predicate function." },
+      "code": "CREATE FUNCTION Security.fn_RepPredicate (@SalesRep SYSNAME)\nRETURNS TABLE\nWITH [BLANK1]\nAS RETURN\n    SELECT 1 AS ok\n    WHERE @SalesRep = [BLANK2]();",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "SCHEMABINDING" } },
+            { "id": "c2", "text": { "en": "ENCRYPTION" } },
+            { "id": "c3", "text": { "en": "RECOMPILE" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "USER_NAME" } },
+            { "id": "c2", "text": { "en": "GETDATE" } },
+            { "id": "c3", "text": { "en": "NEWID" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "RLS predicate functions must be schema-bound inline TVFs. Comparing the row's rep column to USER_NAME() limits each user to their rows. ENCRYPTION and RECOMPILE don't meet the requirement; GETDATE/NEWID make no sense as identity checks." },
+      "example": { "en": "For contained users mapped to Entra identities, USER_NAME() returns the database user name." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/row-level-security"]
+    },
+    {
+      "id": "d2-mask-0012",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-masking-rls",
+      "type": "dragdrop-match", "difficulty": "medium",
+      "text": { "en": "Match each RLS predicate type to its effect." },
+      "items": [
+        { "id": "i1", "text": { "en": "FILTER predicate" } },
+        { "id": "i2", "text": { "en": "BLOCK AFTER INSERT" } },
+        { "id": "i3", "text": { "en": "BLOCK BEFORE UPDATE" } },
+        { "id": "i4", "text": { "en": "BLOCK BEFORE DELETE" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "Silently hides rows from reads" } },
+        { "id": "t2", "text": { "en": "Rejects new rows that would violate the predicate" } },
+        { "id": "t3", "text": { "en": "Rejects updates to rows the user may not currently touch" } },
+        { "id": "t4", "text": { "en": "Rejects deleting rows that violate the predicate" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "Filters affect visibility; block predicates enforce write rules at specific operations. AFTER UPDATE (not listed here) blocks updates that would move a row OUT of the user's slice — pairing BEFORE and AFTER UPDATE gives full update containment." },
+      "example": { "en": "Full tenant isolation: FILTER + BLOCK AFTER INSERT + BLOCK AFTER UPDATE." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/row-level-security"]
+    },
+    {
+      "id": "d2-mask-0013",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-masking-rls",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Why does sp_set_session_context use @read_only = 1 in multi-tenant RLS designs?" },
+      "options": [
+        { "id": "a", "text": { "en": "So the tenant value can't be changed later in the same session, e.g. by injected SQL" } },
+        { "id": "b", "text": { "en": "So the value is written to disk" } },
+        { "id": "c", "text": { "en": "It speeds up the predicate" } },
+        { "id": "d", "text": { "en": "It is required for any SESSION_CONTEXT use" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Once set read-only, the key can't be overwritten until the connection resets — attackers who gain SQL execution later in the session can't hop tenants. It isn't persisted (b), doesn't change performance (c), and is optional in general (d)." },
+      "example": { "en": "Connection pooling resets session context when a pooled connection is reused (sp_reset_connection)." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-set-session-context-transact-sql"]
+    },
+    {
+      "id": "d2-mask-0014",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-masking-rls",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "For each statement about Row-Level Security, answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "The predicate function runs for queries against the protected table." } },
+        { "id": "s2", "text": { "en": "Querying the table through a view bypasses the RLS predicate." } },
+        { "id": "s3", "text": { "en": "A security policy can be switched off with STATE = OFF." } },
+        { "id": "s4", "text": { "en": "One security policy can cover several tables." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "no", "s3": "yes", "s4": "yes" },
+      "explanation": { "en": "Predicates are bound to the table, so views and procedures over it are filtered too. Policies can be disabled (STATE = OFF) — which is why only trusted principals should have ALTER ANY SECURITY POLICY. A policy may add predicates for many tables." },
+      "example": { "en": "ALTER SECURITY POLICY Security.TenantIsolation WITH (STATE = OFF);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/row-level-security"]
+    },
+    {
+      "id": "d2-mask-0015",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-masking-rls",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "After enabling RLS, queries on a 200M-row Orders table slowed drastically. The predicate joins dbo.UserTenants on every row. Best first fix?" },
+      "options": [
+        { "id": "a", "text": { "en": "Simplify the predicate (e.g. compare to SESSION_CONTEXT) and index the columns it uses, such as TenantId leading in key indexes" } },
+        { "id": "b", "text": { "en": "Disable RLS during business hours" } },
+        { "id": "c", "text": { "en": "Convert the predicate to a multi-statement TVF" } },
+        { "id": "d", "text": { "en": "Add NOLOCK hints" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The predicate is inlined into every query; complex lookups multiply cost. A cheap comparison plus supporting indexes keeps plans seekable. Disabling security (b) is unacceptable, mTVFs (c) aren't allowed as predicates and would be slower, and NOLOCK (d) addresses locking, not predicate cost." },
+      "example": { "en": "Index pattern: (TenantId, OrderDate) so the predicate becomes a seek prefix." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/row-level-security"]
+    },
+    {
+      "id": "d2-mask-0016",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-masking-rls",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "What does default() masking show for a DATE column?" },
+      "options": [
+        { "id": "a", "text": { "en": "1900-01-01" } },
+        { "id": "b", "text": { "en": "NULL" } },
+        { "id": "c", "text": { "en": "xxxx" } },
+        { "id": "d", "text": { "en": "The current date" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "default() masks by type: strings become 'xxxx' (or fewer characters), numbers 0, dates 1900-01-01 (01.01.1900 00:00:00.0000000 for datetime types). It never returns NULL or today's date." },
+      "example": { "en": "BirthDate DATE MASKED WITH (FUNCTION = 'default()') → 1900-01-01 for unprivileged users." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/dynamic-data-masking"]
+    },
+    {
+      "id": "d2-mask-0017",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-masking-rls",
+      "type": "dragdrop-match", "difficulty": "medium",
+      "text": { "en": "Match each requirement to the right feature." },
+      "items": [
+        { "id": "i1", "text": { "en": "Regional managers see only their region's sales rows" } },
+        { "id": "i2", "text": { "en": "Call-center screens show only the last 4 card digits" } },
+        { "id": "i3", "text": { "en": "Card numbers unreadable even to DBAs" } },
+        { "id": "i4", "text": { "en": "Auditors may see full values in masked columns" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "Row-Level Security" } },
+        { "id": "t2", "text": { "en": "Dynamic Data Masking (partial)" } },
+        { "id": "t3", "text": { "en": "Always Encrypted" } },
+        { "id": "t4", "text": { "en": "GRANT UNMASK" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "Row restriction → RLS; display redaction → DDM; cryptographic secrecy from admins → Always Encrypted; selective reveal of masked values → UNMASK." },
+      "example": { "en": "The triage question is always: rows, display, or secrecy?" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/security-center-for-sql-server-database-engine-and-azure-sql-database"]
+    },
+    {
+      "id": "d2-mask-0018",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-masking-rls",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which statement adds a mask to an existing column?" },
+      "options": [
+        { "id": "a", "text": { "en": "ALTER TABLE dbo.Customers ALTER COLUMN Phone ADD MASKED WITH (FUNCTION = 'default()');" } },
+        { "id": "b", "text": { "en": "CREATE MASK ON dbo.Customers(Phone);" } },
+        { "id": "c", "text": { "en": "UPDATE dbo.Customers SET Phone = MASK(Phone);" } },
+        { "id": "d", "text": { "en": "GRANT MASK ON dbo.Customers(Phone);" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Masks are column properties set through ALTER TABLE … ALTER COLUMN … ADD MASKED. CREATE MASK and MASK() don't exist; UPDATE would overwrite stored data, which is not what masking does; MASK is not a grantable permission." },
+      "example": { "en": "Remove with ALTER COLUMN Phone DROP MASKED." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/dynamic-data-masking"]
+    },
+    {
+      "id": "d2-mask-0019",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-masking-rls",
+      "type": "multiple", "difficulty": "medium", "selectCount": 2,
+      "text": { "en": "Which two statements about DDM are true? (Select 2)" },
+      "options": [
+        { "id": "a", "text": { "en": "It reduces casual exposure of sensitive data in application screens and reports" } },
+        { "id": "b", "text": { "en": "It requires no changes to existing queries" } },
+        { "id": "c", "text": { "en": "It prevents data inference through WHERE clauses" } },
+        { "id": "d", "text": { "en": "It encrypts the column on disk" } }
+      ],
+      "answer": ["a", "b"],
+      "explanation": { "en": "DDM's value is transparent exposure reduction. It does NOT prevent inference via predicates (c) and does not encrypt anything (d)." },
+      "example": { "en": "Pair DDM with restricted ad-hoc query access to make inference harder." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/dynamic-data-masking"]
+    },
+    {
+      "id": "d2-mask-0020",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-masking-rls",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A user without UNMASK copies data with SELECT … INTO a new table. What does the new table contain for masked columns?" },
+      "options": [
+        { "id": "a", "text": { "en": "The masked values — data copied by a non-privileged user stays masked" } },
+        { "id": "b", "text": { "en": "The real values" } },
+        { "id": "c", "text": { "en": "NULLs" } },
+        { "id": "d", "text": { "en": "The statement fails" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "When an unprivileged user selects masked data into another table, the masked values are what get written — the original values aren't exposed by copying. That prevents an easy bypass, though inference via predicates remains possible." },
+      "example": { "en": "Documented behavior: 'masked data is stored in the target table'." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/dynamic-data-masking"]
+    },
+    {
+      "id": "d2-mask-0021",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-masking-rls",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Who can bypass or change an RLS security policy?" },
+      "options": [
+        { "id": "a", "text": { "en": "Principals with ALTER ANY SECURITY POLICY / sufficient control (e.g. db_owner)" } },
+        { "id": "b", "text": { "en": "Any user with SELECT" } },
+        { "id": "c", "text": { "en": "Nobody, not even sysadmin" } },
+        { "id": "d", "text": { "en": "Only the Windows administrator" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "RLS protects against ordinary users and application paths. Those who can alter or disable policies (ALTER ANY SECURITY POLICY, db_owner, sysadmin) can bypass it, so keep those permissions tightly held and audit them." },
+      "example": { "en": "Audit SECURITY_POLICY changes as part of database auditing." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/row-level-security"]
+    },
+    {
+      "id": "d2-mask-0022",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-masking-rls",
+      "type": "dropdown", "difficulty": "hard",
+      "text": { "en": "Complete the full tenant-isolation policy." },
+      "code": "CREATE SECURITY POLICY Security.TenantPolicy\n    ADD [BLANK1] PREDICATE Security.fn_Tenant(TenantId) ON dbo.Invoices,\n    ADD BLOCK PREDICATE Security.fn_Tenant(TenantId) ON dbo.Invoices [BLANK2]\nWITH (STATE = ON);",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "FILTER" } },
+            { "id": "c2", "text": { "en": "MASK" } },
+            { "id": "c3", "text": { "en": "DENY" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "AFTER INSERT" } },
+            { "id": "c2", "text": { "en": "BEFORE SELECT" } },
+            { "id": "c3", "text": { "en": "ON READ" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "FILTER hides other tenants' rows on read; BLOCK … AFTER INSERT stops users writing rows for another tenant. MASK/DENY aren't predicate types, and block predicates operate on writes — there's no BEFORE SELECT or ON READ option." },
+      "example": { "en": "Add AFTER UPDATE as well to stop moving a row to another tenant." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-security-policy-transact-sql"]
+    },
+    {
+      "id": "d2-mask-0023",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-masking-rls",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "random(1, 100) masking can be applied to which column types?" },
+      "options": [
+        { "id": "a", "text": { "en": "Numeric types" } },
+        { "id": "b", "text": { "en": "String types" } },
+        { "id": "c", "text": { "en": "Dates only" } },
+        { "id": "d", "text": { "en": "Any type" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "random() replaces numeric values with a random number in the range. Strings use default()/partial()/email(); dates use default() or datetime()." },
+      "example": { "en": "Bonus DECIMAL(10,2) MASKED WITH (FUNCTION = 'random(100, 999)')" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/dynamic-data-masking"]
+    },
+    {
+      "id": "d2-mask-0024",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-masking-rls",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Why must an RLS predicate function be an INLINE table-valued function?" },
+      "options": [
+        { "id": "a", "text": { "en": "So the optimizer can inline the predicate into each query plan efficiently" } },
+        { "id": "b", "text": { "en": "Because scalar functions are deprecated" } },
+        { "id": "c", "text": { "en": "To allow it to modify data" } },
+        { "id": "d", "text": { "en": "It doesn't — any function type works" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Inline TVFs expand into the query like views, letting the optimizer apply the predicate as part of the plan (seeks, pushdown). Scalar functions aren't deprecated (b), predicates must be side-effect free (c), and only inline TVFs are accepted (d)." },
+      "example": { "en": "Same reason inline TVFs beat multi-statement TVFs in general." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/row-level-security"]
+    },
+    {
+      "id": "d2-mask-0025",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-masking-rls",
+      "type": "yesno", "difficulty": "hard",
+      "text": { "en": "RLS limits a user to Region = 'EU'. Answer Yes or No for each claim." },
+      "statements": [
+        { "id": "s1", "text": { "en": "SELECT COUNT(*) FROM Orders returns only the EU row count for that user." } },
+        { "id": "s2", "text": { "en": "An UPDATE Orders SET … with no WHERE clause affects only EU rows." } },
+        { "id": "s3", "text": { "en": "Carefully crafted queries (e.g. divide-by-zero tricks) can never leak information about filtered rows." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "yes", "s3": "no" },
+      "explanation": { "en": "Filter predicates apply to aggregates and to the rows UPDATE/DELETE can reach. Microsoft documents that side-channel attacks via crafted queries are possible — RLS is strong for application access, but hostile ad-hoc query authors may infer some information." },
+      "example": { "en": "Limit ad-hoc query rights for users who must not learn about other regions." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/row-level-security"]
+    },
+    {
+      "id": "d2-mask-0026",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-masking-rls",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A manager role should see ALL rows while staff see only their own. How is this usually expressed in the predicate?" },
+      "options": [
+        { "id": "a", "text": { "en": "OR IS_MEMBER('Managers') = 1 (or IS_ROLEMEMBER) in the predicate's WHERE clause" } },
+        { "id": "b", "text": { "en": "Create two tables" } },
+        { "id": "c", "text": { "en": "Grant managers UNMASK" } },
+        { "id": "d", "text": { "en": "Disable the policy for managers' sessions" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Predicate logic can include role checks so privileged roles pass for every row. Duplicating tables (b) is unmaintainable, UNMASK (c) affects masking not rows, and toggling the policy per session (d) isn't possible and would be insecure." },
+      "example": { "en": "WHERE @SalesRep = USER_NAME() OR IS_ROLEMEMBER('Managers') = 1" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/row-level-security"]
+    },
+    {
+      "id": "d2-mask-0027",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-masking-rls",
+      "type": "dragdrop-order", "difficulty": "medium",
+      "text": { "en": "Order the steps to implement tenant isolation with RLS in a shared-login application." },
+      "items": [
+        { "id": "i1", "text": { "en": "Add and index a TenantId column on protected tables" } },
+        { "id": "i2", "text": { "en": "Create the schema-bound inline predicate function reading SESSION_CONTEXT" } },
+        { "id": "i3", "text": { "en": "Create the security policy with filter and block predicates" } },
+        { "id": "i4", "text": { "en": "Make the app call sp_set_session_context (read-only) after opening connections" } }
+      ],
+      "answer": ["i1", "i2", "i3", "i4"],
+      "explanation": { "en": "Data model first (the column the predicate uses), then the function, then the policy binding, then the application change that supplies the context. Enabling the policy before the app sets context would hide all rows from the app." },
+      "example": { "en": "Deploy the app change and policy together, or start with STATE = OFF and switch on after the app is ready." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/row-level-security"]
+    },
+    {
+      "id": "d2-mask-0028",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-masking-rls",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A developer asks: 'Can I use DDM to meet PCI requirements for card storage?' Best answer?" },
+      "options": [
+        { "id": "a", "text": { "en": "No — DDM doesn't protect stored data; use encryption (Always Encrypted or column encryption), with DDM optionally for display" } },
+        { "id": "b", "text": { "en": "Yes — masked data counts as encrypted" } },
+        { "id": "c", "text": { "en": "Yes, if the default() function is used" } },
+        { "id": "d", "text": { "en": "Only on Enterprise edition" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Storage-protection requirements need real cryptography. Masking changes display only; it's never equivalent to encryption regardless of function (c) or edition (d)." },
+      "example": { "en": "Layering: encrypt at storage, mask at display, RLS for row scope." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/dynamic-data-masking"]
+    },
+    {
+      "id": "d2-mask-0029",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-masking-rls",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which catalog view lists masked columns and their masking functions?" },
+      "options": [
+        { "id": "a", "text": { "en": "sys.masked_columns" } },
+        { "id": "b", "text": { "en": "sys.security_policies" } },
+        { "id": "c", "text": { "en": "sys.dm_masking" } },
+        { "id": "d", "text": { "en": "INFORMATION_SCHEMA.MASKS" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "sys.masked_columns exposes is_masked and masking_function. sys.security_policies (b) lists RLS policies; the other two don't exist." },
+      "example": { "en": "SELECT OBJECT_NAME(object_id), name, masking_function FROM sys.masked_columns;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-masked-columns-transact-sql"]
+    },
+    {
+      "id": "d2-mask-0030",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-masking-rls",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which catalog views describe RLS configuration?" },
+      "options": [
+        { "id": "a", "text": { "en": "sys.security_policies and sys.security_predicates" } },
+        { "id": "b", "text": { "en": "sys.masked_columns" } },
+        { "id": "c", "text": { "en": "sys.row_filters" } },
+        { "id": "d", "text": { "en": "sys.dm_exec_requests" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "sys.security_policies lists policies (and whether enabled); sys.security_predicates lists each filter/block predicate and target table. sys.masked_columns is DDM; sys.row_filters doesn't exist." },
+      "example": { "en": "SELECT * FROM sys.security_predicates; -- predicate_type_desc: FILTER / BLOCK" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-security-predicates-transact-sql"]
+    },
+    {
+      "id": "d2-mask-0031",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-masking-rls",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "Does each requirement call for Row-Level Security? Answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "Doctors may only read records of patients assigned to them." } },
+        { "id": "s2", "text": { "en": "Phone numbers should appear partially hidden on screens." } },
+        { "id": "s3", "text": { "en": "Each franchise owner sees only their stores' sales." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "no", "s3": "yes" },
+      "explanation": { "en": "Per-row visibility based on the user (doctor-patient, franchise-store) is RLS. Partial hiding of values is DDM." },
+      "example": { "en": "Rows → RLS; parts of values → DDM." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/row-level-security"]
+    },
+    {
+      "id": "d2-mask-0032",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-masking-rls",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A tenant-filtered table also has a unique constraint on InvoiceNo. Tenant A inserts an InvoiceNo that tenant B already uses and gets a duplicate-key error. What does this reveal?" },
+      "options": [
+        { "id": "a", "text": { "en": "Constraint errors can leak the existence of hidden rows — include TenantId in unique keys for multi-tenant tables" } },
+        { "id": "b", "text": { "en": "RLS is broken" } },
+        { "id": "c", "text": { "en": "Unique constraints bypass RLS by design, so drop them" } },
+        { "id": "d", "text": { "en": "Nothing — this is impossible with RLS enabled" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Constraints are enforced across ALL rows, regardless of RLS visibility, so an error tells tenant A that the value exists elsewhere — an information side channel. Scoping uniqueness per tenant (TenantId, InvoiceNo) fixes both the leak and the business logic. RLS isn't broken (b); dropping integrity (c) is wrong; and it is very possible (d)." },
+      "example": { "en": "CONSTRAINT UQ_Invoice UNIQUE (TenantId, InvoiceNo)" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/row-level-security"]
+    },
+    {
+      "id": "d2-mask-0033",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-masking-rls",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "In Azure SQL, which portal-driven feature can recommend columns to mask?" },
+      "options": [
+        { "id": "a", "text": { "en": "Dynamic Data Masking recommendations (with Data Discovery & Classification)" } },
+        { "id": "b", "text": { "en": "Query Performance Insight" } },
+        { "id": "c", "text": { "en": "Automatic tuning" } },
+        { "id": "d", "text": { "en": "Elastic jobs" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Azure SQL can suggest columns that look sensitive for masking and classification. Query Performance Insight and automatic tuning target performance; elastic jobs run scheduled T-SQL." },
+      "example": { "en": "Use classification labels to drive masking and auditing decisions consistently." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-sql/database/dynamic-data-masking-overview"]
+    },
+    {
+      "id": "d2-mask-0034",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-masking-rls",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "An RLS predicate uses SESSION_CONTEXT(N'TenantId'), but the app never sets it. What do users see?" },
+      "options": [
+        { "id": "a", "text": { "en": "No rows — SESSION_CONTEXT returns NULL, so the predicate matches nothing" } },
+        { "id": "b", "text": { "en": "All rows" } },
+        { "id": "c", "text": { "en": "An error on every query" } },
+        { "id": "d", "text": { "en": "Rows of tenant 0" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "An unset key returns NULL; NULL = TenantId is never true, so the filter removes everything — fail-closed behavior. No error is raised (c), and nothing defaults to tenant 0 (d)." },
+      "example": { "en": "Empty result sets after deployment usually mean the app isn't setting the context." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/session-context-transact-sql"]
+    },
+    {
+      "id": "d2-mask-0035",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-masking-rls",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which statement is TRUE when comparing RLS with app-side WHERE TenantId = @t filters?" },
+      "options": [
+        { "id": "a", "text": { "en": "RLS is enforced centrally for every access path; app filters are only as reliable as every query a developer writes" } },
+        { "id": "b", "text": { "en": "App filters are more secure" } },
+        { "id": "c", "text": { "en": "They are identical in protection" } },
+        { "id": "d", "text": { "en": "RLS only applies to stored procedures" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Centralized enforcement means one forgotten WHERE clause can't leak data. RLS applies to all queries on the table, not only procedures (d)." },
+      "example": { "en": "Reports, ad-hoc tools and new endpoints inherit RLS automatically." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/row-level-security"]
+    },
+    {
+      "id": "d2-mask-0036",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-masking-rls",
+      "type": "multiple", "difficulty": "hard", "selectCount": 2,
+      "text": { "en": "Which two practices strengthen a multi-tenant RLS design? (Select 2)" },
+      "options": [
+        { "id": "a", "text": { "en": "Add BLOCK predicates for AFTER INSERT and AFTER UPDATE" } },
+        { "id": "b", "text": { "en": "Set session context with @read_only = 1" } },
+        { "id": "c", "text": { "en": "Give the application login db_owner so policies never interfere" } },
+        { "id": "d", "text": { "en": "Use a multi-statement TVF for richer predicate logic" } }
+      ],
+      "answer": ["a", "b"],
+      "explanation": { "en": "Block predicates stop cross-tenant writes, and read-only context prevents tenant switching mid-session. db_owner (c) can alter policies — the opposite of least privilege — and multi-statement TVFs (d) aren't allowed as predicates." },
+      "example": { "en": "Least-privileged app login + read-only context + filter/block predicates." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/row-level-security"]
+    },
+    {
+      "id": "d2-mask-0037",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-masking-rls",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which DDM function can mask parts of a datetime value (for example, only the year)?" },
+      "options": [
+        { "id": "a", "text": { "en": "datetime()" } },
+        { "id": "b", "text": { "en": "email()" } },
+        { "id": "c", "text": { "en": "random()" } },
+        { "id": "d", "text": { "en": "partial()" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The datetime() masking function masks specified datetime parts (e.g. 'Y' for year). email() targets emails, random() numerics, and partial() strings." },
+      "example": { "en": "BirthDate DATE MASKED WITH (FUNCTION = 'datetime(\"Y\")')" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/dynamic-data-masking"]
+    },
+    {
+      "id": "d2-mask-0038",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-masking-rls",
+      "type": "dropdown", "difficulty": "easy",
+      "text": { "en": "Complete the statements that set and read the tenant context." },
+      "code": "EXEC [BLANK1] @key = N'TenantId', @value = 7, @read_only = 1;\n\nSELECT CAST([BLANK2](N'TenantId') AS INT);",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "sp_set_session_context" } },
+            { "id": "c2", "text": { "en": "sp_configure" } },
+            { "id": "c3", "text": { "en": "sp_setapprole" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "SESSION_CONTEXT" } },
+            { "id": "c2", "text": { "en": "CONTEXT_INFO" } },
+            { "id": "c3", "text": { "en": "APP_NAME" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "sp_set_session_context stores key/value pairs; SESSION_CONTEXT(key) reads them. sp_configure changes server options, sp_setapprole activates application roles. CONTEXT_INFO is the older single-binary-value mechanism; APP_NAME returns the client-supplied app name." },
+      "example": { "en": "SESSION_CONTEXT returns sql_variant — cast it to the needed type." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/functions/session-context-transact-sql"]
+    },
+    {
+      "id": "d2-mask-0039",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-masking-rls",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What is the most important limitation to communicate when proposing DDM to a security review board?" },
+      "options": [
+        { "id": "a", "text": { "en": "Users who can run ad-hoc queries can infer masked values; DDM complements but doesn't replace access control or encryption" } },
+        { "id": "b", "text": { "en": "It slows down all queries significantly" } },
+        { "id": "c", "text": { "en": "It requires application rewrites" } },
+        { "id": "d", "text": { "en": "It works only on Azure" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The inference weakness is the key caveat. DDM has little overhead (b), needs no app rewrites (c), and exists in SQL Server too (d)." },
+      "example": { "en": "Position DDM as exposure reduction for trusted-but-not-privileged users." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/dynamic-data-masking"]
+    },
+    {
+      "id": "d2-mask-0040",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-masking-rls",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "An RLS policy filters dbo.Orders. A stored procedure owned by dbo selects from dbo.Orders and is executed by a staff user. Which rows does the procedure return?" },
+      "options": [
+        { "id": "a", "text": { "en": "Only rows allowed for the calling user — the predicate evaluates in the caller's context (USER_NAME/SESSION_CONTEXT)" } },
+        { "id": "b", "text": { "en": "All rows, because ownership chaining bypasses RLS" } },
+        { "id": "c", "text": { "en": "No rows" } },
+        { "id": "d", "text": { "en": "Only rows owned by dbo" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Ownership chaining skips permission checks, not RLS predicates; the predicate still runs and identity functions reflect the caller (unless the module uses EXECUTE AS to change context). So results are filtered for the calling user." },
+      "example": { "en": "Watch EXECUTE AS OWNER modules: USER_NAME() would then return the owner, changing predicate results." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/row-level-security"]
+    },
+    {
+      "id": "d2-mask-0041",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-masking-rls",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Can RLS and DDM be used on the same table?" },
+      "options": [
+        { "id": "a", "text": { "en": "Yes — RLS restricts rows and DDM masks values within the visible rows" } },
+        { "id": "b", "text": { "en": "No, they conflict" } },
+        { "id": "c", "text": { "en": "Only on memory-optimized tables" } },
+        { "id": "d", "text": { "en": "Only if Always Encrypted is also enabled" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The features are complementary and commonly combined. There's no conflict or special prerequisite." },
+      "example": { "en": "A regional analyst sees only EU customers (RLS), with emails masked (DDM)." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/row-level-security"]
+    },
+    {
+      "id": "d2-mask-0042",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-masking-rls",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "Answer Yes or No for each statement about UNMASK." },
+      "statements": [
+        { "id": "s1", "text": { "en": "UNMASK can be granted at the database level." } },
+        { "id": "s2", "text": { "en": "UNMASK can be granted on a single column." } },
+        { "id": "s3", "text": { "en": "Members of db_owner see unmasked data." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "yes", "s3": "yes" },
+      "explanation": { "en": "UNMASK is grantable from database scope down to individual columns, and high-privilege principals (CONTROL on the database, db_owner) see real data. That's why DDM doesn't protect against administrators." },
+      "example": { "en": "GRANT UNMASK ON SCHEMA::Sales TO Analysts; GRANT UNMASK ON dbo.T(Email) TO Support;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/dynamic-data-masking"]
+    },
+    {
+      "id": "d2-mask-0043",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-masking-rls",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A table under RLS is loaded nightly by an ETL login that should see and write all tenants. How do you allow this cleanly?" },
+      "options": [
+        { "id": "a", "text": { "en": "Include an exception in the predicate (e.g. OR USER_NAME() = 'etl_loader' or a role check) rather than disabling the policy" } },
+        { "id": "b", "text": { "en": "Disable the policy every night and re-enable after" } },
+        { "id": "c", "text": { "en": "Give ETL sysadmin" } },
+        { "id": "d", "text": { "en": "Drop RLS permanently" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "A predicate exception keeps protection active for everyone else. Toggling the policy (b) opens a window for all users; sysadmin (c) is far beyond what ETL needs; dropping RLS (d) removes the control." },
+      "example": { "en": "WHERE @TenantId = CAST(SESSION_CONTEXT(N'TenantId') AS INT) OR IS_ROLEMEMBER('EtlRole') = 1" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/row-level-security"]
+    },
+    {
+      "id": "d2-mask-0044",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-masking-rls",
+      "type": "dragdrop-order", "difficulty": "easy",
+      "text": { "en": "Order the steps to roll out Dynamic Data Masking for customer contact data." },
+      "items": [
+        { "id": "i1", "text": { "en": "Identify sensitive columns (classification)" } },
+        { "id": "i2", "text": { "en": "Add masks with suitable functions (email(), partial())" } },
+        { "id": "i3", "text": { "en": "Grant UNMASK to roles that need real values" } },
+        { "id": "i4", "text": { "en": "Verify behavior as both privileged and unprivileged users" } }
+      ],
+      "answer": ["i1", "i2", "i3", "i4"],
+      "explanation": { "en": "Classify, mask, grant exceptions, then test from both perspectives. Granting before masking has no effect, and skipping verification risks breaking workflows that need real values." },
+      "example": { "en": "EXECUTE AS USER = 'support_agent'; SELECT TOP 5 * FROM dbo.Customers; REVERT;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/dynamic-data-masking"]
+    },
+    {
+      "id": "d2-mask-0045",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-masking-rls",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "How can you test what an RLS-restricted user sees without logging in as them?" },
+      "options": [
+        { "id": "a", "text": { "en": "EXECUTE AS USER = 'username'; run the query; REVERT;" } },
+        { "id": "b", "text": { "en": "SET RLS_USER = 'username'" } },
+        { "id": "c", "text": { "en": "Disable the policy and filter manually" } },
+        { "id": "d", "text": { "en": "It's impossible" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Impersonation runs the query in the user's context so predicates evaluate as they would for that user. There's no SET RLS_USER (b), and disabling the policy (c) tests nothing." },
+      "example": { "en": "Also set SESSION_CONTEXT in the test session when predicates depend on it." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/execute-as-transact-sql"]
+    },
+    {
+      "id": "d2-mask-0046",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-masking-rls",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "Requirement: 'Analysts compute AVG(Salary) by department but must never see an individual salary.' Which design satisfies it best?" },
+      "options": [
+        { "id": "a", "text": { "en": "Expose an aggregate-only view or procedure to analysts and deny SELECT on the base table" } },
+        { "id": "b", "text": { "en": "Mask Salary with default() and let analysts query the table" } },
+        { "id": "c", "text": { "en": "RLS filtering salary rows" } },
+        { "id": "d", "text": { "en": "Grant UNMASK" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Aggregations run on real values, so with DDM analysts could also filter down to one person (WHERE EmployeeId = …) and infer the salary; masking alone isn't enough (b). RLS hides rows, which breaks the averages (c). UNMASK (d) reveals everything. Permission design — only aggregates exposed — enforces the requirement." },
+      "example": { "en": "CREATE VIEW dbo.vDeptSalaryAvg AS SELECT DeptId, AVG(Salary) AS AvgSalary FROM dbo.Employees GROUP BY DeptId;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/dynamic-data-masking"]
+    },
+    {
+      "id": "d2-mask-0047",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-masking-rls",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "What does STATE = ON in a security policy definition do?" },
+      "options": [
+        { "id": "a", "text": { "en": "Enables enforcement of the policy's predicates" } },
+        { "id": "b", "text": { "en": "Turns on auditing" } },
+        { "id": "c", "text": { "en": "Enables masking" } },
+        { "id": "d", "text": { "en": "Makes the policy read-only" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "STATE controls whether predicates are enforced. OFF keeps the definition but stops filtering/blocking. Auditing and masking are separate features." },
+      "example": { "en": "Create with STATE = OFF, deploy the app's SESSION_CONTEXT logic, then switch ON." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-security-policy-transact-sql"]
+    },
+    {
+      "id": "d2-mask-0048",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-masking-rls",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Data API builder exposes a table to many users through one database connection. How can per-user row restrictions be enforced in the database?" },
+      "options": [
+        { "id": "a", "text": { "en": "Have DAB pass user claims into SESSION_CONTEXT and let RLS predicates use them" } },
+        { "id": "b", "text": { "en": "It's impossible with a shared connection" } },
+        { "id": "c", "text": { "en": "Create one database user per API user" } },
+        { "id": "d", "text": { "en": "Use DDM" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "DAB supports sending authenticated user claims to SQL via session context, which RLS predicates can consume. That keeps enforcement in the database even with one connection. Per-user DB users (c) don't scale for API traffic, and DDM (d) doesn't restrict rows." },
+      "example": { "en": "Enable set-session-context in the DAB data-source options; predicates read SESSION_CONTEXT(N'oid') or a role claim." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/data-api-builder/azure-sql-session-context-rls"]
+    },
+    {
+      "id": "d2-mask-0049",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-masking-rls",
+      "type": "yesno", "difficulty": "easy",
+      "text": { "en": "Answer Yes or No: is each feature an access-control or obfuscation feature rather than encryption?" },
+      "statements": [
+        { "id": "s1", "text": { "en": "Row-Level Security" } },
+        { "id": "s2", "text": { "en": "Dynamic Data Masking" } },
+        { "id": "s3", "text": { "en": "Always Encrypted" } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "yes", "s3": "no" },
+      "explanation": { "en": "RLS (access control) and DDM (display obfuscation) don't encrypt data. Always Encrypted is cryptographic protection." },
+      "example": { "en": "Keep the categories straight: access control, obfuscation, encryption." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/security-center-for-sql-server-database-engine-and-azure-sql-database"]
+    },
+    {
+      "id": "d2-mask-0050",
+      "domain": "secure-optimize-deploy", "topic": "t-security", "subtopic": "d2-masking-rls",
+      "type": "dragdrop-match", "difficulty": "hard",
+      "text": { "en": "Match each symptom to its most likely cause." },
+      "items": [
+        { "id": "i1", "text": { "en": "After deployment the app sees zero rows everywhere" } },
+        { "id": "i2", "text": { "en": "A tenant can create rows that only another tenant can see" } },
+        { "id": "i3", "text": { "en": "Support staff see full card numbers" } },
+        { "id": "i4", "text": { "en": "A user learns salaries despite masking" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "Session context not set before queries" } },
+        { "id": "t2", "text": { "en": "Missing AFTER INSERT block predicate" } },
+        { "id": "t3", "text": { "en": "UNMASK granted too broadly" } },
+        { "id": "t4", "text": { "en": "Inference via WHERE predicates on masked columns" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "Four classic misconfigurations and their symptoms: fail-closed predicates without context, filter-only policies, over-granted UNMASK, and DDM's inherent inference weakness." },
+      "example": { "en": "Use these as a troubleshooting checklist after enabling RLS/DDM." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/row-level-security", "https://learn.microsoft.com/en-us/sql/relational-databases/security/dynamic-data-masking"]
+    }
+  ]
+}

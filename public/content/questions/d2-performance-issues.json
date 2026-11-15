@@ -1,0 +1,846 @@
+{
+  "subtopic": "d2-performance-issues",
+  "questions": [
+    {
+      "id": "d2-perf-0001",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-performance-issues",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which error number does SQL Server raise to the session chosen as a deadlock victim?" },
+      "options": [
+        { "id": "a", "text": { "en": "1205" } },
+        { "id": "b", "text": { "en": "547" } },
+        { "id": "c", "text": { "en": "2627" } },
+        { "id": "d", "text": { "en": "8152" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "1205 is the deadlock victim error. 547 is a constraint conflict, 2627 a unique/PK violation, 8152 string truncation." },
+      "example": { "en": "Transaction (Process ID 57) was deadlocked on lock resources with another process and has been chosen as the deadlock victim." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-deadlocks-guide"]
+    },
+    {
+      "id": "d2-perf-0002",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-performance-issues",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "What is the key difference between blocking and a deadlock?" },
+      "options": [
+        { "id": "a", "text": { "en": "Blocking resolves when the holder finishes; a deadlock is a cycle that SQL Server must break by killing a victim" } },
+        { "id": "b", "text": { "en": "They are the same thing" } },
+        { "id": "c", "text": { "en": "Deadlocks only occur in tempdb" } },
+        { "id": "d", "text": { "en": "Blocking always raises error 1205" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Blocking is waiting; deadlock is circular waiting that can't resolve without intervention. The deadlock monitor detects cycles and rolls back one participant." },
+      "example": { "en": "A long report holding locks blocks writers; two transfers updating accounts in opposite order deadlock." },
+      "sources": ["https://learn.microsoft.com/en-us/troubleshoot/sql/database-engine/performance/understand-resolve-blocking"]
+    },
+    {
+      "id": "d2-perf-0003",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-performance-issues",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Procedure A updates Orders then OrderLines; procedure B updates OrderLines then Orders. Deadlocks occur under load. What's the best structural fix?" },
+      "options": [
+        { "id": "a", "text": { "en": "Make both procedures access the tables in the same order" } },
+        { "id": "b", "text": { "en": "Add NOLOCK hints" } },
+        { "id": "c", "text": { "en": "Increase the lock timeout" } },
+        { "id": "d", "text": { "en": "Disable the deadlock monitor" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Opposite access order creates the classic cycle. Consistent ordering makes one transaction wait (blocking) instead of deadlocking. NOLOCK can't apply to updates; timeouts don't prevent cycles; the deadlock monitor can't be disabled." },
+      "example": { "en": "Team rule: parent tables before child tables, ascending key order." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-deadlocks-guide"]
+    },
+    {
+      "id": "d2-perf-0004",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-performance-issues",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "On SQL Server, where can you find recent deadlock graphs without configuring anything?" },
+      "options": [
+        { "id": "a", "text": { "en": "The system_health Extended Events session (xml_deadlock_report)" } },
+        { "id": "b", "text": { "en": "sys.dm_db_index_usage_stats" } },
+        { "id": "c", "text": { "en": "The Windows Application log only" } },
+        { "id": "d", "text": { "en": "Query Store runtime stats" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "system_health runs by default and captures deadlock reports. Index usage stats, Query Store and the event log don't contain deadlock graphs by default." },
+      "example": { "en": "SSMS → Management → Extended Events → system_health → filter name = xml_deadlock_report." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-deadlocks-guide"]
+    },
+    {
+      "id": "d2-perf-0005",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-performance-issues",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A session shows status 'sleeping', open_transaction_count = 1, and is the head blocker for 40 sessions. What's the likely cause?" },
+      "options": [
+        { "id": "a", "text": { "en": "The application began a transaction and never committed or rolled back (e.g. missing COMMIT or an unhandled error path)" } },
+        { "id": "b", "text": { "en": "The query is CPU-bound" } },
+        { "id": "c", "text": { "en": "Statistics are outdated" } },
+        { "id": "d", "text": { "en": "TDE is rotating keys" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "A sleeping session with an open transaction holds its locks while doing nothing — an app bug (missing commit, exception path without rollback, user interaction inside a transaction). Use SET XACT_ABORT ON and proper error handling." },
+      "example": { "en": "Short-term: KILL the session (its work rolls back). Long-term: fix the app's transaction handling." },
+      "sources": ["https://learn.microsoft.com/en-us/troubleshoot/sql/database-engine/performance/understand-resolve-blocking"]
+    },
+    {
+      "id": "d2-perf-0006",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-performance-issues",
+      "type": "multiple", "difficulty": "medium", "selectCount": 3,
+      "text": { "en": "Which three practices reduce deadlock frequency? (Select 3)" },
+      "options": [
+        { "id": "a", "text": { "en": "Access objects in a consistent order" } },
+        { "id": "b", "text": { "en": "Keep transactions short" } },
+        { "id": "c", "text": { "en": "Add indexes so statements touch fewer rows" } },
+        { "id": "d", "text": { "en": "Wait for user input inside the transaction" } },
+        { "id": "e", "text": { "en": "Use SERIALIZABLE for all transactions" } }
+      ],
+      "answer": ["a", "b", "c"],
+      "explanation": { "en": "Ordering, short transactions and better indexes reduce lock overlap and duration. User interaction in transactions and SERIALIZABLE everywhere increase locks and deadlocks." },
+      "example": { "en": "Also: RCSI for reader/writer conflicts and retry logic for the remaining 1205s." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-deadlocks-guide"]
+    },
+    {
+      "id": "d2-perf-0007",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-performance-issues",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A nightly batch job and the OLTP app occasionally deadlock. You prefer the batch job to be the victim. What do you set?" },
+      "options": [
+        { "id": "a", "text": { "en": "SET DEADLOCK_PRIORITY LOW in the batch job's session" } },
+        { "id": "b", "text": { "en": "SET DEADLOCK_PRIORITY HIGH in the batch job" } },
+        { "id": "c", "text": { "en": "SET LOCK_TIMEOUT 0 in the OLTP app" } },
+        { "id": "d", "text": { "en": "SET NOCOUNT ON" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Lower deadlock priority makes the session the preferred victim. HIGH does the opposite; LOCK_TIMEOUT changes waiting behavior; NOCOUNT suppresses row-count messages." },
+      "example": { "en": "The batch job should still retry on 1205." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/set-deadlock-priority-transact-sql"]
+    },
+    {
+      "id": "d2-perf-0008",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-performance-issues",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Readers and writers deadlock frequently on a SQL Server database under locking READ COMMITTED. Which configuration change eliminates reader/writer deadlocks?" },
+      "options": [
+        { "id": "a", "text": { "en": "Enable READ_COMMITTED_SNAPSHOT" } },
+        { "id": "b", "text": { "en": "Switch to SERIALIZABLE" } },
+        { "id": "c", "text": { "en": "Disable auto statistics" } },
+        { "id": "d", "text": { "en": "Turn off Query Store" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "With RCSI, readers don't acquire shared locks, so they can't participate in lock cycles with writers. Writer/writer deadlocks can still happen." },
+      "example": { "en": "Already default in Azure SQL Database." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-sql/database/analyze-prevent-deadlocks"]
+    },
+    {
+      "id": "d2-perf-0009",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-performance-issues",
+      "type": "dragdrop-order", "difficulty": "medium",
+      "text": { "en": "Order the steps for handling a deadlock victim in application code." },
+      "items": [
+        { "id": "i1", "text": { "en": "Catch the exception and check for error 1205" } },
+        { "id": "i2", "text": { "en": "Ensure the transaction is rolled back" } },
+        { "id": "i3", "text": { "en": "Wait a short, randomized delay" } },
+        { "id": "i4", "text": { "en": "Retry the whole transaction (limited attempts)" } }
+      ],
+      "answer": ["i1", "i2", "i3", "i4"],
+      "explanation": { "en": "Detect the deadlock, clean up, back off briefly to reduce re-collision, then retry the entire unit of work — not just the failed statement — with a retry limit." },
+      "example": { "en": "EF Core: EnableRetryOnFailure handles transient errors including deadlocks for Azure SQL." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-deadlocks-guide"]
+    },
+    {
+      "id": "d2-perf-0010",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-performance-issues",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which query rewrite makes WHERE YEAR(OrderDate) = 2026 SARGable?" },
+      "options": [
+        { "id": "a", "text": { "en": "WHERE OrderDate >= '2026-01-01' AND OrderDate < '2027-01-01'" } },
+        { "id": "b", "text": { "en": "WHERE CAST(OrderDate AS VARCHAR(4)) = '2026'" } },
+        { "id": "c", "text": { "en": "WHERE DATEPART(year, OrderDate) = 2026" } },
+        { "id": "d", "text": { "en": "WHERE OrderDate LIKE '2026%'" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "A range on the raw column allows an index seek. Functions/casts on the column (b, c) and LIKE on a date (d) prevent seeks." },
+      "example": { "en": "Half-open ranges (>= start AND < next start) also handle times correctly." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-index-design-guide"]
+    },
+    {
+      "id": "d2-perf-0011",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-performance-issues",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "For each predicate on an indexed LastName column, answer Yes if it can use an index seek." },
+      "statements": [
+        { "id": "s1", "text": { "en": "WHERE LastName LIKE 'Kha%'" } },
+        { "id": "s2", "text": { "en": "WHERE LastName LIKE '%han'" } },
+        { "id": "s3", "text": { "en": "WHERE UPPER(LastName) = 'KHAN'" } },
+        { "id": "s4", "text": { "en": "WHERE LastName = @name (same data type)" } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "no", "s3": "no", "s4": "yes" },
+      "explanation": { "en": "Leading literal prefixes and equality with matching types are SARGable. Leading wildcards and functions on the column force scans. With case-insensitive collations, UPPER is unnecessary anyway." },
+      "example": { "en": "Need suffix search? Consider a persisted REVERSE(LastName) computed column with an index." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-index-design-guide"]
+    },
+    {
+      "id": "d2-perf-0012",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-performance-issues",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "sys.dm_db_index_usage_stats shows an index with 0 seeks, 0 scans, 0 lookups but 3 million updates over a full business cycle. What should you do?" },
+      "options": [
+        { "id": "a", "text": { "en": "Consider dropping it — it only adds write overhead" } },
+        { "id": "b", "text": { "en": "Rebuild it daily" } },
+        { "id": "c", "text": { "en": "Add more INCLUDE columns" } },
+        { "id": "d", "text": { "en": "Make it clustered" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "An index never read but constantly maintained is pure cost. Confirm across a full cycle (the DMV resets on restart) and check it doesn't enforce a constraint before dropping." },
+      "example": { "en": "Script it out first so it can be recreated if a rare report needs it." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-views/sys-dm-db-index-usage-stats-transact-sql"]
+    },
+    {
+      "id": "d2-perf-0013",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-performance-issues",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A procedure with optional filters uses WHERE (@cust IS NULL OR CustomerId = @cust) AND (@from IS NULL OR OrderDate >= @from). It performs poorly for some parameter combinations. Which fix is commonly recommended?" },
+      "options": [
+        { "id": "a", "text": { "en": "Add OPTION (RECOMPILE) or build parameterized dynamic SQL with only the needed predicates" } },
+        { "id": "b", "text": { "en": "Add NOLOCK" } },
+        { "id": "c", "text": { "en": "Use SERIALIZABLE" } },
+        { "id": "d", "text": { "en": "Remove all indexes" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Catch-all queries get a single compromise plan. RECOMPILE lets the optimizer embed actual values and simplify predicates; dynamic SQL produces tailored, cached plans per combination." },
+      "example": { "en": "Dynamic SQL must still use sp_executesql parameters to stay injection-safe." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/queries/hints-transact-sql-query"]
+    },
+    {
+      "id": "d2-perf-0014",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-performance-issues",
+      "type": "dragdrop-match", "difficulty": "medium",
+      "text": { "en": "Match each symptom to the most likely root cause." },
+      "items": [
+        { "id": "i1", "text": { "en": "Many sessions wait on LCK_M_X behind one sleeping session" } },
+        { "id": "i2", "text": { "en": "Error 1205 in two procedures touching the same tables" } },
+        { "id": "i3", "text": { "en": "avg_log_write_percent near 100% with tiny transactions" } },
+        { "id": "i4", "text": { "en": "Index scan on 50M rows for a single-customer lookup" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "Open transaction left by the app" } },
+        { "id": "t2", "text": { "en": "Inconsistent object access order" } },
+        { "id": "t3", "text": { "en": "Too many commits; batch them" } },
+        { "id": "t4", "text": { "en": "Missing or non-SARGable index usage" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "Four common production problems and their typical causes." },
+      "example": { "en": "Use DMVs to confirm before fixing." },
+      "sources": ["https://learn.microsoft.com/en-us/troubleshoot/sql/database-engine/performance/understand-resolve-blocking"]
+    },
+    {
+      "id": "d2-perf-0015",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-performance-issues",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "In Azure SQL Database, how can you collect deadlock graphs for analysis?" },
+      "options": [
+        { "id": "a", "text": { "en": "Create an Extended Events session capturing xml_deadlock_report (e.g. ring buffer or event file target), or use diagnostic logs" } },
+        { "id": "b", "text": { "en": "Read the Windows Event Viewer" } },
+        { "id": "c", "text": { "en": "Use sp_who2" } },
+        { "id": "d", "text": { "en": "Deadlocks can't be analyzed in Azure SQL" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Azure SQL Database supports database-scoped Extended Events and exposes deadlock information through diagnostic settings. There's no OS event log, and sp_who2 doesn't show graphs." },
+      "example": { "en": "CREATE EVENT SESSION deadlocks ON DATABASE ADD EVENT sqlserver.xml_deadlock_report ADD TARGET package0.ring_buffer;" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-sql/database/analyze-prevent-deadlocks"]
+    },
+    {
+      "id": "d2-perf-0016",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-performance-issues",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A deadlock graph shows two sessions each holding an S lock on the same row and requesting X (conversion deadlock), from 'SELECT … then UPDATE' in one transaction. What prevents it?" },
+      "options": [
+        { "id": "a", "text": { "en": "Read the row WITH (UPDLOCK) so only one session can hold the update-intent lock" } },
+        { "id": "b", "text": { "en": "Add NOLOCK to the SELECT" } },
+        { "id": "c", "text": { "en": "Use a larger buffer pool" } },
+        { "id": "d", "text": { "en": "Split the UPDATE into two statements" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "UPDLOCK serializes the read-then-write pattern: the second session waits at the SELECT instead of deadlocking at the conversion. NOLOCK would read stale/dirty data; memory and splitting don't remove the cycle." },
+      "example": { "en": "SELECT Qty FROM dbo.Stock WITH (UPDLOCK) WHERE Sku = @s; UPDATE dbo.Stock SET Qty = Qty - 1 WHERE Sku = @s;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-deadlocks-guide"]
+    },
+    {
+      "id": "d2-perf-0017",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-performance-issues",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A query filters WHERE Status = 'Open' OR CustomerId = 42, and separate indexes exist on each column, but the plan scans. Which rewrite often helps?" },
+      "options": [
+        { "id": "a", "text": { "en": "Split into two queries combined with UNION (or UNION ALL with de-dup logic) so each can seek" } },
+        { "id": "b", "text": { "en": "Wrap both columns in ISNULL" } },
+        { "id": "c", "text": { "en": "Add NOLOCK" } },
+        { "id": "d", "text": { "en": "Use SELECT *" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "ORs across different columns can defeat single-index seeks; splitting lets each branch seek its own index (the optimizer sometimes does this via index union, but not always). Functions and NOLOCK don't help." },
+      "example": { "en": "SELECT … WHERE Status='Open' UNION SELECT … WHERE CustomerId = 42;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-index-design-guide"]
+    },
+    {
+      "id": "d2-perf-0018",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-performance-issues",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "An Azure SQL Database shows avg_cpu_percent at 98% for hours. Answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "Check Query Store for top CPU consumers before scaling up." } },
+        { "id": "s2", "text": { "en": "Scaling up vCores is a valid option if queries are already efficient." } },
+        { "id": "s3", "text": { "en": "Adding NOLOCK everywhere will reduce CPU usage significantly." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "yes", "s3": "no" },
+      "explanation": { "en": "Tune first (top queries), scale when workload is genuinely efficient. NOLOCK affects locking, not CPU spent on scans/joins." },
+      "example": { "en": "One missing index often drops CPU from 98% to 20%." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-sql/database/high-cpu-diagnose-troubleshoot"]
+    },
+    {
+      "id": "d2-perf-0019",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-performance-issues",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which statement about the head blocker is correct?" },
+      "options": [
+        { "id": "a", "text": { "en": "It blocks others but is not itself blocked; resolving it unblocks the chain" } },
+        { "id": "b", "text": { "en": "It's always the session with the highest CPU" } },
+        { "id": "c", "text": { "en": "It's always a system process" } },
+        { "id": "d", "text": { "en": "It always has a deadlock" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Blocking chains have a root: a session holding locks without waiting on anyone. It may be idle (sleeping) or running a long query." },
+      "example": { "en": "Head blocker query: sessions in blocking_session_id values that don't themselves appear as blocked." },
+      "sources": ["https://learn.microsoft.com/en-us/troubleshoot/sql/database-engine/performance/understand-resolve-blocking"]
+    },
+    {
+      "id": "d2-perf-0020",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-performance-issues",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Complete the deadlock retry logic." },
+      "code": "BEGIN CATCH\n    IF XACT_STATE() <> 0 ROLLBACK;\n    IF ERROR_NUMBER() = [BLANK1] AND @retry > 1\n    BEGIN\n        SET @retry -= 1;\n        WAITFOR [BLANK2] '00:00:00.200';\n    END\n    ELSE THROW;\nEND CATCH;",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "1205" } },
+            { "id": "c2", "text": { "en": "2627" } },
+            { "id": "c3", "text": { "en": "50000" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "DELAY" } },
+            { "id": "c2", "text": { "en": "TIME" } },
+            { "id": "c3", "text": { "en": "SLEEP" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "1205 identifies deadlock victims. WAITFOR DELAY waits for a duration (WAITFOR TIME waits until a clock time; SLEEP isn't T-SQL). 2627 is a key violation that shouldn't be retried blindly." },
+      "example": { "en": "Combine with SET XACT_ABORT ON in the procedure." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/language-elements/waitfor-transact-sql"]
+    },
+    {
+      "id": "d2-perf-0021",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-performance-issues",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Three missing-index suggestions exist: (CustomerId) INCLUDE (Total), (CustomerId) INCLUDE (OrderDate), (CustomerId, OrderDate). What's the best action?" },
+      "options": [
+        { "id": "a", "text": { "en": "Create one consolidated index, e.g. (CustomerId, OrderDate) INCLUDE (Total)" } },
+        { "id": "b", "text": { "en": "Create all three as suggested" } },
+        { "id": "c", "text": { "en": "Ignore all of them" } },
+        { "id": "d", "text": { "en": "Create a clustered columnstore" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Overlapping suggestions should be merged to cover the queries with one index, limiting write overhead. Blindly creating all of them multiplies maintenance cost." },
+      "example": { "en": "Verify with the queries' plans after creating it." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/indexes/tune-nonclustered-missing-index-suggestions"]
+    },
+    {
+      "id": "d2-perf-0022",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-performance-issues",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Why do missing indexes increase both blocking and deadlocks?" },
+      "options": [
+        { "id": "a", "text": { "en": "Scans read and lock far more rows/pages than seeks, increasing lock overlap and duration" } },
+        { "id": "b", "text": { "en": "Indexes hold no locks" } },
+        { "id": "c", "text": { "en": "Missing indexes disable RCSI" } },
+        { "id": "d", "text": { "en": "They don't" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "An UPDATE that scans 1M rows to change 1 must examine (and under locking isolation, lock) many rows; more locks held longer means more contention. Indexes narrow the footprint." },
+      "example": { "en": "Indexing the WHERE column of a frequent UPDATE often fixes 'random' deadlocks." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-deadlocks-guide"]
+    },
+    {
+      "id": "d2-perf-0023",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-performance-issues",
+      "type": "multiple", "difficulty": "medium", "selectCount": 2,
+      "text": { "en": "Which two actions reduce blocking caused by a large nightly UPDATE on a busy table? (Select 2)" },
+      "options": [
+        { "id": "a", "text": { "en": "Process the update in small batches with separate transactions" } },
+        { "id": "b", "text": { "en": "Ensure an index supports the UPDATE's WHERE clause" } },
+        { "id": "c", "text": { "en": "Run it inside one huge transaction with SERIALIZABLE" } },
+        { "id": "d", "text": { "en": "Add a TABLOCKX hint" } }
+      ],
+      "answer": ["a", "b"],
+      "explanation": { "en": "Batches avoid lock escalation and long-held locks; indexes reduce rows touched. SERIALIZABLE and TABLOCKX maximize blocking." },
+      "example": { "en": "UPDATE TOP (2000) … WHERE Processed = 0 in a loop." },
+      "sources": ["https://learn.microsoft.com/en-us/troubleshoot/sql/database-engine/performance/understand-resolve-blocking"]
+    },
+    {
+      "id": "d2-perf-0024",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-performance-issues",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which statement terminates a blocking session and rolls back its open transaction?" },
+      "options": [
+        { "id": "a", "text": { "en": "KILL <session_id>" } },
+        { "id": "b", "text": { "en": "DROP SESSION <id>" } },
+        { "id": "c", "text": { "en": "ROLLBACK <id>" } },
+        { "id": "d", "text": { "en": "STOP <id>" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "KILL ends the session; its uncommitted work rolls back (which can take time without ADR). The other statements don't exist in that form." },
+      "example": { "en": "KILL 57 WITH STATUSONLY shows rollback progress." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/language-elements/kill-transact-sql"]
+    },
+    {
+      "id": "d2-perf-0025",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-performance-issues",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Why should foreign key columns usually be indexed?" },
+      "options": [
+        { "id": "a", "text": { "en": "Joins and parent deletes/updates must find child rows; without an index they scan the child table, causing slowness and blocking" } },
+        { "id": "b", "text": { "en": "FKs don't work without indexes" } },
+        { "id": "c", "text": { "en": "To enable TDE" } },
+        { "id": "d", "text": { "en": "It's required by Query Store" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "FKs are valid without indexes, but parent operations and joins pay for scans. SQL Server doesn't create FK indexes automatically." },
+      "example": { "en": "Deleting one customer scanned 100M orders until IX_Orders_CustomerId was created." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/tables/primary-and-foreign-key-constraints"]
+    },
+    {
+      "id": "d2-perf-0026",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-performance-issues",
+      "type": "yesno", "difficulty": "hard",
+      "text": { "en": "Answer Yes or No about deadlocks." },
+      "statements": [
+        { "id": "s1", "text": { "en": "Deadlocks can be completely eliminated in any busy OLTP system with enough tuning." } },
+        { "id": "s2", "text": { "en": "The deadlock monitor usually picks the transaction cheapest to roll back as victim." } },
+        { "id": "s3", "text": { "en": "Deadlocks can involve resources other than locks, such as parallel query threads or memory." } }
+      ],
+      "answerMap": { "s1": "no", "s2": "yes", "s3": "yes" },
+      "explanation": { "en": "You can minimize but rarely eliminate deadlocks, so retries are required. Victim selection considers DEADLOCK_PRIORITY, then rollback cost. Deadlocks can also involve intra-query parallelism and other resources." },
+      "example": { "en": "Design for retry, not for perfection." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-deadlocks-guide"]
+    },
+    {
+      "id": "d2-perf-0027",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-performance-issues",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A .NET app passes a string parameter to a VARCHAR column filter and the query scans instead of seeks. What's the most effective fix in the app?" },
+      "options": [
+        { "id": "a", "text": { "en": "Specify SqlDbType.VarChar with the correct size for the parameter" } },
+        { "id": "b", "text": { "en": "Wrap the column in CONVERT" } },
+        { "id": "c", "text": { "en": "Use string concatenation instead of parameters" } },
+        { "id": "d", "text": { "en": "Add NOLOCK" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": ".NET strings map to NVARCHAR by default; comparing NVARCHAR to a VARCHAR column converts the column (implicit conversion), blocking seeks. Matching the type fixes it. Concatenation causes injection and plan cache bloat." },
+      "example": { "en": "In Dapper: new DbString { Value = s, IsAnsi = true, Length = 20 }." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/data-types/data-type-precedence-transact-sql"]
+    },
+    {
+      "id": "d2-perf-0028",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-performance-issues",
+      "type": "dragdrop-order", "difficulty": "medium",
+      "text": { "en": "Order the steps for resolving live production blocking." },
+      "items": [
+        { "id": "i1", "text": { "en": "Identify blocked requests (dm_exec_requests)" } },
+        { "id": "i2", "text": { "en": "Walk the chain to the head blocker and see what it's running" } },
+        { "id": "i3", "text": { "en": "Decide: wait, or KILL the head blocker if safe" } },
+        { "id": "i4", "text": { "en": "Fix the root cause (transaction scope, indexes, RCSI)" } }
+      ],
+      "answer": ["i1", "i2", "i3", "i4"],
+      "explanation": { "en": "Observe, find the root, mitigate the incident, then prevent recurrence. Killing random blocked sessions doesn't help." },
+      "example": { "en": "Capture the head blocker's SQL text before killing it for the post-incident review." },
+      "sources": ["https://learn.microsoft.com/en-us/troubleshoot/sql/database-engine/performance/understand-resolve-blocking"]
+    },
+    {
+      "id": "d2-perf-0029",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-performance-issues",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What does SET LOCK_TIMEOUT 5000 do?" },
+      "options": [
+        { "id": "a", "text": { "en": "A statement waiting for a lock longer than 5 seconds fails with error 1222 instead of waiting indefinitely" } },
+        { "id": "b", "text": { "en": "Prevents deadlocks" } },
+        { "id": "c", "text": { "en": "Releases all locks after 5 seconds" } },
+        { "id": "d", "text": { "en": "Kills the blocking session" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "LOCK_TIMEOUT bounds how long a statement waits; it raises error 1222. Note it cancels only the statement, not the transaction — handle it explicitly. It doesn't prevent deadlocks or affect other sessions." },
+      "example": { "en": "Default -1 = wait forever." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/set-lock-timeout-transact-sql"]
+    },
+    {
+      "id": "d2-perf-0030",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-performance-issues",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "An insert-heavy table with an IDENTITY clustered key shows PAGELATCH_EX waits on the last page under very high concurrency. Which feature targets this specific problem?" },
+      "options": [
+        { "id": "a", "text": { "en": "OPTIMIZE_FOR_SEQUENTIAL_KEY = ON on the index (or In-Memory OLTP for extreme cases)" } },
+        { "id": "b", "text": { "en": "READ_COMMITTED_SNAPSHOT" } },
+        { "id": "c", "text": { "en": "Query Store hints" } },
+        { "id": "d", "text": { "en": "Increase MAXDOP" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Last-page insert contention is latch (not lock) contention; OPTIMIZE_FOR_SEQUENTIAL_KEY smooths it by controlling thread flow, and In-Memory OLTP eliminates latches. RCSI affects locking reads; hints and MAXDOP don't address latches." },
+      "example": { "en": "ALTER INDEX PK_Events ON dbo.Events SET (OPTIMIZE_FOR_SEQUENTIAL_KEY = ON);" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-index-transact-sql"]
+    },
+    {
+      "id": "d2-perf-0031",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-performance-issues",
+      "type": "dragdrop-match", "difficulty": "medium",
+      "text": { "en": "Match each wait or error to its category." },
+      "items": [
+        { "id": "i1", "text": { "en": "Error 1205" } },
+        { "id": "i2", "text": { "en": "Error 1222" } },
+        { "id": "i3", "text": { "en": "LCK_M_S wait" } },
+        { "id": "i4", "text": { "en": "PAGELATCH_EX wait" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "Deadlock victim" } },
+        { "id": "t2", "text": { "en": "Lock request timeout exceeded" } },
+        { "id": "t3", "text": { "en": "Blocked reader waiting for a shared lock" } },
+        { "id": "t4", "text": { "en": "In-memory page latch contention (e.g. last-page inserts)" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "Know the signatures: deadlock 1205, lock timeout 1222, LCK_M_* lock waits, PAGELATCH_* in-memory latch contention (PAGEIOLATCH is disk IO)." },
+      "example": { "en": "PAGELATCH vs PAGEIOLATCH is a frequent trap." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-views/sys-dm-os-wait-stats-transact-sql"]
+    },
+    {
+      "id": "d2-perf-0032",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-performance-issues",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A report query sorts 5M rows by OrderDate for one customer each time. Which index removes the sort?" },
+      "options": [
+        { "id": "a", "text": { "en": "(CustomerId, OrderDate) INCLUDE (the selected columns)" } },
+        { "id": "b", "text": { "en": "(OrderDate) only" } },
+        { "id": "c", "text": { "en": "(Total)" } },
+        { "id": "d", "text": { "en": "A hash index" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "With CustomerId first (equality) and OrderDate second, the rows for a customer are already ordered by date in the index — no sort needed. OrderDate alone requires filtering; Total is unrelated; hash indexes are unordered." },
+      "example": { "en": "Equality columns first, then ORDER BY columns, then INCLUDE." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-index-design-guide"]
+    },
+    {
+      "id": "d2-perf-0033",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-performance-issues",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "For each statement about statistics maintenance, answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "Outdated statistics can cause bad cardinality estimates and poor plans." } },
+        { "id": "s2", "text": { "en": "AUTO_UPDATE_STATISTICS should be turned off in most systems." } },
+        { "id": "s3", "text": { "en": "Index REBUILD updates that index's statistics with a full scan." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "no", "s3": "yes" },
+      "explanation": { "en": "Statistics drive estimates; auto-update should stay on (optionally async). Rebuilding an index refreshes its statistics as if WITH FULLSCAN (REORGANIZE doesn't)." },
+      "example": { "en": "Skewed large tables may need scheduled UPDATE STATISTICS … WITH FULLSCAN." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/statistics/statistics"]
+    },
+    {
+      "id": "d2-perf-0034",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-performance-issues",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which approach reduces log-write saturation in Azure SQL Database caused by an app inserting rows one at a time with autocommit?" },
+      "options": [
+        { "id": "a", "text": { "en": "Batch inserts in explicit transactions or use bulk APIs/table-valued parameters" } },
+        { "id": "b", "text": { "en": "Use NOLOCK" } },
+        { "id": "c", "text": { "en": "Add more nonclustered indexes" } },
+        { "id": "d", "text": { "en": "Increase MAXDOP" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Each autocommit transaction forces a log flush; batching amortizes flushes. More indexes add log volume; NOLOCK and MAXDOP don't affect logging." },
+      "example": { "en": "SqlBulkCopy or a TVP inserting 1,000 rows per call." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-sql/database/resource-limits-logical-server"]
+    },
+    {
+      "id": "d2-perf-0035",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-performance-issues",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which DMV shows currently held and requested locks?" },
+      "options": [
+        { "id": "a", "text": { "en": "sys.dm_tran_locks" } },
+        { "id": "b", "text": { "en": "sys.dm_db_index_physical_stats" } },
+        { "id": "c", "text": { "en": "sys.query_store_plan" } },
+        { "id": "d", "text": { "en": "sys.dm_os_sys_info" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "dm_tran_locks lists lock resources, modes and request status (GRANT/WAIT). The others cover fragmentation, plans and system info." },
+      "example": { "en": "SELECT request_session_id, resource_type, request_mode, request_status FROM sys.dm_tran_locks;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-views/sys-dm-tran-locks-transact-sql"]
+    },
+    {
+      "id": "d2-perf-0036",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-performance-issues",
+      "type": "multiple", "difficulty": "hard", "selectCount": 2,
+      "text": { "en": "A vector search query is slow. The table has 5M rows with embeddings and no vector index; the query uses VECTOR_DISTANCE in ORDER BY with TOP 10. Which two actions improve latency? (Select 2)" },
+      "options": [
+        { "id": "a", "text": { "en": "Create a DiskANN vector index and query with VECTOR_SEARCH (TOP … WITH APPROXIMATE)" } },
+        { "id": "b", "text": { "en": "Apply selective relational filters first (e.g. category) to reduce candidates when exact search is required" } },
+        { "id": "c", "text": { "en": "Add a B-tree index on the vector column" } },
+        { "id": "d", "text": { "en": "Use NOLOCK" } }
+      ],
+      "answer": ["a", "b"],
+      "explanation": { "en": "Exact search computes distance for every row; an ANN index (DiskANN) avoids that. If exact results are required, reduce the candidate set with selective predicates. Vector columns can't be B-tree keys, and NOLOCK doesn't reduce computation." },
+      "example": { "en": "CREATE VECTOR INDEX vix ON dbo.Docs(Embedding) WITH (METRIC = 'cosine', TYPE = 'diskann');" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/sql-server/ai/vectors"]
+    },
+    {
+      "id": "d2-perf-0037",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-performance-issues",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A procedure calls sp_invoke_external_rest_endpoint inside a transaction that also updates rows. Users see long blocking. Why?" },
+      "options": [
+        { "id": "a", "text": { "en": "Locks from the updates are held while waiting for the external HTTP call to finish" } },
+        { "id": "b", "text": { "en": "HTTP calls lock the whole database" } },
+        { "id": "c", "text": { "en": "REST calls disable RCSI" } },
+        { "id": "d", "text": { "en": "It's caused by statistics" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "External calls add unpredictable latency; inside a transaction they extend lock duration. Call external services outside transactions (or asynchronously) and keep transactions short." },
+      "example": { "en": "Get the embedding first, then open a short transaction to write the result." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-invoke-external-rest-endpoint-transact-sql"]
+    },
+    {
+      "id": "d2-perf-0038",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-performance-issues",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Complete the batched delete that avoids lock escalation." },
+      "code": "WHILE 1 = 1\nBEGIN\n    DELETE [BLANK1] (4000) FROM dbo.AuditLog WHERE LoggedAt < @cutoff;\n    IF [BLANK2] = 0 BREAK;\nEND;",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "TOP" } },
+            { "id": "c2", "text": { "en": "LIMIT" } },
+            { "id": "c3", "text": { "en": "FIRST" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "@@ROWCOUNT" } },
+            { "id": "c2", "text": { "en": "@@ERROR" } },
+            { "id": "c3", "text": { "en": "@@TRANCOUNT" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "DELETE TOP (n) limits each batch below the ~5,000-lock escalation threshold; @@ROWCOUNT = 0 ends the loop. LIMIT/FIRST aren't T-SQL; @@ERROR and @@TRANCOUNT measure other things." },
+      "example": { "en": "Support the WHERE clause with an index on LoggedAt." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/delete-transact-sql"]
+    },
+    {
+      "id": "d2-perf-0039",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-performance-issues",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A query uses COUNT(*) > 0 to check whether matching orders exist. What's the more efficient pattern?" },
+      "options": [
+        { "id": "a", "text": { "en": "IF EXISTS (SELECT 1 FROM … WHERE …)" } },
+        { "id": "b", "text": { "en": "SELECT COUNT(*) WITH (NOLOCK)" } },
+        { "id": "c", "text": { "en": "SELECT * and count rows in the app" } },
+        { "id": "d", "text": { "en": "Use a cursor" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "EXISTS can stop at the first match; COUNT(*) must count all. Returning rows to the app or using cursors is far worse." },
+      "example": { "en": "IF EXISTS (SELECT 1 FROM dbo.Orders WHERE CustomerId = @c) …" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/language-elements/exists-transact-sql"]
+    },
+    {
+      "id": "d2-perf-0040",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-performance-issues",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A deadlock graph shows a single session with multiple threads (exchange event / parallel query) deadlocking with itself. What's a common mitigation?" },
+      "options": [
+        { "id": "a", "text": { "en": "Reduce parallelism for that query (MAXDOP hint) and/or improve indexing to avoid large parallel scans" } },
+        { "id": "b", "text": { "en": "Enable SERIALIZABLE" } },
+        { "id": "c", "text": { "en": "Use more cursors" } },
+        { "id": "d", "text": { "en": "Disable the transaction log" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Intra-query parallelism deadlocks involve parallel threads; lowering DOP or giving the query a cheaper plan (seek instead of big parallel scan) avoids them. Other options make things worse or are impossible." },
+      "example": { "en": "Apply via Query Store hint: OPTION(MAXDOP 1) for that query." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-deadlocks-guide"]
+    },
+    {
+      "id": "d2-perf-0041",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-performance-issues",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which practice keeps transactions short in application code?" },
+      "options": [
+        { "id": "a", "text": { "en": "Do all reads/validation and external calls before BEGIN TRAN; include only the necessary writes inside" } },
+        { "id": "b", "text": { "en": "Open the transaction when the user opens a form" } },
+        { "id": "c", "text": { "en": "Commit once per day" } },
+        { "id": "d", "text": { "en": "Use nested transactions everywhere" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Minimize the time locks are held: prepare outside, write inside, commit quickly. Long-lived and user-driven transactions are blocking factories." },
+      "example": { "en": "Validate inventory and call the payment API first; then a 5 ms transaction writes the order." },
+      "sources": ["https://learn.microsoft.com/en-us/troubleshoot/sql/database-engine/performance/understand-resolve-blocking"]
+    },
+    {
+      "id": "d2-perf-0042",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-performance-issues",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "For each statement about indexing strategy, answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "More indexes always improve overall performance." } },
+        { "id": "s2", "text": { "en": "Equality columns should usually precede range columns in a composite key." } },
+        { "id": "s3", "text": { "en": "Covering indexes remove key lookups." } }
+      ],
+      "answerMap": { "s1": "no", "s2": "yes", "s3": "yes" },
+      "explanation": { "en": "Indexes cost writes and storage; balance is key. Equality-then-range order maximizes seek selectivity, and covering indexes avoid lookups." },
+      "example": { "en": "(TenantId, CreatedAt) INCLUDE (Status, Total)." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-index-design-guide"]
+    },
+    {
+      "id": "d2-perf-0043",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-performance-issues",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which Azure SQL tier change best addresses a database that is efficient but consistently limited by log write throughput and needs to grow beyond 4 TB?" },
+      "options": [
+        { "id": "a", "text": { "en": "Hyperscale" } },
+        { "id": "b", "text": { "en": "Basic tier" } },
+        { "id": "c", "text": { "en": "Serverless with auto-pause" } },
+        { "id": "d", "text": { "en": "Lower vCores" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Hyperscale supports very large databases (up to 128 TB) with high log throughput and fast scaling. Basic is tiny; serverless targets intermittent use; fewer vCores reduces capacity." },
+      "example": { "en": "Tune first — tier changes are for genuinely efficient workloads hitting limits." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/azure-sql/database/service-tier-hyperscale"]
+    },
+    {
+      "id": "d2-perf-0044",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-performance-issues",
+      "type": "dragdrop-match", "difficulty": "hard",
+      "text": { "en": "Match each problem to the most targeted fix." },
+      "items": [
+        { "id": "i1", "text": { "en": "Reader/writer deadlocks under locking READ COMMITTED" } },
+        { "id": "i2", "text": { "en": "Conversion deadlocks in read-then-update code" } },
+        { "id": "i3", "text": { "en": "Cyclic deadlocks between two procedures" } },
+        { "id": "i4", "text": { "en": "Batch job should lose deadlocks" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "Enable RCSI" } },
+        { "id": "t2", "text": { "en": "UPDLOCK on the initial read" } },
+        { "id": "t3", "text": { "en": "Consistent access order" } },
+        { "id": "t4", "text": { "en": "DEADLOCK_PRIORITY LOW" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "Different deadlock patterns need different fixes; recognizing the pattern from the graph is the skill." },
+      "example": { "en": "All patterns still need retry logic." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-deadlocks-guide"]
+    },
+    {
+      "id": "d2-perf-0045",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-performance-issues",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which index design suits a table queried mainly by WHERE IsActive = 1 (5% of rows) and ORDER BY Name?" },
+      "options": [
+        { "id": "a", "text": { "en": "A filtered index on (Name) WHERE IsActive = 1, including needed columns" } },
+        { "id": "b", "text": { "en": "An index on (IsActive) only" } },
+        { "id": "c", "text": { "en": "No index" } },
+        { "id": "d", "text": { "en": "A clustered columnstore" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "A filtered index stores only active rows already ordered by Name — small and directly useful. A bit-column index is unselective; columnstore targets analytics." },
+      "example": { "en": "CREATE INDEX IX_Active_Name ON dbo.Users(Name) INCLUDE (Email) WHERE IsActive = 1;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/indexes/create-filtered-indexes"]
+    },
+    {
+      "id": "d2-perf-0046",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-performance-issues",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Why might a query using a scalar UDF in the SELECT list over millions of rows be slow on older compatibility levels?" },
+      "options": [
+        { "id": "a", "text": { "en": "The UDF executes row by row and prevents parallelism; scalar UDF inlining (compat 150+) can fix eligible UDFs" } },
+        { "id": "b", "text": { "en": "UDFs encrypt each row" } },
+        { "id": "c", "text": { "en": "UDFs always cause deadlocks" } },
+        { "id": "d", "text": { "en": "UDFs disable indexes database-wide" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Non-inlined scalar UDFs run per row and serialize the plan. Upgrading compatibility or rewriting as inline expressions/TVFs helps." },
+      "example": { "en": "Check sys.sql_modules.is_inlineable." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/user-defined-functions/scalar-udf-inlining"]
+    },
+    {
+      "id": "d2-perf-0047",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-performance-issues",
+      "type": "multiple", "difficulty": "medium", "selectCount": 2,
+      "text": { "en": "Which two signals suggest an index should be added? (Select 2)" },
+      "options": [
+        { "id": "a", "text": { "en": "A frequent query scans a large table to return a handful of rows" } },
+        { "id": "b", "text": { "en": "Key lookups execute thousands of times for a hot query" } },
+        { "id": "c", "text": { "en": "The table is written constantly and rarely read" } },
+        { "id": "d", "text": { "en": "The query already performs a covering seek" } }
+      ],
+      "answer": ["a", "b"],
+      "explanation": { "en": "Large scans for few rows and repeated lookups point at missing or non-covering indexes. Write-heavy, read-rare tables and already-covered queries don't need more indexes." },
+      "example": { "en": "Weigh read benefit vs write cost for every new index." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-index-design-guide"]
+    },
+    {
+      "id": "d2-perf-0048",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-performance-issues",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "With Accelerated Database Recovery enabled, what changes when you KILL a session that ran a huge update for an hour?" },
+      "options": [
+        { "id": "a", "text": { "en": "Rollback completes almost instantly instead of taking about as long as the work done" } },
+        { "id": "b", "text": { "en": "The update is committed instead" } },
+        { "id": "c", "text": { "en": "Locks are kept forever" } },
+        { "id": "d", "text": { "en": "Nothing changes" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "ADR's persistent version store allows logical revert, so rollbacks no longer replay the entire log. Work is never committed by KILL." },
+      "example": { "en": "Without ADR, KILL WITH STATUSONLY may show hours of remaining rollback." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/accelerated-database-recovery-concepts"]
+    },
+    {
+      "id": "d2-perf-0049",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-performance-issues",
+      "type": "dragdrop-order", "difficulty": "medium",
+      "text": { "en": "Order an index tuning cycle." },
+      "items": [
+        { "id": "i1", "text": { "en": "Identify top resource-consuming queries (Query Store)" } },
+        { "id": "i2", "text": { "en": "Analyze their plans and missing-index hints" } },
+        { "id": "i3", "text": { "en": "Design consolidated indexes and test write impact" } },
+        { "id": "i4", "text": { "en": "Deploy and verify, dropping unused indexes over time" } }
+      ],
+      "answer": ["i1", "i2", "i3", "i4"],
+      "explanation": { "en": "Start from measured hot spots, understand plans, design deliberately, then validate and prune." },
+      "example": { "en": "Repeat after major releases." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-index-design-guide"]
+    },
+    {
+      "id": "d2-perf-0050",
+      "domain": "secure-optimize-deploy", "topic": "t-performance", "subtopic": "d2-performance-issues",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "After enabling optimized locking in Azure SQL Database, which benefit should you expect for a workload with many concurrent single-row updates on different rows?" },
+      "options": [
+        { "id": "a", "text": { "en": "Less lock memory, fewer lock escalations and reduced blocking between updates on different rows" } },
+        { "id": "b", "text": { "en": "Elimination of all writer/writer conflicts on the same row" } },
+        { "id": "c", "text": { "en": "Faster backups" } },
+        { "id": "d", "text": { "en": "Automatic index creation" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "TID locking and LAQ reduce held row locks and blocking for updates on different rows. Two writers on the SAME row still conflict. It's unrelated to backups or indexing." },
+      "example": { "en": "Check with SELECT DATABASEPROPERTYEX(DB_NAME(), 'IsOptimizedLockingOn');" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/performance/optimized-locking"]
+    }
+  ]
+}

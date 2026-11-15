@@ -1,0 +1,52 @@
+{
+  "subtopic": "d3-rag-usecases",
+  "title": { "en": "RAG use cases & architecture in SQL" },
+  "prerequisiteRecap": [
+    {
+      "heading": { "en": "What an LLM doesn't know" },
+      "body": {
+        "en": "A large language model (LLM) knows what was in its training data — not your products, customers, orders or policies, and nothing that changed after training. Asked \"Which pedals fit the bike I bought last month?\", it can only guess (and may confidently invent an answer: a *hallucination*). **Retrieval-augmented generation (RAG)** fixes this by giving the model *your* data at question time."
+      }
+    }
+  ],
+  "sections": [
+    {
+      "heading": { "en": "How RAG works" },
+      "body": {
+        "en": "1. **Retrieve** — find the data relevant to the question (SQL queries, full-text, vector or hybrid search).\n2. **Augment** — put that data into the prompt as context, with instructions to use only that context.\n3. **Generate** — the model writes an answer **grounded** in the supplied data.\nCompared with **fine-tuning** (retraining the model on your data): fine-tuning bakes knowledge in and goes stale as data changes; RAG keeps data in the database and sends only what each request needs, so answers reflect changes immediately and you know exactly which records informed each answer. Fine-tuning is better for teaching style, format or specialized behavior; RAG is better for facts that change."
+      }
+    },
+    {
+      "heading": { "en": "When RAG fits — and when it doesn't" },
+      "body": {
+        "en": "**Good fits**: answers depend on your domain data; data changes frequently (inventory, prices, tickets); answers must be **traceable** (cite the order, policy or document); **privacy** — data stays in your database and only per-request context is sent (no training on your data).\nTypical scenarios: customer support (orders + return policy), product configuration within a budget, internal knowledge bases (policies, procedures), sales enablement (draft emails from purchase history and open issues), technical documentation (scripts based on your real schemas).\n**Poor fits**: exact lookups or calculations that SQL answers directly (\"total sales last quarter\" → a query/report), operations over the whole dataset (an LLM can't count millions of rows in a prompt), deterministic transactional actions, purely general-knowledge questions (no retrieval needed), or teaching a writing style (fine-tuning/prompting). RAG reduces hallucinations but doesn't eliminate them."
+      }
+    },
+    {
+      "heading": { "en": "SQL's role in the architecture" },
+      "body": {
+        "en": "A chat front end sends the question to an **orchestration layer**, which runs similarity/hybrid searches in the database, sends the prompt plus results to a language model, and returns the grounded answer. The database stores data and embeddings and exchanges vectors with an **embedding model**; the **LLM runs elsewhere** (for example Azure OpenAI in Microsoft Foundry).\nIn Azure SQL Database and SQL Server 2025, the orchestration can live in **T-SQL**: embed the question (`AI_GENERATE_EMBEDDINGS`), retrieve (`VECTOR_SEARCH`/`VECTOR_DISTANCE`/full-text), shape context (`FOR JSON`), build the prompt (`JSON_OBJECT`/`JSON_ARRAY`), call the model (`sp_invoke_external_rest_endpoint`) and parse the answer (`JSON_VALUE`/`OPENJSON`) — logic stays close to data, and existing apps (or Data API builder) can simply call a stored procedure. Alternatively, orchestrate in the application (for example with Semantic Kernel or LangChain) when you need streaming, multi-step agents or complex tools. `sp_invoke_external_rest_endpoint` is enabled by default in Azure SQL Database and Fabric; enable it with `sp_configure` in SQL Server 2025 and Managed Instance."
+      }
+    },
+    {
+      "heading": { "en": "Design considerations" },
+      "body": {
+        "en": "- **Security**: retrieval must respect the caller's permissions (row-level security, tenant filters) — the model will repeat whatever context you send. Limit who can call external endpoints (`EXECUTE ANY EXTERNAL ENDPOINT`), use managed identity, and restrict outbound destinations.\n- **Prompt injection**: retrieved text (reviews, tickets) may contain instructions; treat it as data, keep instructions in the system message, and validate outputs.\n- **Cost & limits**: tokens drive cost and the context window limits how much you can send — retrieve only the top, relevant, compact rows.\n- **Quality**: instruct the model to answer only from context and to say when information is missing; include identifiers so answers can cite sources; evaluate groundedness and relevance with test questions."
+      }
+    }
+  ],
+  "examTips": [
+    { "en": "RAG = retrieve → augment → generate; grounds answers in your current data." },
+    { "en": "Choose RAG for changing domain data, traceability and privacy; fine-tuning for style/behavior." },
+    { "en": "Don't use RAG for exact aggregates or lookups SQL can answer directly." },
+    { "en": "SQL can orchestrate RAG: AI_GENERATE_EMBEDDINGS → search → FOR JSON → JSON_OBJECT prompt → sp_invoke_external_rest_endpoint → JSON_VALUE/OPENJSON." },
+    { "en": "The LLM runs outside the database (e.g., Azure OpenAI); SQL Server 2025/MI must enable external REST endpoints." },
+    { "en": "Respect permissions in retrieval, defend against prompt injection, and keep context lean." }
+  ],
+  "sources": [
+    "https://learn.microsoft.com/en-us/training/modules/design-implement-rag-with-sql/2-identify-rag-use-cases-architecture",
+    "https://learn.microsoft.com/en-us/azure/azure-sql/database/ai-artificial-intelligence-intelligent-applications",
+    "https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-invoke-external-rest-endpoint-transact-sql",
+    "https://learn.microsoft.com/en-us/fabric/database/sql/use-case-ai-application"
+  ]
+}

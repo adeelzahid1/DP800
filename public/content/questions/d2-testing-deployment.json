@@ -1,0 +1,859 @@
+{
+  "subtopic": "d2-testing-deployment",
+  "questions": [
+    {
+      "id": "d2-test-0001",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-testing-deployment",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which open-source framework is commonly used to write unit tests in T-SQL?" },
+      "options": [
+        { "id": "a", "text": { "en": "tSQLt" } },
+        { "id": "b", "text": { "en": "xUnit.sql" } },
+        { "id": "c", "text": { "en": "Selenium" } },
+        { "id": "d", "text": { "en": "JMeter" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "tSQLt lets you write tests as stored procedures with fakes and assertions, each running in a rolled-back transaction. Selenium is UI testing; JMeter is load testing." },
+      "example": { "en": "EXEC tSQLt.Run 'OrderTests';" },
+      "sources": ["https://tsqlt.org/"]
+    },
+    {
+      "id": "d2-test-0002",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-testing-deployment",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "In a tSQLt unit test, why use tSQLt.FakeTable on dbo.OrderLines?" },
+      "options": [
+        { "id": "a", "text": { "en": "To replace the table with an empty, constraint-free copy so the test controls its data in isolation" } },
+        { "id": "b", "text": { "en": "To encrypt the table" } },
+        { "id": "c", "text": { "en": "To drop the table permanently" } },
+        { "id": "d", "text": { "en": "To speed up production queries" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "FakeTable isolates the test from existing data and constraints; changes roll back after the test. It doesn't affect production or permanently drop anything." },
+      "example": { "en": "EXEC tSQLt.FakeTable 'dbo.OrderLines'; INSERT test rows; assert." },
+      "sources": ["https://tsqlt.org/user-guide/isolating-dependencies/faketable/"]
+    },
+    {
+      "id": "d2-test-0003",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-testing-deployment",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What distinguishes an integration test from a unit test for database code?" },
+      "options": [
+        { "id": "a", "text": { "en": "Integration tests exercise the deployed schema end-to-end (constraints, triggers, multiple objects, app access) against a real database" } },
+        { "id": "b", "text": { "en": "Integration tests never use a database" } },
+        { "id": "c", "text": { "en": "Unit tests always run in production" } },
+        { "id": "d", "text": { "en": "There's no difference" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Unit tests isolate one object; integration tests validate how objects (and apps) work together after deployment." },
+      "example": { "en": "Deploy the dacpac to a container, run API tests that insert orders and read through RLS." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/continuous-integration-deployment"]
+    },
+    {
+      "id": "d2-test-0004",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-testing-deployment",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Before deploying, you want to know whether anyone changed production's schema outside the pipeline since the last deployment. Which SqlPackage action?" },
+      "options": [
+        { "id": "a", "text": { "en": "DriftReport" } },
+        { "id": "b", "text": { "en": "Export" } },
+        { "id": "c", "text": { "en": "Import" } },
+        { "id": "d", "text": { "en": "Extract" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "DriftReport lists changes to a registered database since its last deployment. Export/Import handle bacpacs; Extract creates a dacpac." },
+      "example": { "en": "sqlpackage /Action:DriftReport /TargetConnectionString:\"…\" /OutputPath:drift.xml" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sqlpackage/sqlpackage-deploy-drift-report"]
+    },
+    {
+      "id": "d2-test-0005",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-testing-deployment",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Every PR touching /src/Database must be approved by the DBA team. What enforces this in GitHub?" },
+      "options": [
+        { "id": "a", "text": { "en": "A CODEOWNERS entry for /src/Database/ plus branch protection requiring Code Owner review" } },
+        { "id": "b", "text": { "en": "A README note" } },
+        { "id": "c", "text": { "en": "A label named 'dba'" } },
+        { "id": "d", "text": { "en": "A cron workflow" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "CODEOWNERS maps paths to owners and, with 'Require review from Code Owners', makes their approval mandatory. Notes and labels don't enforce anything." },
+      "example": { "en": "/src/Database/ @contoso/dba-team" },
+      "sources": ["https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners"]
+    },
+    {
+      "id": "d2-test-0006",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-testing-deployment",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Production deployments must wait for a manual approval by release managers. Which GitHub feature implements this?" },
+      "options": [
+        { "id": "a", "text": { "en": "An environment with required reviewers that the deploy job targets" } },
+        { "id": "b", "text": { "en": "Issue assignment" } },
+        { "id": "c", "text": { "en": "A draft release" } },
+        { "id": "d", "text": { "en": "Discussions" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Environment protection rules pause jobs until listed reviewers approve; wait timers and branch restrictions add further control." },
+      "example": { "en": "jobs.deploy.environment: production (Settings → Environments → Required reviewers)" },
+      "sources": ["https://docs.github.com/en/actions/managing-workflow-runs-and-deployments/managing-deployments/managing-environments-for-deployment"]
+    },
+    {
+      "id": "d2-test-0007",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-testing-deployment",
+      "type": "dragdrop-order", "difficulty": "medium",
+      "text": { "en": "Order a typical database CI/CD pipeline." },
+      "items": [
+        { "id": "i1", "text": { "en": "Build the SQL project and run unit tests (CI on PR)" } },
+        { "id": "i2", "text": { "en": "Publish the dacpac artifact" } },
+        { "id": "i3", "text": { "en": "Deploy to test and run integration tests" } },
+        { "id": "i4", "text": { "en": "Approval gate, then deploy the same dacpac to production" } }
+      ],
+      "answer": ["i1", "i2", "i3", "i4"],
+      "explanation": { "en": "Validate early, produce one artifact, test it deployed, then promote it with approval." },
+      "example": { "en": "Build once, deploy many." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/continuous-integration-deployment"]
+    },
+    {
+      "id": "d2-test-0008",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-testing-deployment",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "For each statement about branch protection on main, answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "It can require pull requests before merging." } },
+        { "id": "s2", "text": { "en": "It can require specific status checks (CI jobs) to pass." } },
+        { "id": "s3", "text": { "en": "It can require approval from code owners." } },
+        { "id": "s4", "text": { "en": "It automatically deploys to production." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "yes", "s3": "yes", "s4": "no" },
+      "explanation": { "en": "Branch protection/rulesets govern how changes enter a branch; deployment is done by workflows and environments." },
+      "example": { "en": "Combine with environment approvals for full control from commit to production." },
+      "sources": ["https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches"]
+    },
+    {
+      "id": "d2-test-0009",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-testing-deployment",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which GitHub Action is designed to deploy SQL projects or dacpacs to Azure SQL?" },
+      "options": [
+        { "id": "a", "text": { "en": "azure/sql-action" } },
+        { "id": "b", "text": { "en": "actions/cache" } },
+        { "id": "c", "text": { "en": "actions/labeler" } },
+        { "id": "d", "text": { "en": "github/codeql-action" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "azure/sql-action builds .sqlproj files or deploys .dacpac/.sql to Azure SQL. The others cache dependencies, label PRs or run code scanning." },
+      "example": { "en": "with: { path: ./Sales.dacpac, action: publish, arguments: /Profile:prod.publish.xml }" },
+      "sources": ["https://github.com/Azure/sql-action"]
+    },
+    {
+      "id": "d2-test-0010",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-testing-deployment",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Why promote the SAME dacpac from test to production instead of rebuilding for each environment?" },
+      "options": [
+        { "id": "a", "text": { "en": "Production then receives exactly the artifact that passed testing" } },
+        { "id": "b", "text": { "en": "Rebuilding is impossible" } },
+        { "id": "c", "text": { "en": "Dacpacs expire after one deployment" } },
+        { "id": "d", "text": { "en": "GitHub charges per build" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "'Build once, deploy many' prevents differences introduced by rebuilding (dependency or tool version changes). Environment differences come from publish profiles." },
+      "example": { "en": "actions/upload-artifact → actions/download-artifact across jobs." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/continuous-integration-deployment"]
+    },
+    {
+      "id": "d2-test-0011",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-testing-deployment",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Complete the tSQLt test." },
+      "code": "CREATE PROCEDURE OrderTests.[test discount applied]\nAS\nBEGIN\n    EXEC tSQLt.[BLANK1] 'dbo.Orders';\n    INSERT INTO dbo.Orders (OrderId, Total) VALUES (1, 100);\n    EXEC dbo.ApplyDiscount @OrderId = 1, @Pct = 10;\n    DECLARE @t DECIMAL(10,2) = (SELECT Total FROM dbo.Orders WHERE OrderId = 1);\n    EXEC tSQLt.[BLANK2] @Expected = 90, @Actual = @t;\nEND;",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "FakeTable" } },
+            { "id": "c2", "text": { "en": "DropTable" } },
+            { "id": "c3", "text": { "en": "LockTable" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "AssertEquals" } },
+            { "id": "c2", "text": { "en": "Print" } },
+            { "id": "c3", "text": { "en": "Commit" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "FakeTable isolates the table; AssertEquals verifies the result and fails the test otherwise. The other choices aren't tSQLt procedures for these purposes." },
+      "example": { "en": "tSQLt.AssertEqualsTable compares whole result tables." },
+      "sources": ["https://tsqlt.org/user-guide/assertions/assertequals/"]
+    },
+    {
+      "id": "d2-test-0012",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-testing-deployment",
+      "type": "multiple", "difficulty": "medium", "selectCount": 3,
+      "text": { "en": "Which three are protection rules available on GitHub deployment environments? (Select 3)" },
+      "options": [
+        { "id": "a", "text": { "en": "Required reviewers" } },
+        { "id": "b", "text": { "en": "Wait timer" } },
+        { "id": "c", "text": { "en": "Deployment branch/tag restrictions" } },
+        { "id": "d", "text": { "en": "Automatic database backups" } },
+        { "id": "e", "text": { "en": "Query Store forcing" } }
+      ],
+      "answer": ["a", "b", "c"],
+      "explanation": { "en": "Environments support required reviewers, wait timers and restricting which branches/tags can deploy (plus custom protection rules). Backups and Query Store are database features." },
+      "example": { "en": "Only main may deploy to production; 15-minute wait; 2 reviewers." },
+      "sources": ["https://docs.github.com/en/actions/managing-workflow-runs-and-deployments/managing-deployments/managing-environments-for-deployment"]
+    },
+    {
+      "id": "d2-test-0013",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-testing-deployment",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A deployment to a registered production database is blocked with a drift message. Which publish property caused this?" },
+      "options": [
+        { "id": "a", "text": { "en": "BlockWhenDriftDetected" } },
+        { "id": "b", "text": { "en": "DropObjectsNotInSource" } },
+        { "id": "c", "text": { "en": "IncludeTransactionalScripts" } },
+        { "id": "d", "text": { "en": "CommandTimeout" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "BlockWhenDriftDetected stops updates to a registered database whose schema no longer matches its registration. Investigate the drift, back-port or accept, then redeploy." },
+      "example": { "en": "/p:BlockWhenDriftDetected=False only after deliberately deciding to overwrite drift." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sqlpackage/sqlpackage-publish"]
+    },
+    {
+      "id": "d2-test-0014",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-testing-deployment",
+      "type": "dragdrop-match", "difficulty": "medium",
+      "text": { "en": "Match each trigger to its typical pipeline use." },
+      "items": [
+        { "id": "i1", "text": { "en": "pull_request" } },
+        { "id": "i2", "text": { "en": "push to main" } },
+        { "id": "i3", "text": { "en": "workflow_dispatch" } },
+        { "id": "i4", "text": { "en": "schedule" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "Validate proposed changes (build + tests)" } },
+        { "id": "t2", "text": { "en": "Deploy merged changes to test" } },
+        { "id": "t3", "text": { "en": "Manual run, e.g. re-deploy or hotfix" } },
+        { "id": "t4", "text": { "en": "Nightly drift checks or long integration tests" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "Triggers define when pipeline stages run; combining them gives validation, continuous deployment, manual control and periodic checks." },
+      "example": { "en": "on: { schedule: [ { cron: '0 2 * * *' } ] }" },
+      "sources": ["https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows"]
+    },
+    {
+      "id": "d2-test-0015",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-testing-deployment",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Integration tests need a clean SQL Server per pipeline run. Which approach is common on GitHub-hosted Linux runners?" },
+      "options": [
+        { "id": "a", "text": { "en": "Run a SQL Server container as a job service, publish the dacpac, run tests" } },
+        { "id": "b", "text": { "en": "Use production" } },
+        { "id": "c", "text": { "en": "Install SQL Server manually each time on Windows" } },
+        { "id": "d", "text": { "en": "Skip integration tests" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Containers provide disposable, consistent databases; the job publishes the build artifact and runs tests. Production testing is unsafe." },
+      "example": { "en": "services: { mssql: { image: mcr.microsoft.com/mssql/server:2025-latest, env: { ACCEPT_EULA: Y, MSSQL_SA_PASSWORD: ${{ secrets.TEST_SA }} }, ports: ['1433:1433'] } }" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/linux/quickstart-install-connect-docker"]
+    },
+    {
+      "id": "d2-test-0016",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-testing-deployment",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which tool visually compares a SQL project with a live database to find drift interactively?" },
+      "options": [
+        { "id": "a", "text": { "en": "Schema compare" } },
+        { "id": "b", "text": { "en": "Activity Monitor" } },
+        { "id": "c", "text": { "en": "Query Store" } },
+        { "id": "d", "text": { "en": "Profiler" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Schema compare lists differences and can apply them in either direction (update project or database). The others are performance/monitoring tools." },
+      "example": { "en": "VS Code: right-click project → Schema Compare." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/howto/compare-database-project"]
+    },
+    {
+      "id": "d2-test-0017",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-testing-deployment",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "For each statement about tSQLt, answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "Each test runs in a transaction that is rolled back afterward." } },
+        { "id": "s2", "text": { "en": "Tests are written as stored procedures in test classes (schemas)." } },
+        { "id": "s3", "text": { "en": "tSQLt should be installed in production databases." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "yes", "s3": "no" },
+      "explanation": { "en": "tSQLt isolates tests via rollback and organizes them by schema. It's a development/test dependency — keep it out of production deployments." },
+      "example": { "en": "Keep tests in a separate project that references the main project." },
+      "sources": ["https://tsqlt.org/"]
+    },
+    {
+      "id": "d2-test-0018",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-testing-deployment",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A deployment script contains a table rebuild (create new table, copy data, swap) for a 2-TB table because a column was inserted in the middle of the definition. How should the team avoid this?" },
+      "options": [
+        { "id": "a", "text": { "en": "Add new columns at the end, or set IgnoreColumnOrder = true in the publish profile so column order changes don't force rebuilds" } },
+        { "id": "b", "text": { "en": "Deploy anyway during business hours" } },
+        { "id": "c", "text": { "en": "Disable the deployment script" } },
+        { "id": "d", "text": { "en": "Use NOLOCK" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Column order matters to DacFx comparisons; inserting a column mid-definition can trigger a full rebuild. IgnoreColumnOrder avoids that. Reviewing generated scripts in PRs catches it early." },
+      "example": { "en": "/p:IgnoreColumnOrder=True" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sqlpackage/sqlpackage-publish"]
+    },
+    {
+      "id": "d2-test-0019",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-testing-deployment",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which deployment-test practice best catches post-deployment script failures caused by real data before production?" },
+      "options": [
+        { "id": "a", "text": { "en": "Publish to a staging copy of production data first" } },
+        { "id": "b", "text": { "en": "Only run unit tests with fakes" } },
+        { "id": "c", "text": { "en": "Skip staging to save time" } },
+        { "id": "d", "text": { "en": "Review the README" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Realistic data reveals constraint violations, data-loss blocks and long operations that empty test databases hide." },
+      "example": { "en": "Refresh staging from a masked production copy regularly." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/continuous-integration-deployment"]
+    },
+    {
+      "id": "d2-test-0020",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-testing-deployment",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Complete the CODEOWNERS file so security objects need the security team's review." },
+      "code": "# .github/[BLANK1]\n/src/Database/            @contoso/dba-team\n/src/Database/Security/   [BLANK2]",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "CODEOWNERS" } },
+            { "id": "c2", "text": { "en": "OWNERS.yml" } },
+            { "id": "c3", "text": { "en": "reviewers.json" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "@contoso/security-team" } },
+            { "id": "c2", "text": { "en": "security-team@contoso" } },
+            { "id": "c3", "text": { "en": "#security" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "The file is named CODEOWNERS (in .github/, root or docs/). Owners are @user or @org/team handles. Later matching lines take precedence, so the Security folder maps to the security team." },
+      "example": { "en": "Enable 'Require review from Code Owners' in branch protection." },
+      "sources": ["https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners"]
+    },
+    {
+      "id": "d2-test-0021",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-testing-deployment",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "In CODEOWNERS, when two patterns match the same file, which owner applies?" },
+      "options": [
+        { "id": "a", "text": { "en": "The last matching pattern in the file" } },
+        { "id": "b", "text": { "en": "The first matching pattern" } },
+        { "id": "c", "text": { "en": "Both, always" } },
+        { "id": "d", "text": { "en": "None" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "CODEOWNERS uses last-match-wins precedence, so specific rules go below general ones." },
+      "example": { "en": "General /src/Database/ first, specific /src/Database/Security/ after." },
+      "sources": ["https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners"]
+    },
+    {
+      "id": "d2-test-0022",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-testing-deployment",
+      "type": "multiple", "difficulty": "medium", "selectCount": 2,
+      "text": { "en": "Which two are ways to detect schema drift? (Select 2)" },
+      "options": [
+        { "id": "a", "text": { "en": "SqlPackage DriftReport against a registered database" } },
+        { "id": "b", "text": { "en": "Schema compare between the project and the live database" } },
+        { "id": "c", "text": { "en": "sys.dm_os_wait_stats" } },
+        { "id": "d", "text": { "en": "Index rebuilds" } }
+      ],
+      "answer": ["a", "b"],
+      "explanation": { "en": "Both compare expected vs actual schema. Wait stats and index maintenance don't reveal schema differences." },
+      "example": { "en": "Nightly drift workflow posts results to the team channel." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sqlpackage/sqlpackage-deploy-drift-report"]
+    },
+    {
+      "id": "d2-test-0023",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-testing-deployment",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which job setting makes a GitHub Actions job wait for another job's success before running?" },
+      "options": [
+        { "id": "a", "text": { "en": "needs: <job-id>" } },
+        { "id": "b", "text": { "en": "after: <job-id>" } },
+        { "id": "c", "text": { "en": "depends: <job-id>" } },
+        { "id": "d", "text": { "en": "wait: <job-id>" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "needs defines job dependencies, creating stages like build → test → deploy. The other keys aren't valid." },
+      "example": { "en": "deploy-prod: { needs: deploy-test, environment: production }" },
+      "sources": ["https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions"]
+    },
+    {
+      "id": "d2-test-0024",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-testing-deployment",
+      "type": "yesno", "difficulty": "hard",
+      "text": { "en": "A production environment restricts deployments to the main branch and requires two reviewers. Answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "A job from a feature branch targeting production is blocked." } },
+        { "id": "s2", "text": { "en": "Environment secrets become available to the job only after approval." } },
+        { "id": "s3", "text": { "en": "Reviewers can approve their own deployment unless self-review is prevented." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "yes", "s3": "yes" },
+      "explanation": { "en": "Branch restrictions block other branches; secrets are released after protection rules pass; GitHub provides a 'Prevent self-review' option — without it, a required reviewer could approve their own run." },
+      "example": { "en": "Enable 'Prevent self-review' for separation of duties." },
+      "sources": ["https://docs.github.com/en/actions/managing-workflow-runs-and-deployments/managing-deployments/managing-environments-for-deployment"]
+    },
+    {
+      "id": "d2-test-0025",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-testing-deployment",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which statement about testing RLS predicates is best practice?" },
+      "options": [
+        { "id": "a", "text": { "en": "Integration-test them by executing queries as different users/session contexts and asserting visible rows" } },
+        { "id": "b", "text": { "en": "Don't test security; trust the code review" } },
+        { "id": "c", "text": { "en": "Test only as db_owner" } },
+        { "id": "d", "text": { "en": "Disable RLS in tests" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Security logic is behavior worth testing. Testing as an owner (who may bypass) or with RLS disabled proves nothing." },
+      "example": { "en": "EXECUTE AS USER = 'tenantA_user'; assert counts; REVERT;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/row-level-security"]
+    },
+    {
+      "id": "d2-test-0026",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-testing-deployment",
+      "type": "dragdrop-order", "difficulty": "medium",
+      "text": { "en": "Order a safe production deployment job." },
+      "items": [
+        { "id": "i1", "text": { "en": "Approval via environment protection" } },
+        { "id": "i2", "text": { "en": "Run DriftReport / DeployReport against production" } },
+        { "id": "i3", "text": { "en": "Publish the tested dacpac with the production profile" } },
+        { "id": "i4", "text": { "en": "Run smoke tests and record the deployment (commit SHA)" } }
+      ],
+      "answer": ["i1", "i2", "i3", "i4"],
+      "explanation": { "en": "Gate, check drift/impact, deploy, verify and record. Skipping the pre-check risks overwriting hotfixes or surprising rebuilds." },
+      "example": { "en": "Fail the job if the DeployReport contains unexpected drops." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/continuous-integration-deployment"]
+    },
+    {
+      "id": "d2-test-0027",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-testing-deployment",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What permissions should the database identity used by the production deployment pipeline have?" },
+      "options": [
+        { "id": "a", "text": { "en": "Only what deployments need (e.g. schema change permissions on the target database), not server-wide sysadmin" } },
+        { "id": "b", "text": { "en": "sysadmin on all servers" } },
+        { "id": "c", "text": { "en": "None" } },
+        { "id": "d", "text": { "en": "The same login as end users" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Least privilege applies to automation too. A compromised pipeline with sysadmin could do far more damage. End-user logins shouldn't deploy schemas." },
+      "example": { "en": "A dedicated Entra identity added to db_owner on the target database only (or narrower roles)." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/securing-sql-server"]
+    },
+    {
+      "id": "d2-test-0028",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-testing-deployment",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which artifact should a PR pipeline publish for reviewers to inspect the impact of a schema change?" },
+      "options": [
+        { "id": "a", "text": { "en": "The generated deployment script or DeployReport" } },
+        { "id": "b", "text": { "en": "A database backup" } },
+        { "id": "c", "text": { "en": "A screenshot of SSMS" } },
+        { "id": "d", "text": { "en": "Nothing" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The script/report shows exactly what will run against the target, which is what reviewers need." },
+      "example": { "en": "actions/upload-artifact with deploy.sql" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sqlpackage/sqlpackage-script"]
+    },
+    {
+      "id": "d2-test-0029",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-testing-deployment",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A test project contains tSQLt tests. How should it relate to the main database project?" },
+      "options": [
+        { "id": "a", "text": { "en": "Separate test project referencing the main project (same-database reference), deployed only to test environments" } },
+        { "id": "b", "text": { "en": "Mixed into the main project and deployed to production" } },
+        { "id": "c", "text": { "en": "Stored only on developer machines" } },
+        { "id": "d", "text": { "en": "Embedded in post-deployment scripts" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Separating tests keeps production clean while letting tests validate the same model. Tests on laptops aren't automated; post-deployment scripts run in production." },
+      "example": { "en": "Sales.sqlproj + Sales.Tests.sqlproj (references Sales)." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/database-references"]
+    },
+    {
+      "id": "d2-test-0030",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-testing-deployment",
+      "type": "dragdrop-match", "difficulty": "medium",
+      "text": { "en": "Match each control to the risk it mitigates." },
+      "items": [
+        { "id": "i1", "text": { "en": "Required status checks" } },
+        { "id": "i2", "text": { "en": "CODEOWNERS review" } },
+        { "id": "i3", "text": { "en": "Environment required reviewers" } },
+        { "id": "i4", "text": { "en": "OIDC per-environment federated credential" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "Merging code that doesn't build or fails tests" } },
+        { "id": "t2", "text": { "en": "Database changes without expert review" } },
+        { "id": "t3", "text": { "en": "Unapproved production deployments" } },
+        { "id": "t4", "text": { "en": "Pipelines using long-lived stored credentials or reaching the wrong environment" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "These four controls map to the study guide's 'controls for deployment pipelines' bullet: branching policies, approvals, authentication and code owners." },
+      "example": { "en": "Layer them for defense in depth." },
+      "sources": ["https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches"]
+    },
+    {
+      "id": "d2-test-0031",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-testing-deployment",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "How should a failed production deployment be rolled back in a declarative SQL project workflow?" },
+      "options": [
+        { "id": "a", "text": { "en": "Fix forward or redeploy the previous dacpac version — mindful that data changes may not be reversible" } },
+        { "id": "b", "text": { "en": "Delete the Git history" } },
+        { "id": "c", "text": { "en": "Revert by restarting the server" } },
+        { "id": "d", "text": { "en": "Rollback is automatic for all changes" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Publishing the previous version computes changes back, but dropped data can't be recovered by schema deployment; backups/point-in-time restore cover worst cases. Prefer backward-compatible changes so fix-forward is easy." },
+      "example": { "en": "Azure SQL point-in-time restore for catastrophic failures." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sqlpackage/sqlpackage-publish"]
+    },
+    {
+      "id": "d2-test-0032",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-testing-deployment",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "Answer Yes or No about testing strategy." },
+      "statements": [
+        { "id": "s1", "text": { "en": "Fast unit tests should run on every pull request." } },
+        { "id": "s2", "text": { "en": "Integration tests can run on merge or on a schedule if they're slow." } },
+        { "id": "s3", "text": { "en": "Testing against production data copies requires attention to masking/privacy." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "yes", "s3": "yes" },
+      "explanation": { "en": "A layered strategy balances feedback speed and coverage; using production data in lower environments requires masking or anonymization." },
+      "example": { "en": "PR: build + tSQLt (2 min). Merge: container integration tests (10 min). Nightly: staging deployment test." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/continuous-integration-deployment"]
+    },
+    {
+      "id": "d2-test-0033",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-testing-deployment",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which tSQLt assertion compares two tables' contents row by row?" },
+      "options": [
+        { "id": "a", "text": { "en": "tSQLt.AssertEqualsTable" } },
+        { "id": "b", "text": { "en": "tSQLt.AssertEquals" } },
+        { "id": "c", "text": { "en": "tSQLt.Fail" } },
+        { "id": "d", "text": { "en": "tSQLt.SpyProcedure" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "AssertEqualsTable compares an expected table to an actual one. AssertEquals compares scalars, Fail forces failure, SpyProcedure replaces a procedure to record calls." },
+      "example": { "en": "EXEC tSQLt.AssertEqualsTable 'expected', 'actual';" },
+      "sources": ["https://tsqlt.org/user-guide/assertions/assertequalstable/"]
+    },
+    {
+      "id": "d2-test-0034",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-testing-deployment",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A procedure calls dbo.SendEmail internally. In a unit test you want to verify it's called without sending email. Which tSQLt feature?" },
+      "options": [
+        { "id": "a", "text": { "en": "tSQLt.SpyProcedure on dbo.SendEmail, then check the spy's log table" } },
+        { "id": "b", "text": { "en": "tSQLt.FakeTable on dbo.SendEmail" } },
+        { "id": "c", "text": { "en": "Disable email server" } },
+        { "id": "d", "text": { "en": "It can't be tested" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "SpyProcedure replaces the procedure with a stub that logs calls and parameters into a _SpyProcedureLog table. FakeTable works on tables, not procedures." },
+      "example": { "en": "EXEC tSQLt.SpyProcedure 'dbo.SendEmail'; … SELECT * FROM dbo.SendEmail_SpyProcedureLog;" },
+      "sources": ["https://tsqlt.org/user-guide/isolating-dependencies/spyprocedure/"]
+    },
+    {
+      "id": "d2-test-0035",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-testing-deployment",
+      "type": "multiple", "difficulty": "medium", "selectCount": 2,
+      "text": { "en": "Which two branch-protection settings most directly prevent untested schema changes reaching main? (Select 2)" },
+      "options": [
+        { "id": "a", "text": { "en": "Require a pull request before merging" } },
+        { "id": "b", "text": { "en": "Require status checks (build/tests) to pass" } },
+        { "id": "c", "text": { "en": "Allow force pushes" } },
+        { "id": "d", "text": { "en": "Allow bypass for everyone" } }
+      ],
+      "answer": ["a", "b"],
+      "explanation": { "en": "PRs plus required checks ensure every change is reviewed and validated. Force pushes and broad bypass undermine protection." },
+      "example": { "en": "Rulesets can apply the same rules to many repositories." },
+      "sources": ["https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches"]
+    },
+    {
+      "id": "d2-test-0036",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-testing-deployment",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Your deployment must not proceed if the DeployReport shows any DROP TABLE operations. How can the pipeline enforce this?" },
+      "options": [
+        { "id": "a", "text": { "en": "Generate the DeployReport, parse it in a step, and fail the job if drop operations appear (in addition to BlockOnPossibleDataLoss)" } },
+        { "id": "b", "text": { "en": "Rely on developers to notice" } },
+        { "id": "c", "text": { "en": "Disable DeployReport" } },
+        { "id": "d", "text": { "en": "Use NOLOCK" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Automated policy checks on the report turn reviews into enforced gates; BlockOnPossibleDataLoss also helps for data-bearing objects." },
+      "example": { "en": "grep -q 'Operation Name=\"Drop\"' report.xml && exit 1" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sqlpackage/sqlpackage-deploy-drift-report"]
+    },
+    {
+      "id": "d2-test-0037",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-testing-deployment",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Complete the job so production deployment waits for test deployment and approval." },
+      "code": "deploy-prod:\n  [BLANK1]: deploy-test\n  [BLANK2]: production\n  runs-on: ubuntu-latest",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "needs" } },
+            { "id": "c2", "text": { "en": "after" } },
+            { "id": "c3", "text": { "en": "requires" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "environment" } },
+            { "id": "c2", "text": { "en": "stage" } },
+            { "id": "c3", "text": { "en": "target" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "needs orders jobs; environment links the job to protection rules and environment secrets. The alternatives aren't GitHub Actions keys." },
+      "example": { "en": "The job pauses with 'Waiting for review' until approvers act." },
+      "sources": ["https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions"]
+    },
+    {
+      "id": "d2-test-0038",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-testing-deployment",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What's a key benefit of running database unit tests in CI on every PR?" },
+      "options": [
+        { "id": "a", "text": { "en": "Logic regressions in procedures/functions are caught before merge" } },
+        { "id": "b", "text": { "en": "It replaces integration testing entirely" } },
+        { "id": "c", "text": { "en": "It removes the need for code review" } },
+        { "id": "d", "text": { "en": "It speeds up production queries" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Early feedback on logic is the point; unit tests complement but don't replace integration tests or reviews." },
+      "example": { "en": "Failed tSQLt test → PR status check red → merge blocked." },
+      "sources": ["https://tsqlt.org/"]
+    },
+    {
+      "id": "d2-test-0039",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-testing-deployment",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "Answer Yes or No about drift." },
+      "statements": [
+        { "id": "s1", "text": { "en": "Drift can be caused by manual hotfixes in production." } },
+        { "id": "s2", "text": { "en": "Ignoring drift can cause a deployment to remove production hotfixes." } },
+        { "id": "s3", "text": { "en": "Drift is impossible if you use SQL projects." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "yes", "s3": "no" },
+      "explanation": { "en": "Projects define intended state, but nothing stops out-of-band changes — detection and process discipline are needed." },
+      "example": { "en": "Restrict ALTER permissions in production to the pipeline identity to reduce drift." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sqlpackage/sqlpackage-deploy-drift-report"]
+    },
+    {
+      "id": "d2-test-0040",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-testing-deployment",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "To reduce drift at its source, which permission strategy is most effective in production?" },
+      "options": [
+        { "id": "a", "text": { "en": "Only the deployment pipeline identity has DDL permissions; humans use break-glass access that's audited" } },
+        { "id": "b", "text": { "en": "Give all developers db_owner" } },
+        { "id": "c", "text": { "en": "Disable auditing" } },
+        { "id": "d", "text": { "en": "Allow schema changes from any app" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "If only the pipeline can change schema, all changes flow through source control. Emergency access remains possible but audited." },
+      "example": { "en": "Audit SCHEMA_OBJECT_CHANGE_GROUP to detect any out-of-band DDL." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/auditing/sql-server-audit-action-groups-and-actions"]
+    },
+    {
+      "id": "d2-test-0041",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-testing-deployment",
+      "type": "dragdrop-order", "difficulty": "medium",
+      "text": { "en": "Order the steps of a tSQLt test (Arrange-Act-Assert)." },
+      "items": [
+        { "id": "i1", "text": { "en": "Fake dependent tables/procedures" } },
+        { "id": "i2", "text": { "en": "Insert test data" } },
+        { "id": "i3", "text": { "en": "Execute the object under test" } },
+        { "id": "i4", "text": { "en": "Assert the expected result" } }
+      ],
+      "answer": ["i1", "i2", "i3", "i4"],
+      "explanation": { "en": "Isolate, arrange data, act, assert — the transaction rolls back afterward automatically." },
+      "example": { "en": "FakeTable → INSERT → EXEC proc → AssertEqualsTable." },
+      "sources": ["https://tsqlt.org/"]
+    },
+    {
+      "id": "d2-test-0042",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-testing-deployment",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "In azure/sql-action, how do you pass SqlPackage options such as a publish profile?" },
+      "options": [
+        { "id": "a", "text": { "en": "Through the 'arguments' input (e.g. /Profile:prod.publish.xml)" } },
+        { "id": "b", "text": { "en": "By renaming the dacpac" } },
+        { "id": "c", "text": { "en": "Via the README" } },
+        { "id": "d", "text": { "en": "It doesn't support options" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The action forwards arguments to SqlPackage, letting you use profiles and /p: properties." },
+      "example": { "en": "arguments: '/Profile:prod.publish.xml /p:BlockOnPossibleDataLoss=true'" },
+      "sources": ["https://github.com/Azure/sql-action"]
+    },
+    {
+      "id": "d2-test-0043",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-testing-deployment",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Why add a wait timer to a production environment?" },
+      "options": [
+        { "id": "a", "text": { "en": "To give time to cancel a deployment or observe earlier stages before production proceeds" } },
+        { "id": "b", "text": { "en": "To make builds faster" } },
+        { "id": "c", "text": { "en": "To encrypt secrets" } },
+        { "id": "d", "text": { "en": "To reduce costs" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Wait timers delay deployment jobs, enabling a bake period (e.g. monitor staging) and last-minute cancellation." },
+      "example": { "en": "30-minute wait after staging deployment before production." },
+      "sources": ["https://docs.github.com/en/actions/managing-workflow-runs-and-deployments/managing-deployments/managing-environments-for-deployment"]
+    },
+    {
+      "id": "d2-test-0044",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-testing-deployment",
+      "type": "multiple", "difficulty": "hard", "selectCount": 2,
+      "text": { "en": "Which two practices make database deployments safer to automate continuously? (Select 2)" },
+      "options": [
+        { "id": "a", "text": { "en": "Backward-compatible (expand/contract) schema changes" } },
+        { "id": "b", "text": { "en": "Idempotent pre/post-deployment scripts" } },
+        { "id": "c", "text": { "en": "Turning off BlockOnPossibleDataLoss permanently" } },
+        { "id": "d", "text": { "en": "Deploying different dacpacs per environment" } }
+      ],
+      "answer": ["a", "b"],
+      "explanation": { "en": "Compatible changes let app and DB deploy independently; idempotent scripts make reruns safe. Disabling data-loss protection and per-environment builds add risk." },
+      "example": { "en": "Expand → migrate → contract across releases." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/pre-post-deployment-scripts"]
+    },
+    {
+      "id": "d2-test-0045",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-testing-deployment",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "What should happen in CI when the SQL project build reports an unresolved reference?" },
+      "options": [
+        { "id": "a", "text": { "en": "The check fails and blocks the PR until fixed" } },
+        { "id": "b", "text": { "en": "Deploy anyway" } },
+        { "id": "c", "text": { "en": "Ignore all warnings and errors" } },
+        { "id": "d", "text": { "en": "Merge and fix later" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Build validation is the first quality gate; failing fast prevents broken schemas from merging." },
+      "example": { "en": "Required status check: 'dotnet build Sales.sqlproj'." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/sql-database-projects"]
+    },
+    {
+      "id": "d2-test-0046",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-testing-deployment",
+      "type": "yesno", "difficulty": "easy",
+      "text": { "en": "Is each a pipeline control named or implied by the study guide's deployment-controls bullet? Answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "Branching policies" } },
+        { "id": "s2", "text": { "en": "Approvals" } },
+        { "id": "s3", "text": { "en": "Code owners" } },
+        { "id": "s4", "text": { "en": "Font size settings" } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "yes", "s3": "yes", "s4": "no" },
+      "explanation": { "en": "The bullet lists branching policies, triggers in approvals, authentication and code owners — governance controls, not cosmetic settings." },
+      "example": { "en": "Map each to a GitHub feature: rulesets, environments, OIDC, CODEOWNERS." },
+      "sources": ["https://learn.microsoft.com/en-us/credentials/certifications/resources/study-guides/dp-800"]
+    },
+    {
+      "id": "d2-test-0047",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-testing-deployment",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A hotfix must reach production quickly but still follow controls. What's the best process?" },
+      "options": [
+        { "id": "a", "text": { "en": "Hotfix branch → PR with expedited review → same pipeline (possibly shorter wait) → production approval" } },
+        { "id": "b", "text": { "en": "Edit production directly and forget it" } },
+        { "id": "c", "text": { "en": "Disable branch protection temporarily for everyone" } },
+        { "id": "d", "text": { "en": "Email the script to the DBA" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Even urgent changes should flow through source control and the pipeline, keeping traceability and avoiding drift." },
+      "example": { "en": "workflow_dispatch with a 'hotfix' input can skip non-essential stages." },
+      "sources": ["https://docs.github.com/en/get-started/using-github/github-flow"]
+    },
+    {
+      "id": "d2-test-0048",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-testing-deployment",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which statement about smoke tests after deployment is correct?" },
+      "options": [
+        { "id": "a", "text": { "en": "Quick checks (e.g. key procedures execute, sample queries return expected shapes) confirm the deployment works" } },
+        { "id": "b", "text": { "en": "They replace all other tests" } },
+        { "id": "c", "text": { "en": "They must run for hours" } },
+        { "id": "d", "text": { "en": "They modify production data heavily" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Smoke tests are fast, low-impact sanity checks after deployment; they complement earlier test layers." },
+      "example": { "en": "EXEC dbo.HealthCheck; SELECT TOP (1) 1 FROM dbo.Orders;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/continuous-integration-deployment"]
+    },
+    {
+      "id": "d2-test-0049",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-testing-deployment",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "Integration tests pass in CI, but production deployment fails because a post-deployment MERGE violates a foreign key on existing data. Which test layer was missing?" },
+      "options": [
+        { "id": "a", "text": { "en": "A deployment test against production-like data (staging copy)" } },
+        { "id": "b", "text": { "en": "More unit tests with FakeTable" } },
+        { "id": "c", "text": { "en": "Code analysis rules" } },
+        { "id": "d", "text": { "en": "Spell checking" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Empty or synthetic CI databases don't contain production's data quirks. Rehearsing the deployment against realistic data catches these failures. FakeTable removes constraints, so it can't catch FK issues." },
+      "example": { "en": "Nightly: restore masked prod → publish → run post-deployment → report." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/continuous-integration-deployment"]
+    },
+    {
+      "id": "d2-test-0050",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-testing-deployment",
+      "type": "dragdrop-match", "difficulty": "hard",
+      "text": { "en": "Match each test type to what it best detects." },
+      "items": [
+        { "id": "i1", "text": { "en": "tSQLt unit test" } },
+        { "id": "i2", "text": { "en": "Container integration test" } },
+        { "id": "i3", "text": { "en": "Staging deployment rehearsal" } },
+        { "id": "i4", "text": { "en": "Post-deployment smoke test" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "Logic errors in a single procedure/function" } },
+        { "id": "t2", "text": { "en": "Objects working together after a full deployment" } },
+        { "id": "t3", "text": { "en": "Data-dependent deployment failures and long operations" } },
+        { "id": "t4", "text": { "en": "The production deployment is basically healthy" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "A layered testing strategy assigns each risk to the cheapest test that can catch it." },
+      "example": { "en": "The 'testing strategy, including unit tests and integration tests' bullet in practice." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/continuous-integration-deployment"]
+    }
+  ]
+}

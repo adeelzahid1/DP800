@@ -1,0 +1,857 @@
+{
+  "subtopic": "d2-source-control",
+  "questions": [
+    {
+      "id": "d2-git-0001",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-source-control",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "Which folders of a SQL project should normally be excluded from Git?" },
+      "options": [
+        { "id": "a", "text": { "en": "bin/ and obj/ (build output, including the .dacpac)" } },
+        { "id": "b", "text": { "en": "The folder containing table .sql files" } },
+        { "id": "c", "text": { "en": "The post-deployment scripts folder" } },
+        { "id": "d", "text": { "en": "The .sqlproj file" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Build outputs are reproducible and belong in CI artifacts. Source .sql files, deployment scripts and the project file must be committed." },
+      "example": { "en": ".gitignore: bin/ obj/" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/source-control"]
+    },
+    {
+      "id": "d2-git-0002",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-source-control",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A GitHub Actions workflow must deploy to Azure SQL without storing any Azure client secret in GitHub. What should you use?" },
+      "options": [
+        { "id": "a", "text": { "en": "OpenID Connect federated credentials with azure/login (client-id, tenant-id, subscription-id) and permissions: id-token: write" } },
+        { "id": "b", "text": { "en": "A service principal secret in a repository secret" } },
+        { "id": "c", "text": { "en": "The SQL admin password in the workflow YAML" } },
+        { "id": "d", "text": { "en": "A personal access token in the code" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "OIDC lets GitHub obtain short-lived Azure tokens through a federated trust — no stored secret. Repository secrets (b) still store a secret; c and d are leaks." },
+      "example": { "en": "Configure a federated credential on an Entra app/managed identity for repo:org/repo:environment:production." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/developer/github/connect-from-azure-openid-connect"]
+    },
+    {
+      "id": "d2-git-0003",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-source-control",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A developer accidentally committed a connection string with a password and pushed. They removed it in the next commit. What must happen?" },
+      "options": [
+        { "id": "a", "text": { "en": "Rotate (change) the password immediately — it remains in Git history" } },
+        { "id": "b", "text": { "en": "Nothing; the later commit deleted it" } },
+        { "id": "c", "text": { "en": "Make the repository private" } },
+        { "id": "d", "text": { "en": "Rename the file" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Git history (and forks/clones) still contains the secret. Treat it as compromised: rotate it, then optionally rewrite history. Visibility changes don't revoke copies." },
+      "example": { "en": "Enable push protection to block such commits in future." },
+      "sources": ["https://docs.github.com/en/code-security/secret-scanning/introduction/about-push-protection"]
+    },
+    {
+      "id": "d2-git-0004",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-source-control",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Two branches merge without textual conflicts, but the merged project no longer builds because a view references a column renamed in the other branch. What does this illustrate?" },
+      "options": [
+        { "id": "a", "text": { "en": "A semantic conflict — always rebuild and run CI after merging" } },
+        { "id": "b", "text": { "en": "A Git bug" } },
+        { "id": "c", "text": { "en": "That SQL projects can't be merged" } },
+        { "id": "d", "text": { "en": "A permission error" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Git merges text, not meaning. The project build's reference validation catches these semantic conflicts — one reason to require CI status checks before merging." },
+      "example": { "en": "Branch protection: require the 'build-sqlproj' check to pass on the merge result." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/source-control"]
+    },
+    {
+      "id": "d2-git-0005",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-source-control",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "For each item, answer Yes if it should be committed to the repository." },
+      "statements": [
+        { "id": "s1", "text": { "en": "The .refactorlog file" } },
+        { "id": "s2", "text": { "en": "Publish profiles without credentials" } },
+        { "id": "s3", "text": { "en": "A production connection string with password" } },
+        { "id": "s4", "text": { "en": "Post-deployment reference data scripts" } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "yes", "s3": "no", "s4": "yes" },
+      "explanation": { "en": "The refactorlog preserves rename intent; profiles and deployment scripts are source. Credentials never belong in Git." },
+      "example": { "en": "Pipelines inject credentials or use identity-based auth." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/source-control"]
+    },
+    {
+      "id": "d2-git-0006",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-source-control",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which GitHub feature makes a secret available only to jobs that deploy to 'production', after that environment's protection rules pass?" },
+      "options": [
+        { "id": "a", "text": { "en": "Environment secrets" } },
+        { "id": "b", "text": { "en": "Repository variables" } },
+        { "id": "c", "text": { "en": "README badges" } },
+        { "id": "d", "text": { "en": "Issue templates" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Environment-scoped secrets are released only to jobs referencing that environment, after required reviewers/wait timers approve. Variables aren't for secrets." },
+      "example": { "en": "jobs.deploy.environment: production" },
+      "sources": ["https://docs.github.com/en/actions/managing-workflow-runs-and-deployments/managing-deployments/managing-environments-for-deployment"]
+    },
+    {
+      "id": "d2-git-0007",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-source-control",
+      "type": "dragdrop-order", "difficulty": "medium",
+      "text": { "en": "Order a GitHub flow for a schema change." },
+      "items": [
+        { "id": "i1", "text": { "en": "Create a short-lived feature branch from main" } },
+        { "id": "i2", "text": { "en": "Edit .sql files and commit" } },
+        { "id": "i3", "text": { "en": "Open a PR; CI builds, tests and generates a deploy script" } },
+        { "id": "i4", "text": { "en": "Review, approve and merge to main; deployment pipeline runs" } }
+      ],
+      "answer": ["i1", "i2", "i3", "i4"],
+      "explanation": { "en": "Branch, change, validate in PR, merge and deploy — the standard trunk-based flow." },
+      "example": { "en": "Keep branches short to limit drift and conflicts." },
+      "sources": ["https://docs.github.com/en/get-started/using-github/github-flow"]
+    },
+    {
+      "id": "d2-git-0008",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-source-control",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Why include the generated deployment script (SqlPackage Script output) in PR checks?" },
+      "options": [
+        { "id": "a", "text": { "en": "Reviewers see the actual ALTER statements (e.g. table rebuilds or drops) that the declarative change will produce" } },
+        { "id": "b", "text": { "en": "It replaces the .sql files" } },
+        { "id": "c", "text": { "en": "It encrypts the PR" } },
+        { "id": "d", "text": { "en": "GitHub requires it" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "A small diff in a CREATE TABLE file might generate an expensive table rebuild. Showing the computed script makes impact visible during review." },
+      "example": { "en": "Upload deploy.sql as a workflow artifact or post a summary comment." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sqlpackage/sqlpackage-script"]
+    },
+    {
+      "id": "d2-git-0009",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-source-control",
+      "type": "multiple", "difficulty": "medium", "selectCount": 2,
+      "text": { "en": "Which two GitHub features help prevent secrets from being committed? (Select 2)" },
+      "options": [
+        { "id": "a", "text": { "en": "Secret scanning" } },
+        { "id": "b", "text": { "en": "Push protection" } },
+        { "id": "c", "text": { "en": "GitHub Pages" } },
+        { "id": "d", "text": { "en": "Discussions" } }
+      ],
+      "answer": ["a", "b"],
+      "explanation": { "en": "Secret scanning detects known secret patterns; push protection blocks pushes containing them. Pages and Discussions are unrelated." },
+      "example": { "en": "Push protection rejects a push containing an Azure storage key." },
+      "sources": ["https://docs.github.com/en/code-security/secret-scanning/introduction/about-push-protection"]
+    },
+    {
+      "id": "d2-git-0010",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-source-control",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which statement about SQL database in Microsoft Fabric source control is correct?" },
+      "options": [
+        { "id": "a", "text": { "en": "It integrates with Git (GitHub or Azure DevOps) and represents the database as an SDK-style SQL project" } },
+        { "id": "b", "text": { "en": "It only exports .bak files" } },
+        { "id": "c", "text": { "en": "It requires SSDT on Windows" } },
+        { "id": "d", "text": { "en": "It doesn't support source control" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Fabric's Git integration syncs workspace items, with SQL databases stored as SQL projects that standard tooling can build and deploy." },
+      "example": { "en": "Commit from the workspace Source control pane." },
+      "sources": ["https://learn.microsoft.com/en-us/fabric/database/sql/source-control"]
+    },
+    {
+      "id": "d2-git-0011",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-source-control",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Two developers modified the same stored procedure on different branches and Git reports a conflict. What's the right resolution process?" },
+      "options": [
+        { "id": "a", "text": { "en": "Merge both intended changes in the .sql file, rebuild the project and run tests before completing the merge" } },
+        { "id": "b", "text": { "en": "Pick one version at random" } },
+        { "id": "c", "text": { "en": "Delete the procedure" } },
+        { "id": "d", "text": { "en": "Resolve it directly in production" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Resolve like code: combine the logic, validate with build and tests. Random picks lose work; production edits create drift." },
+      "example": { "en": "Use VS Code's merge editor, then dotnet build." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/source-control"]
+    },
+    {
+      "id": "d2-git-0012",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-source-control",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Complete the workflow so azure/login can use OIDC." },
+      "code": "permissions:\n  [BLANK1]: write\n  contents: read\nsteps:\n  - uses: azure/login@v2\n    with:\n      client-id: ${{ vars.AZURE_CLIENT_ID }}\n      tenant-id: ${{ vars.AZURE_TENANT_ID }}\n      subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}\n      # no [BLANK2] needed",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "id-token" } },
+            { "id": "c2", "text": { "en": "packages" } },
+            { "id": "c3", "text": { "en": "issues" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "client-secret" } },
+            { "id": "c2", "text": { "en": "tenant-id" } },
+            { "id": "c3", "text": { "en": "runs-on" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "OIDC requires the id-token: write permission so the job can request a token; no client secret is stored. tenant-id is still required, and runs-on is a job setting." },
+      "example": { "en": "The federated credential's subject must match the repo/branch/environment." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/developer/github/connect-from-azure-openid-connect"]
+    },
+    {
+      "id": "d2-git-0013",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-source-control",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A team keeps a 'database' branch alive for months while app development continues on main. What problem is most likely?" },
+      "options": [
+        { "id": "a", "text": { "en": "Branch drift and large, risky merges with many conflicts" } },
+        { "id": "b", "text": { "en": "Faster releases" } },
+        { "id": "c", "text": { "en": "Automatic synchronization" } },
+        { "id": "d", "text": { "en": "Smaller dacpacs" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Long-lived branches diverge; integrating late surfaces conflicts and semantic breaks. Prefer short-lived branches and feature flags/expand-contract patterns." },
+      "example": { "en": "Merge to main at least daily." },
+      "sources": ["https://docs.github.com/en/get-started/using-github/github-flow"]
+    },
+    {
+      "id": "d2-git-0014",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-source-control",
+      "type": "dragdrop-match", "difficulty": "medium",
+      "text": { "en": "Match each secret need to the best storage approach." },
+      "items": [
+        { "id": "i1", "text": { "en": "GitHub workflow authenticating to Azure" } },
+        { "id": "i2", "text": { "en": "API key needed only by production deploy jobs" } },
+        { "id": "i3", "text": { "en": "App runtime reading a third-party API key" } },
+        { "id": "i4", "text": { "en": "App connecting to Azure SQL" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "OIDC federated credential (no secret)" } },
+        { "id": "t2", "text": { "en": "GitHub environment secret" } },
+        { "id": "t3", "text": { "en": "Azure Key Vault via managed identity" } },
+        { "id": "t4", "text": { "en": "Managed identity with Entra auth (no secret)" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "Prefer secretless identity wherever supported; otherwise scope secrets narrowly (environment) or keep them in Key Vault." },
+      "example": { "en": "The fewer stored secrets, the fewer rotations and leaks." },
+      "sources": ["https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions"]
+    },
+    {
+      "id": "d2-git-0015",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-source-control",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "What is the main reason to keep one object per .sql file in a SQL project?" },
+      "options": [
+        { "id": "a", "text": { "en": "Clean, focused diffs and fewer merge conflicts" } },
+        { "id": "b", "text": { "en": "SQL Server requires it" } },
+        { "id": "c", "text": { "en": "It encrypts objects" } },
+        { "id": "d", "text": { "en": "It speeds up queries" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Per-object files make reviews and history clear and reduce overlap between developers. It's a convention, not an engine requirement, and doesn't affect runtime." },
+      "example": { "en": "Tables/Sales.Orders.sql, Procedures/Sales.GetOrders.sql" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/source-control"]
+    },
+    {
+      "id": "d2-git-0016",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-source-control",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "For each statement about GitHub secrets, answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "Secrets are masked in workflow logs." } },
+        { "id": "s2", "text": { "en": "Workflows from forked-repository pull requests receive repository secrets by default." } },
+        { "id": "s3", "text": { "en": "Secrets can be defined at organization, repository or environment level." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "no", "s3": "yes" },
+      "explanation": { "en": "GitHub masks secret values in logs, withholds secrets from fork PR workflows (pull_request event) by default, and supports three scopes." },
+      "example": { "en": "Use environment secrets for production credentials." },
+      "sources": ["https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions"]
+    },
+    {
+      "id": "d2-git-0017",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-source-control",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "When should app code and the SQL project live in the same repository?" },
+      "options": [
+        { "id": "a", "text": { "en": "When they're released together, so one PR can change schema and code atomically" } },
+        { "id": "b", "text": { "en": "Never" } },
+        { "id": "c", "text": { "en": "Only for Fabric" } },
+        { "id": "d", "text": { "en": "Only when the database has fewer than 10 tables" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "A shared repo keeps coordinated changes in one review. Separate repos fit shared databases with independent consumers, using versioned dacpac packages." },
+      "example": { "en": "Monorepo: /src/Api and /src/Database/Sales.sqlproj." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/source-control"]
+    },
+    {
+      "id": "d2-git-0018",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-source-control",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "Branch A renames column Orders.Amt to Total (with refactorlog). Branch B adds a procedure using Orders.Amt. Both merge cleanly in sequence. What will catch the problem first?" },
+      "options": [
+        { "id": "a", "text": { "en": "The project build after the second merge (unresolved reference to Amt)" } },
+        { "id": "b", "text": { "en": "Git's merge algorithm" } },
+        { "id": "c", "text": { "en": "Nothing until production" } },
+        { "id": "d", "text": { "en": "Query Store" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Reference validation fails because Amt no longer exists in the model. That's why CI must build the integrated result (e.g. require up-to-date branches before merging)." },
+      "example": { "en": "Branch protection: 'Require branches to be up to date before merging'." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/sql-database-projects"]
+    },
+    {
+      "id": "d2-git-0019",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-source-control",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which workflow trigger runs CI validation for changes proposed to main?" },
+      "options": [
+        { "id": "a", "text": { "en": "on: pull_request (branches: [main])" } },
+        { "id": "b", "text": { "en": "on: schedule only" } },
+        { "id": "c", "text": { "en": "on: release" } },
+        { "id": "d", "text": { "en": "on: issues" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "pull_request events validate proposed changes before merge. Schedules run periodically, release triggers on releases, issues on issue activity." },
+      "example": { "en": "on: { pull_request: { branches: [main], paths: ['src/Database/**'] } }" },
+      "sources": ["https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows"]
+    },
+    {
+      "id": "d2-git-0020",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-source-control",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "How can a workflow run only when database files change?" },
+      "options": [
+        { "id": "a", "text": { "en": "Use a paths filter on the trigger (e.g. paths: ['src/Database/**'])" } },
+        { "id": "b", "text": { "en": "Rename the repository" } },
+        { "id": "c", "text": { "en": "Use a cron schedule" } },
+        { "id": "d", "text": { "en": "It's not possible" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Path filters limit triggers to relevant changes, saving CI minutes and noise." },
+      "example": { "en": "on: { push: { branches: [main], paths: ['src/Database/**'] } }" },
+      "sources": ["https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions"]
+    },
+    {
+      "id": "d2-git-0021",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-source-control",
+      "type": "multiple", "difficulty": "medium", "selectCount": 2,
+      "text": { "en": "Which two practices reduce merge conflicts in a SQL project team? (Select 2)" },
+      "options": [
+        { "id": "a", "text": { "en": "Use SDK-style projects (globbing, no per-file project entries)" } },
+        { "id": "b", "text": { "en": "Integrate small changes frequently via short-lived branches" } },
+        { "id": "c", "text": { "en": "Put the whole schema in one giant .sql file" } },
+        { "id": "d", "text": { "en": "Edit production directly" } }
+      ],
+      "answer": ["a", "b"],
+      "explanation": { "en": "Globbing and frequent integration minimize overlapping edits. One giant file maximizes conflicts; production edits create drift." },
+      "example": { "en": "Trunk-based development suits database projects well." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/sql-database-projects"]
+    },
+    {
+      "id": "d2-git-0022",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-source-control",
+      "type": "dropdown", "difficulty": "medium",
+      "text": { "en": "Complete the trigger so CI runs for PRs into main affecting the database folder." },
+      "code": "on:\n  [BLANK1]:\n    branches: [ main ]\n    [BLANK2]: [ 'src/Database/**' ]",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "pull_request" } },
+            { "id": "c2", "text": { "en": "deployment" } },
+            { "id": "c3", "text": { "en": "fork" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "paths" } },
+            { "id": "c2", "text": { "en": "files" } },
+            { "id": "c3", "text": { "en": "folders" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "pull_request with branches and paths filters scopes CI precisely. 'files'/'folders' aren't valid keys." },
+      "example": { "en": "Use paths-ignore for docs-only changes." },
+      "sources": ["https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions"]
+    },
+    {
+      "id": "d2-git-0023",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-source-control",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Where should non-secret configuration values (e.g. Azure tenant ID, client ID for OIDC) be stored in GitHub?" },
+      "options": [
+        { "id": "a", "text": { "en": "GitHub Actions variables (vars context)" } },
+        { "id": "b", "text": { "en": "Hard-coded in every workflow" } },
+        { "id": "c", "text": { "en": "In a public gist" } },
+        { "id": "d", "text": { "en": "In commit messages" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Variables hold non-sensitive configuration and can be scoped like secrets. IDs for OIDC aren't secrets but centralizing them avoids duplication." },
+      "example": { "en": "${{ vars.AZURE_CLIENT_ID }}" },
+      "sources": ["https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/store-information-in-variables"]
+    },
+    {
+      "id": "d2-git-0024",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-source-control",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "Answer Yes or No about merge conflict handling for SQL projects." },
+      "statements": [
+        { "id": "s1", "text": { "en": "Conflicts are usually localized to individual object files." } },
+        { "id": "s2", "text": { "en": "A clean textual merge guarantees a valid schema." } },
+        { "id": "s3", "text": { "en": "CI should build the merged result before completing a PR." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "no", "s3": "yes" },
+      "explanation": { "en": "Per-object files localize conflicts, but semantic breakages slip through clean merges, so building the merged result is essential." },
+      "example": { "en": "GitHub merge queues build the combined result before merging." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/source-control"]
+    },
+    {
+      "id": "d2-git-0025",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-source-control",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which approach keeps secrets out of a publish profile that needs a target connection?" },
+      "options": [
+        { "id": "a", "text": { "en": "Pass the connection (or use Entra/OIDC auth) from the pipeline at deploy time instead of storing it in the profile" } },
+        { "id": "b", "text": { "en": "Base64-encode the password in the profile" } },
+        { "id": "c", "text": { "en": "Store it in a comment" } },
+        { "id": "d", "text": { "en": "Put it in the README" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Encoding isn't encryption, and comments/READMEs are plain text. Inject at runtime or avoid secrets entirely with identity-based auth." },
+      "example": { "en": "sqlpackage /Action:Publish /Profile:prod.publish.xml /TargetConnectionString:\"$CONN\"" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/publish-profiles"]
+    },
+    {
+      "id": "d2-git-0026",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-source-control",
+      "type": "dragdrop-order", "difficulty": "hard",
+      "text": { "en": "Order the steps to respond to a leaked database password found in a public commit." },
+      "items": [
+        { "id": "i1", "text": { "en": "Rotate the password (or disable the login) immediately" } },
+        { "id": "i2", "text": { "en": "Review audit logs for misuse during the exposure window" } },
+        { "id": "i3", "text": { "en": "Move the app to secretless auth (managed identity) or a secret store" } },
+        { "id": "i4", "text": { "en": "Enable push protection to prevent recurrence" } }
+      ],
+      "answer": ["i1", "i2", "i3", "i4"],
+      "explanation": { "en": "Contain first, investigate, remediate the root cause, then prevent. History rewriting can follow but doesn't replace rotation." },
+      "example": { "en": "Treat any exposed secret as compromised." },
+      "sources": ["https://docs.github.com/en/code-security/secret-scanning/introduction/about-push-protection"]
+    },
+    {
+      "id": "d2-git-0027",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-source-control",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Why do teams prefer expand/contract (backward-compatible) schema changes in a branch-per-feature workflow?" },
+      "options": [
+        { "id": "a", "text": { "en": "Schema and app can deploy independently without breaking the running version" } },
+        { "id": "b", "text": { "en": "It removes the need for code review" } },
+        { "id": "c", "text": { "en": "It makes dacpacs smaller" } },
+        { "id": "d", "text": { "en": "It disables triggers" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Additive changes first, removals later, let old and new app versions coexist — essential for zero-downtime deployments." },
+      "example": { "en": "Add NewColumn → app writes both → backfill → app reads new → drop old." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/pre-post-deployment-scripts"]
+    },
+    {
+      "id": "d2-git-0028",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-source-control",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "In GitHub, how are changes typically proposed and reviewed before merging into main?" },
+      "options": [
+        { "id": "a", "text": { "en": "Pull requests" } },
+        { "id": "b", "text": { "en": "Issues" } },
+        { "id": "c", "text": { "en": "Wikis" } },
+        { "id": "d", "text": { "en": "Releases" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Pull requests carry diffs, reviews and status checks. Issues track work; wikis document; releases package versions." },
+      "example": { "en": "PR = review + CI gate before merge." },
+      "sources": ["https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/about-pull-requests"]
+    },
+    {
+      "id": "d2-git-0029",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-source-control",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A database is shared by several applications owned by different teams. How might the schema be versioned for consumers?" },
+      "options": [
+        { "id": "a", "text": { "en": "Separate repo for the SQL project, publishing versioned dacpacs (e.g. NuGet packages) that consumers reference" } },
+        { "id": "b", "text": { "en": "Each app keeps its own copy of the schema" } },
+        { "id": "c", "text": { "en": "No versioning" } },
+        { "id": "d", "text": { "en": "Email scripts to teams" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "A dedicated project with versioned packages gives a single source of truth and explicit upgrades for consumers. Copies drift; emails aren't version control." },
+      "example": { "en": "SDK-style projects support package references to dacpacs." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/package-references"]
+    },
+    {
+      "id": "d2-git-0030",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-source-control",
+      "type": "multiple", "difficulty": "hard", "selectCount": 2,
+      "text": { "en": "Which two settings reduce the risk of a malicious pull request from a fork stealing deployment credentials? (Select 2)" },
+      "options": [
+        { "id": "a", "text": { "en": "Keep production credentials in environment secrets with required reviewers" } },
+        { "id": "b", "text": { "en": "Avoid running untrusted fork code with pull_request_target plus checkout of the PR head" } },
+        { "id": "c", "text": { "en": "Expose secrets to all workflows on all events" } },
+        { "id": "d", "text": { "en": "Store credentials in workflow YAML for transparency" } }
+      ],
+      "answer": ["a", "b"],
+      "explanation": { "en": "Environment protection gates secret release behind approval; pull_request_target runs with repository secrets in the base context, so checking out and executing fork code there is dangerous. Broad exposure and YAML credentials are leaks." },
+      "example": { "en": "Use pull_request (no secrets) for fork validation builds." },
+      "sources": ["https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions"]
+    },
+    {
+      "id": "d2-git-0031",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-source-control",
+      "type": "dragdrop-match", "difficulty": "medium",
+      "text": { "en": "Match each Git concept to its description." },
+      "items": [
+        { "id": "i1", "text": { "en": "Branch" } },
+        { "id": "i2", "text": { "en": "Commit" } },
+        { "id": "i3", "text": { "en": "Merge conflict" } },
+        { "id": "i4", "text": { "en": "Pull request" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "Movable pointer to a line of commits" } },
+        { "id": "t2", "text": { "en": "Snapshot of changes with a message" } },
+        { "id": "t3", "text": { "en": "Overlapping edits Git can't reconcile automatically" } },
+        { "id": "t4", "text": { "en": "Proposal to merge with review and checks" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "Basic Git vocabulary underlying the branching and PR bullets of the study guide." },
+      "example": { "en": "feature/add-discount → PR → main." },
+      "sources": ["https://docs.github.com/en/get-started/using-git/about-git"]
+    },
+    {
+      "id": "d2-git-0032",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-source-control",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A DBA hot-fixes an index directly in production. What's the right follow-up in a source-controlled workflow?" },
+      "options": [
+        { "id": "a", "text": { "en": "Add the change to the SQL project via a PR so the source of truth matches production (otherwise the next deployment may drop it)" } },
+        { "id": "b", "text": { "en": "Nothing" } },
+        { "id": "c", "text": { "en": "Delete the repository" } },
+        { "id": "d", "text": { "en": "Disable future deployments" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Out-of-band changes cause drift; if DropObjectsNotInSource is on, the next publish removes the hotfix. Back-port it to source." },
+      "example": { "en": "Drift detection before deployments catches these." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sqlpackage/sqlpackage-deploy-drift-report"]
+    },
+    {
+      "id": "d2-git-0033",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-source-control",
+      "type": "yesno", "difficulty": "easy",
+      "text": { "en": "Is each of these a secret that must not be committed? Answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "An Azure OpenAI API key" } },
+        { "id": "s2", "text": { "en": "The name of the database" } },
+        { "id": "s3", "text": { "en": "A SQL login password" } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "no", "s3": "yes" },
+      "explanation": { "en": "Keys and passwords are secrets; a database name is configuration (though you may still parameterize it per environment)." },
+      "example": { "en": "Secrets → secret stores; config → variables/profiles." },
+      "sources": ["https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions"]
+    },
+    {
+      "id": "d2-git-0034",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-source-control",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which option lets a workflow read secrets from Azure Key Vault without a stored credential?" },
+      "options": [
+        { "id": "a", "text": { "en": "Log in with OIDC (azure/login) and read secrets with an identity that has Key Vault access" } },
+        { "id": "b", "text": { "en": "Store the vault's master key in GitHub" } },
+        { "id": "c", "text": { "en": "Make the vault public" } },
+        { "id": "d", "text": { "en": "Email the secrets" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Federated identity grants the workflow an Azure token; RBAC on the vault controls access. No secrets live in GitHub." },
+      "example": { "en": "az keyvault secret show --vault-name kv --name ApiKey" },
+      "sources": ["https://learn.microsoft.com/en-us/azure/developer/github/connect-from-azure-openid-connect"]
+    },
+    {
+      "id": "d2-git-0035",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-source-control",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which GitHub feature batches PRs and validates each against the latest main plus earlier queued PRs before merging?" },
+      "options": [
+        { "id": "a", "text": { "en": "Merge queue" } },
+        { "id": "b", "text": { "en": "Draft PRs" } },
+        { "id": "c", "text": { "en": "Labels" } },
+        { "id": "d", "text": { "en": "Projects" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Merge queues build the combined result to catch semantic conflicts between concurrent PRs — very useful for SQL projects." },
+      "example": { "en": "Requires status checks to run on merge_group events." },
+      "sources": ["https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/managing-a-merge-queue"]
+    },
+    {
+      "id": "d2-git-0036",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-source-control",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Why should a CI workflow for a SQL project request only the minimum GITHUB_TOKEN permissions (e.g. contents: read)?" },
+      "options": [
+        { "id": "a", "text": { "en": "Least privilege limits damage if a step or dependency is compromised" } },
+        { "id": "b", "text": { "en": "Builds run faster" } },
+        { "id": "c", "text": { "en": "dotnet build requires it" } },
+        { "id": "d", "text": { "en": "It enables OIDC automatically" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Scoped token permissions are a supply-chain safeguard. They don't change speed; OIDC needs id-token: write explicitly." },
+      "example": { "en": "permissions: { contents: read }" },
+      "sources": ["https://docs.github.com/en/actions/security-for-github-actions/security-guides/automatic-token-authentication"]
+    },
+    {
+      "id": "d2-git-0037",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-source-control",
+      "type": "dropdown", "difficulty": "easy",
+      "text": { "en": "Complete the .gitignore for a SQL project." },
+      "code": "[BLANK1]/\n[BLANK2]/\n*.user",
+      "blanks": [
+        {
+          "id": "b1", "label": { "en": "BLANK1" },
+          "choices": [
+            { "id": "c1", "text": { "en": "bin" } },
+            { "id": "c2", "text": { "en": "Tables" } },
+            { "id": "c3", "text": { "en": "Scripts" } }
+          ]
+        },
+        {
+          "id": "b2", "label": { "en": "BLANK2" },
+          "choices": [
+            { "id": "c1", "text": { "en": "obj" } },
+            { "id": "c2", "text": { "en": "Procedures" } },
+            { "id": "c3", "text": { "en": "Security" } }
+          ]
+        }
+      ],
+      "answerMap": { "b1": "c1", "b2": "c1" },
+      "explanation": { "en": "bin and obj hold build output; object folders are source and must be committed." },
+      "example": { "en": "The CI pipeline uploads the dacpac from bin/Release as an artifact." },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/source-control"]
+    },
+    {
+      "id": "d2-git-0038",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-source-control",
+      "type": "single", "difficulty": "hard",
+      "text": { "en": "A federated credential is configured with subject 'repo:contoso/app:environment:production'. A workflow job without 'environment: production' tries azure/login via OIDC. What happens?" },
+      "options": [
+        { "id": "a", "text": { "en": "Login fails — the token's subject claim doesn't match the federated credential" } },
+        { "id": "b", "text": { "en": "Login succeeds with full access" } },
+        { "id": "c", "text": { "en": "GitHub prompts for a password" } },
+        { "id": "d", "text": { "en": "Azure creates a new credential automatically" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "OIDC trust is bound to the subject (repo + environment/branch). Jobs outside the trusted context can't obtain tokens — a powerful way to restrict deployments to approved environments." },
+      "example": { "en": "Add separate federated credentials per environment with distinct Azure roles." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/developer/github/connect-from-azure-openid-connect"]
+    },
+    {
+      "id": "d2-git-0039",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-source-control",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which statement about versioning reference data (lookup rows) with the schema is true?" },
+      "options": [
+        { "id": "a", "text": { "en": "Reference data scripts in source control give reviewable history and consistent environments" } },
+        { "id": "b", "text": { "en": "Reference data should only live in production" } },
+        { "id": "c", "text": { "en": "Git can't store SQL data scripts" } },
+        { "id": "d", "text": { "en": "Lookup data never changes" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "The study guide explicitly asks to manage reference/static data in source control — typically idempotent post-deployment scripts reviewed via PR." },
+      "example": { "en": "PR diff: + ('PKR', N'Pakistani Rupee')" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/pre-post-deployment-scripts"]
+    },
+    {
+      "id": "d2-git-0040",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-source-control",
+      "type": "multiple", "difficulty": "medium", "selectCount": 2,
+      "text": { "en": "Which two are valid ways for a GitHub workflow to authenticate a deployment to Azure SQL with Entra ID? (Select 2)" },
+      "options": [
+        { "id": "a", "text": { "en": "OIDC azure/login, then use the workload identity's token for the connection" } },
+        { "id": "b", "text": { "en": "Service principal with a client secret stored as a GitHub secret (less preferred)" } },
+        { "id": "c", "text": { "en": "The sa password in the YAML" } },
+        { "id": "d", "text": { "en": "Anonymous SQL access" } }
+      ],
+      "answer": ["a", "b"],
+      "explanation": { "en": "Both use Entra identities; OIDC is preferred because no secret is stored. sa passwords and anonymous access are unacceptable." },
+      "example": { "en": "Grant the deployment identity a database role sufficient for schema changes (e.g. db_ddladmin + needed permissions)." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/developer/github/connect-from-azure-openid-connect"]
+    },
+    {
+      "id": "d2-git-0041",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-source-control",
+      "type": "yesno", "difficulty": "medium",
+      "text": { "en": "Answer Yes or No about Git history and database code." },
+      "statements": [
+        { "id": "s1", "text": { "en": "git blame can show who last changed a line of a stored procedure." } },
+        { "id": "s2", "text": { "en": "Reverting a schema commit automatically reverts production." } },
+        { "id": "s3", "text": { "en": "History helps auditors trace when a column was added." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "no", "s3": "yes" },
+      "explanation": { "en": "Git provides authorship and timeline; production changes only via a deployment of the reverted state (which may involve data loss checks)." },
+      "example": { "en": "git log -p -- Tables/dbo.Orders.sql" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/source-control"]
+    },
+    {
+      "id": "d2-git-0042",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-source-control",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which branching strategy is generally recommended for teams practicing continuous delivery of database changes?" },
+      "options": [
+        { "id": "a", "text": { "en": "Trunk-based development / GitHub flow with short-lived branches" } },
+        { "id": "b", "text": { "en": "One branch per developer kept for a year" } },
+        { "id": "c", "text": { "en": "No branches, everyone commits to production" } },
+        { "id": "d", "text": { "en": "A branch per table" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Short-lived branches merged frequently into main keep integration continuous and conflicts small." },
+      "example": { "en": "Feature flags let incomplete features merge safely." },
+      "sources": ["https://docs.github.com/en/get-started/using-github/github-flow"]
+    },
+    {
+      "id": "d2-git-0043",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-source-control",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A PR changes a column from NVARCHAR(100) to NVARCHAR(50). What should reviewers check in the generated deployment script?" },
+      "options": [
+        { "id": "a", "text": { "en": "Whether existing data exceeds 50 characters — the change may lose data and be blocked or fail" } },
+        { "id": "b", "text": { "en": "Nothing; shrinking is always safe" } },
+        { "id": "c", "text": { "en": "Only formatting" } },
+        { "id": "d", "text": { "en": "The PR title" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Narrowing types risks truncation; BlockOnPossibleDataLoss stops it by default. Reviewers should verify data and plan migrations." },
+      "example": { "en": "SELECT COUNT(*) FROM dbo.T WHERE LEN(Col) > 50;" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sqlpackage/sqlpackage-publish"]
+    },
+    {
+      "id": "d2-git-0044",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-source-control",
+      "type": "dragdrop-order", "difficulty": "medium",
+      "text": { "en": "Order the setup steps for OIDC-based deployment from GitHub to Azure." },
+      "items": [
+        { "id": "i1", "text": { "en": "Create an Entra app registration or user-assigned managed identity" } },
+        { "id": "i2", "text": { "en": "Add a federated credential matching the repo/environment subject" } },
+        { "id": "i3", "text": { "en": "Grant the identity the needed Azure and database permissions" } },
+        { "id": "i4", "text": { "en": "Use azure/login with id-token: write in the workflow" } }
+      ],
+      "answer": ["i1", "i2", "i3", "i4"],
+      "explanation": { "en": "Identity, trust, authorization, then usage. Skipping authorization yields 403s even when login works." },
+      "example": { "en": "Separate identities per environment limit blast radius." },
+      "sources": ["https://learn.microsoft.com/en-us/azure/developer/github/connect-from-azure-openid-connect"]
+    },
+    {
+      "id": "d2-git-0045",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-source-control",
+      "type": "single", "difficulty": "easy",
+      "text": { "en": "What is a 'status check' in a GitHub pull request?" },
+      "options": [
+        { "id": "a", "text": { "en": "An automated result (e.g. CI build/test) reported on the PR's commit" } },
+        { "id": "b", "text": { "en": "A manual comment" } },
+        { "id": "c", "text": { "en": "A Git tag" } },
+        { "id": "d", "text": { "en": "A database index" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Status checks come from CI and can be required by branch protection before merging." },
+      "example": { "en": "Required check: 'build-database'." },
+      "sources": ["https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/collaborating-on-repositories-with-code-quality-features/about-status-checks"]
+    },
+    {
+      "id": "d2-git-0046",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-source-control",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which practice best supports traceability between a production schema version and its source?" },
+      "options": [
+        { "id": "a", "text": { "en": "Tag/version builds and record the commit SHA in the deployment (e.g. dacpac version or a deployment log table)" } },
+        { "id": "b", "text": { "en": "Deploy from developers' laptops" } },
+        { "id": "c", "text": { "en": "Avoid commit messages" } },
+        { "id": "d", "text": { "en": "Delete old commits" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Linking deployments to commits enables audits, rollbacks and drift analysis. Laptop deployments lose traceability." },
+      "example": { "en": "Post-deployment: INSERT INTO dbo.DeploymentLog (CommitSha, DeployedAt) VALUES ('$(CommitSha)', SYSUTCDATETIME());" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/pre-post-deployment-scripts"]
+    },
+    {
+      "id": "d2-git-0047",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-source-control",
+      "type": "yesno", "difficulty": "hard",
+      "text": { "en": "A repo secret DB_PASSWORD exists. Answer Yes or No." },
+      "statements": [
+        { "id": "s1", "text": { "en": "Writing it with echo in a step shows it masked as *** in logs." } },
+        { "id": "s2", "text": { "en": "Masking makes it safe to send to any third-party action." } },
+        { "id": "s3", "text": { "en": "Pinning third-party actions to a full commit SHA reduces supply-chain risk." } }
+      ],
+      "answerMap": { "s1": "yes", "s2": "no", "s3": "yes" },
+      "explanation": { "en": "Masking only hides values in logs; any action receiving the secret can exfiltrate it. Pinning actions to SHAs prevents tag hijacking." },
+      "example": { "en": "uses: azure/sql-action@<full-commit-sha>" },
+      "sources": ["https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions"]
+    },
+    {
+      "id": "d2-git-0048",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-source-control",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "Which file format does SQL database in Fabric write to Git for each database object?" },
+      "options": [
+        { "id": "a", "text": { "en": ".sql files in an SDK-style SQL project" } },
+        { "id": "b", "text": { "en": "Binary .mdf files" } },
+        { "id": "c", "text": { "en": "Power BI .pbix files" } },
+        { "id": "d", "text": { "en": "CSV data exports" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Objects are stored as declarative .sql files inside a SQL project, enabling standard diff/review and tooling." },
+      "example": { "en": "dbo/Tables/Orders.sql in the repo." },
+      "sources": ["https://learn.microsoft.com/en-us/fabric/database/sql/source-control"]
+    },
+    {
+      "id": "d2-git-0049",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-source-control",
+      "type": "single", "difficulty": "medium",
+      "text": { "en": "A dev wants each PR to deploy to an isolated database for integration tests. Which approach fits?" },
+      "options": [
+        { "id": "a", "text": { "en": "Spin up an ephemeral database (e.g. SQL Server container or temporary Azure SQL DB), publish the dacpac, run tests, tear down" } },
+        { "id": "b", "text": { "en": "Deploy every PR to production" } },
+        { "id": "c", "text": { "en": "Share one dev database for all PRs" } },
+        { "id": "d", "text": { "en": "Skip testing" } }
+      ],
+      "answer": ["a"],
+      "explanation": { "en": "Ephemeral databases isolate PRs and give reliable tests. A shared dev database causes interference; production deployments of PRs are unsafe." },
+      "example": { "en": "services: mssql: image: mcr.microsoft.com/mssql/server:2025-latest" },
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/continuous-integration-deployment"]
+    },
+    {
+      "id": "d2-git-0050",
+      "domain": "secure-optimize-deploy", "topic": "t-cicd", "subtopic": "d2-source-control",
+      "type": "dragdrop-match", "difficulty": "hard",
+      "text": { "en": "Match each risk to its control." },
+      "items": [
+        { "id": "i1", "text": { "en": "Concurrent PRs break each other after merge" } },
+        { "id": "i2", "text": { "en": "Secrets accidentally pushed" } },
+        { "id": "i3", "text": { "en": "Unreviewed deployments to production" } },
+        { "id": "i4", "text": { "en": "Stored Azure credentials in GitHub" } }
+      ],
+      "targets": [
+        { "id": "t1", "text": { "en": "Merge queue / required up-to-date checks" } },
+        { "id": "t2", "text": { "en": "Push protection & secret scanning" } },
+        { "id": "t3", "text": { "en": "Environment with required reviewers" } },
+        { "id": "t4", "text": { "en": "OIDC federated credentials" } }
+      ],
+      "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
+      "explanation": { "en": "Each GitHub capability mitigates a distinct source-control or deployment risk." },
+      "example": { "en": "Together they form a secure database delivery pipeline." },
+      "sources": ["https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions"]
+    }
+  ]
+}

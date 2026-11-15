@@ -1,0 +1,63 @@
+{
+  "subtopic": "d1-graph-error",
+  "title": { "en": "Graph queries (MATCH) & error handling" },
+  "prerequisiteRecap": [
+    {
+      "heading": { "en": "Graph tables recap" },
+      "body": {
+        "en": "From the specialized-tables subtopic: `AS NODE` tables hold entities, `AS EDGE` tables hold relationships with implicit `$node_id`, `$edge_id`, `$from_id`, `$to_id` columns. This subtopic covers QUERYING graphs with MATCH, plus T-SQL error handling — both named in the official 'write advanced T-SQL code' skill."
+      }
+    }
+  ],
+  "sections": [
+    {
+      "heading": { "en": "MATCH basics" },
+      "body": {
+        "en": "MATCH goes in the WHERE clause of a SELECT whose FROM lists node and edge tables (old-style comma joins). The pattern uses ASCII arrows: `MATCH(Person1-(Follows)->Person2)` — Person1 follows Person2; the arrow points FROM source TO target. Reverse with `<-`: `MATCH(Person1<-(Follows)-Person2)`. Chain hops: `MATCH(a-(f1)->b-(f2)->c)` finds friends-of-friends. Combine multiple patterns with AND (not OR — OR between MATCH predicates is not supported)."
+      },
+      "code": "-- Who does Alice follow?\nSELECT p2.Name\nFROM dbo.Person AS p1, dbo.Follows AS f, dbo.Person AS p2\nWHERE MATCH(p1-(f)->p2)\n  AND p1.Name = 'Alice';\n\n-- Friends of friends (2 hops), excluding direct friends and self\nSELECT DISTINCT p3.Name\nFROM Person p1, Follows f1, Person p2, Follows f2, Person p3\nWHERE MATCH(p1-(f1)->p2-(f2)->p3)\n  AND p1.Name = 'Alice' AND p3.Name <> 'Alice';"
+    },
+    {
+      "heading": { "en": "SHORTEST_PATH and arbitrary-length traversal" },
+      "body": {
+        "en": "`SHORTEST_PATH` (inside MATCH) finds paths of arbitrary length: `MATCH(SHORTEST_PATH(p1(-(f)->p2)+))` with `+` = one-or-more hops or `{1,5}` = bounded hops. It requires `FOR PATH` aliases on the repeated tables and graph aggregate functions — `STRING_AGG(...) WITHIN GROUP (GRAPH PATH)`, `LAST_VALUE(...) WITHIN GROUP (GRAPH PATH)`, `COUNT(...) WITHIN GROUP (GRAPH PATH)` — to project values along the path. It returns A shortest path (ties broken arbitrarily), not all of them, and cannot be combined freely with every construct (e.g. no OUTER APPLY around it)."
+      },
+      "code": "SELECT p1.Name,\n       STRING_AGG(p2.Name, '->') WITHIN GROUP (GRAPH PATH) AS Chain,\n       COUNT(p2.Name) WITHIN GROUP (GRAPH PATH) AS Hops\nFROM dbo.Person AS p1,\n     dbo.Follows FOR PATH AS f,\n     dbo.Person FOR PATH AS p2\nWHERE MATCH(SHORTEST_PATH(p1(-(f)->p2)+))\n  AND p1.Name = 'Alice';"
+    },
+    {
+      "heading": { "en": "TRY…CATCH fundamentals" },
+      "body": {
+        "en": "Wrap risky code in `BEGIN TRY … END TRY BEGIN CATCH … END CATCH`. When a (catchable) error occurs in TRY, control jumps to CATCH, where the ERROR_* functions describe it: `ERROR_NUMBER()`, `ERROR_MESSAGE()`, `ERROR_SEVERITY()`, `ERROR_STATE()`, `ERROR_LINE()`, `ERROR_PROCEDURE()`. They keep their values anywhere in the CATCH (unlike @@ERROR, which resets after every statement). Not everything is catchable: compile errors in the same scope, severity ≥ 20 (connection-killing), and attentions (client timeouts) bypass CATCH."
+      },
+      "code": "BEGIN TRY\n    INSERT INTO dbo.Orders (CustomerId, Total) VALUES (@c, @t);\nEND TRY\nBEGIN CATCH\n    INSERT INTO dbo.ErrorLog (Num, Msg, Proc_, Line, At)\n    VALUES (ERROR_NUMBER(), ERROR_MESSAGE(), ERROR_PROCEDURE(), ERROR_LINE(), SYSUTCDATETIME());\n    THROW;   -- re-raise for the caller\nEND CATCH;"
+    },
+    {
+      "heading": { "en": "THROW vs RAISERROR" },
+      "body": {
+        "en": "- `THROW` (no args): only inside CATCH, re-raises the original error exactly — the modern default.\n- `THROW 50001, 'message', 1;` raises a custom error (error number ≥ 50000, severity always 16, statement must be preceded by a semicolon, message cannot use printf-style formatting).\n- `RAISERROR('fmt %s', 16, 1, @arg)`: printf formatting, chooseable severity, `WITH LOG`/`NOWAIT` options, can use sys.messages ids — but doesn't re-raise originals and is discouraged for new code.\nTransactions and errors: by default some errors abort only the statement, leaving the transaction open — `SET XACT_ABORT ON` makes errors doom the whole transaction, and in CATCH `XACT_STATE()` tells you: 1 committable, 0 none, -1 doomed (ROLLBACK only)."
+      },
+      "code": ";THROW 50001, 'Customer not found.', 1;\n\nRAISERROR('Processing step %s failed for id %d.', 16, 1, 'validate', @id) WITH NOWAIT;"
+    },
+    {
+      "heading": { "en": "Error-handling patterns worth memorizing" },
+      "body": {
+        "en": "The production template: `SET NOCOUNT ON; SET XACT_ABORT ON;` then TRY with explicit transaction, CATCH with `IF XACT_STATE() <> 0 ROLLBACK; THROW;`. Log-and-rethrow preserves diagnostics while alerting callers. Avoid: empty CATCH blocks (swallowing), PRINT-as-handling, relying on @@ERROR across statements, RAISERROR severities ≥ 19 without WITH LOG (error), and forgetting that THROW statements need the preceding statement terminated with `;`."
+      }
+    }
+  ],
+  "examTips": [
+    { "en": "MATCH lives in WHERE; FROM uses comma-separated node/edge tables; arrow points from source to target." },
+    { "en": "Multiple MATCH patterns combine with AND only — OR is not supported." },
+    { "en": "SHORTEST_PATH needs FOR PATH table aliases and WITHIN GROUP (GRAPH PATH) aggregates; + = 1..n hops, {1,n} = bounded." },
+    { "en": "ERROR_* functions persist throughout CATCH; @@ERROR resets after each statement." },
+    { "en": "Parameterless THROW only in CATCH; custom THROW needs number ≥ 50000, fixed severity 16, and a preceding semicolon." },
+    { "en": "CATCH can't catch: same-scope compile errors, severity ≥ 20, client timeouts (attention events)." },
+    { "en": "XACT_STATE(): 1 = commit allowed, -1 = doomed (rollback only), 0 = no transaction." }
+  ],
+  "sources": [
+    "https://learn.microsoft.com/en-us/sql/t-sql/queries/match-sql-graph",
+    "https://learn.microsoft.com/en-us/sql/relational-databases/graphs/sql-graph-shortest-path",
+    "https://learn.microsoft.com/en-us/sql/t-sql/language-elements/try-catch-transact-sql",
+    "https://learn.microsoft.com/en-us/sql/t-sql/language-elements/throw-transact-sql"
+  ]
+}

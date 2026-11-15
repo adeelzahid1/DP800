@@ -1,0 +1,60 @@
+{
+  "subtopic": "d3-rag-implementation",
+  "title": { "en": "Implementing RAG (sp_invoke_external_rest_endpoint)" },
+  "prerequisiteRecap": [
+    {
+      "heading": { "en": "The pipeline you're building" },
+      "body": {
+        "en": "Question → **embed** (`AI_GENERATE_EMBEDDINGS`) → **retrieve** (vector/hybrid search) → **convert to JSON** (`FOR JSON`) → **build the prompt** (`JSON_OBJECT`/`JSON_ARRAY`) → **send** (`sp_invoke_external_rest_endpoint`) → **extract** (`JSON_VALUE`/`OPENJSON`). This lesson covers the last four steps, which map to the study guide bullets: convert structured data to JSON, create a prompt with `sp_invoke_external_rest_endpoint`, send results to the language model, and extract its responses."
+      }
+    }
+  ],
+  "sections": [
+    {
+      "heading": { "en": "Convert structured data to JSON" },
+      "body": {
+        "en": "Models read text; JSON keeps field names attached to values so the model can reference \"ProductName\" or \"OrderNumber\" precisely.\n- `FOR JSON AUTO` — names from the query structure; quick.\n- `FOR JSON PATH` — explicit control: dotted aliases create nesting (`Name AS 'product.name'`).\n- Options: `WITHOUT_ARRAY_WRAPPER` (single object, no brackets — one order/product), `INCLUDE_NULL_VALUES` (keep nulls when absence matters), `ROOT('products')` (named wrapper).\n- `JSON_OBJECT`, `JSON_ARRAY` and `JSON_ARRAYAGG` build JSON from expressions and rows.\n- Include only what the model needs (names, descriptions, specs, prices, IDs for citations); drop rowguids, audit columns and internal codes. Limit rows (TOP n by relevance) to control tokens.\n- A `FOR JSON` query that returns no rows produces **NULL** — check for it before calling the model."
+      },
+      "code": "DECLARE @context NVARCHAR(MAX) = (\n    SELECT TOP (3)\n           p.ProductNumber AS id,            -- for citations\n           p.Name          AS name,\n           p.ListPrice     AS price,\n           pm.Name         AS model\n    FROM VECTOR_SEARCH(TABLE = Production.Product AS p, COLUMN = DescriptionVector,\n                       SIMILAR_TO = @qv, METRIC = 'cosine') AS r\n    JOIN Production.ProductModel AS pm ON pm.ProductModelID = p.ProductModelID\n    ORDER BY r.distance\n    FOR JSON PATH);           -- [{\"id\":\"PD-M282\",\"name\":\"…\",\"price\":…}]\n-- (inside an approximate query you'd use SELECT TOP (3) WITH APPROXIMATE in a subquery)"
+    },
+    {
+      "heading": { "en": "Create the prompt payload" },
+      "body": {
+        "en": "Chat models take **messages** with roles: **system** (rules and grounding), **user** (question plus context), optionally earlier **assistant** turns. Good grounding instructions: answer only from the provided data, don't invent facts, say when information is missing, cite IDs, keep answers short. Treat retrieved text as data (delimit it) to reduce prompt-injection risk.\nBuild the body with `JSON_OBJECT`/`JSON_ARRAY` — they escape quotes and newlines correctly (manual string concatenation needs `STRING_ESCAPE(…, 'json')`).\nParameters: **`max_tokens`** caps response length; **`temperature`** (0–2) controls randomness — keep it low (≈0.0–0.5) for factual RAG; **`response_format`** with a strict `json_schema` when you need machine-readable output."
+      },
+      "code": "DECLARE @payload NVARCHAR(MAX) = JSON_OBJECT(\n    'messages': JSON_ARRAY(\n        JSON_OBJECT('role':'system','content':\n            'You are the Adventure Works assistant. Use ONLY the JSON in <context>. ' +\n            'If it does not contain the answer, say so. Cite product ids in [brackets].'),\n        JSON_OBJECT('role':'user','content':\n            '<context>' + @context + '</context>' + CHAR(10) + 'Question: ' + @question)\n    ),\n    'max_tokens': 400,\n    'temperature': 0.2\n);"
+    },
+    {
+      "heading": { "en": "Send the request with sp_invoke_external_rest_endpoint" },
+      "body": {
+        "en": "`EXEC @rc = sys.sp_invoke_external_rest_endpoint @url, @payload, @headers, @method, @timeout, @credential, @response OUTPUT, @retry_count`\n- `@url` (nvarchar(4000)): HTTPS only, e.g. `https://{resource}.openai.azure.com/openai/deployments/{deployment}/chat/completions?api-version=…`.\n- `@method` defaults to **POST**; `@headers` is flat JSON; `content-type`/`accept` default to JSON.\n- `@timeout` seconds, default **30**, range **1–230** (cumulative when retrying). `@retry_count` **0–10** retries 408, 429, 500, 502, 503, 504 (honors `Retry-After`, otherwise exponential backoff).\n- `@credential`: a database scoped credential named with the URL (managed identity with `{\"resourceid\":\"https://cognitiveservices.azure.com\"}` and the **Cognitive Services OpenAI User** role, or `HTTPEndpointHeaders` with an `api-key`).\n- **Return value**: `0` for a 2xx response; otherwise the HTTP status code (e.g., 429, 401, 403). If the call can't be made at all, an exception is raised.\n- Permissions: **EXECUTE ANY EXTERNAL ENDPOINT** and **REFERENCES** on the credential. Enabled by default in Azure SQL Database/Fabric; `sp_configure 'external rest endpoint enabled'` in SQL Server 2025 and MI.\n- Limits & behavior: 100 MB payload, URL 8 KB, headers 8 KB, allow-listed domains in Azure SQL Database/MI (front others with API Management), no redirects followed, outbound concurrency throttled (errors 10928/10936), wait type `HTTP_EXTERNAL_CONNECTION`."
+      },
+      "code": "DECLARE @rc INT, @response NVARCHAR(MAX);\nEXEC @rc = sys.sp_invoke_external_rest_endpoint\n     @url         = N'https://aw-openai.openai.azure.com/openai/deployments/gpt-4o/chat/completions?api-version=2024-10-21',\n     @method      = 'POST',\n     @payload     = @payload,\n     @credential  = [https://aw-openai.openai.azure.com],\n     @timeout     = 60,\n     @retry_count = 3,\n     @response    = @response OUTPUT;"
+    },
+    {
+      "heading": { "en": "Extract and handle the response" },
+      "body": {
+        "en": "The procedure wraps the API result: `{ \"response\": { \"status\": { \"http\": { \"code\", \"description\" } }, \"headers\": {…} }, \"result\": { …API body… } }`.\n- Answer text: `$.result.choices[0].message.content`. Why it stopped: `$.result.choices[0].finish_reason` (`length` = cut off by max_tokens). Token usage: `$.result.usage.total_tokens` (log it for cost).\n- **`JSON_VALUE` returns nvarchar(4000)**: longer values return NULL (lax) or error (strict). For long answers use `OPENJSON(@response, '$.result.choices') WITH (content NVARCHAR(MAX) '$.message.content')` — or, in SQL Server 2025/Azure SQL with a `json`-typed input, `JSON_VALUE(… RETURNING nvarchar(max))`. Use `JSON_QUERY` for objects/arrays.\n- **Structured outputs**: the content is itself a JSON string — parse it with a second `OPENJSON`/`JSON_VALUE`.\n- **Errors**: branch on `@rc` (429 → busy/retry later, 401/403 → credential/role problems), read `$.response.status.http.description`, wrap in `TRY…CATCH` for exceptions, and return a safe message to users.\n- Log question, retrieved IDs, token usage and status for monitoring and evaluation."
+      },
+      "code": "IF @rc = 0\nBEGIN\n    SELECT c.content AS answer, c.finish_reason,\n           JSON_VALUE(@response, '$.result.usage.total_tokens') AS total_tokens\n    FROM OPENJSON(@response, '$.result.choices')\n         WITH (content       NVARCHAR(MAX) '$.message.content',\n               finish_reason NVARCHAR(20)  '$.finish_reason') AS c;\nEND\nELSE\n    THROW 50001, N'Model call failed; see logged HTTP status.', 1;"
+    }
+  ],
+  "examTips": [
+    { "en": "FOR JSON PATH (explicit shape) / AUTO (quick); WITHOUT_ARRAY_WRAPPER for single objects; INCLUDE_NULL_VALUES; ROOT('x')." },
+    { "en": "Build payloads with JSON_OBJECT/JSON_ARRAY: system (grounding rules) + user (context + question); low temperature for factual answers; max_tokens caps length." },
+    { "en": "sp_invoke_external_rest_endpoint: @method default POST, @timeout default 30 (1–230), @retry_count 0–10, @response OUTPUT; returns 0 on 2xx else HTTP status." },
+    { "en": "Permissions: EXECUTE ANY EXTERNAL ENDPOINT + REFERENCES on the credential; managed identity needs Cognitive Services OpenAI User." },
+    { "en": "Answer path: $.result.choices[0].message.content; HTTP status: $.response.status.http.code; usage: $.result.usage.total_tokens." },
+    { "en": "JSON_VALUE is limited to 4,000 characters (NULL in lax mode) — use OPENJSON WITH nvarchar(max) for long answers." },
+    { "en": "finish_reason = 'length' means the answer was truncated by max_tokens." }
+  ],
+  "sources": [
+    "https://learn.microsoft.com/en-us/training/modules/design-implement-rag-with-sql/3-prepare-retrieval-context-augmentation",
+    "https://learn.microsoft.com/en-us/training/modules/design-implement-rag-with-sql/4-augment-prompts-database-context",
+    "https://learn.microsoft.com/en-us/training/modules/design-implement-rag-with-sql/5-generate-process-rag-responses",
+    "https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-invoke-external-rest-endpoint-transact-sql",
+    "https://learn.microsoft.com/en-us/sql/t-sql/functions/json-value-transact-sql",
+    "https://learn.microsoft.com/en-us/sql/relational-databases/json/format-query-results-as-json-with-for-json-sql-server",
+    "https://learn.microsoft.com/en-us/azure/foundry/openai/how-to/structured-outputs"
+  ]
+}

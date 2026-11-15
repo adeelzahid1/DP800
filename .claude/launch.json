@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "dp800-dist",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["scripts/serve-dist.mjs", "dist/dp800/browser", "4300"],
+      "port": 4300
+    }
+  ]
+}

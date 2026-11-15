@@ -1,0 +1,65 @@
+{
+  "subtopic": "d1-partitioning",
+  "title": { "en": "Partitioning tables & indexes" },
+  "prerequisiteRecap": [
+    {
+      "heading": { "en": "The idea" },
+      "body": {
+        "en": "Partitioning splits one logical table into multiple physical chunks (**partitions**) by the value of one column (the **partition column**), usually a date. Queries and applications still see one table. The payoff is *manageability at scale* — sliding-window archiving, partition-level maintenance — and, when queries filter on the partition column, **partition elimination** skips irrelevant chunks."
+      }
+    }
+  ],
+  "sections": [
+    {
+      "heading": { "en": "The three building blocks" },
+      "body": {
+        "en": "1. **Partition function** — defines the boundary values and whether each boundary belongs to the left or right partition (`RANGE LEFT` / `RANGE RIGHT`). N boundaries make N+1 partitions.\n2. **Partition scheme** — maps each partition to a filegroup (`ALL TO ([PRIMARY])` is common in Azure SQL where filegroups matter less).\n3. **Table/index ON the scheme** — created `ON ps_Name(PartitionColumn)` instead of a filegroup.\nFor dates, `RANGE RIGHT` with first-of-month boundaries is the idiomatic choice: each boundary date starts its own partition, so a month's data sits entirely in one partition."
+      },
+      "code": "CREATE PARTITION FUNCTION pf_Monthly (DATE)\n    AS RANGE RIGHT FOR VALUES ('2026-01-01', '2026-02-01', '2026-03-01');\n\nCREATE PARTITION SCHEME ps_Monthly\n    AS PARTITION pf_Monthly ALL TO ([PRIMARY]);\n\nCREATE TABLE dbo.Events (\n    EventId BIGINT IDENTITY,\n    EventDate DATE NOT NULL,\n    Payload NVARCHAR(400),\n    CONSTRAINT PK_Events PRIMARY KEY (EventDate, EventId)\n) ON ps_Monthly(EventDate);"
+    },
+    {
+      "heading": { "en": "Aligned indexes and the partition key rule" },
+      "body": {
+        "en": "An index is **aligned** when it is partitioned on the same scheme/function as its table. Alignment is required for partition switching. Important rule: a **unique index (including the PK) on a partitioned table must contain the partition column** — otherwise the engine cannot enforce uniqueness within one partition's structure. That is why PKs on partitioned tables are usually composite (PartitionCol, Id)."
+      }
+    },
+    {
+      "heading": { "en": "Partition elimination" },
+      "body": {
+        "en": "When a query filters on the partition column (`WHERE EventDate >= '2026-02-01' AND EventDate < '2026-03-01'`), the optimizer touches only matching partitions. Elimination needs a sargable predicate on the actual partition column — wrapping it in a function (`YEAR(EventDate) = 2026`) defeats it. Check the Actual Partition Count in the execution plan to verify elimination happened. Note: partitioning is **not primarily a query-speed feature** — a good index often beats partitioning for seeks; partitioning shines for management and bulk operations."
+      }
+    },
+    {
+      "heading": { "en": "Metadata-speed bulk operations" },
+      "body": {
+        "en": "- **SWITCH**: instantly moves a whole partition between tables (e.g. staging → fact, or fact → archive) as a metadata operation — no data movement. Requirements: identical schema/indexes (aligned), same filegroup, target partition/table empty, and a trusted CHECK constraint on the staging table matching the partition range.\n- **SPLIT**: adds a new boundary (prepare next month). Always split into an **empty** range — splitting populated partitions moves data and logs heavily.\n- **MERGE**: removes a boundary, combining two partitions (collapse old months before archiving).\n- **TRUNCATE TABLE … WITH (PARTITIONS (n))**: instantly empties selected partitions.\nThe classic **sliding window**: each month SPLIT a new empty boundary at the head, SWITCH the oldest partition out to an archive table, MERGE the vacated boundary at the tail."
+      },
+      "code": "-- Monthly sliding window\nALTER PARTITION SCHEME ps_Monthly NEXT USED [PRIMARY];\nALTER PARTITION FUNCTION pf_Monthly() SPLIT RANGE ('2026-04-01');\n\nALTER TABLE dbo.Events SWITCH PARTITION 1 TO dbo.EventsArchive;\nALTER PARTITION FUNCTION pf_Monthly() MERGE RANGE ('2026-01-01');\n\n-- Or just empty old partitions instantly:\nTRUNCATE TABLE dbo.Events WITH (PARTITIONS (1));"
+    },
+    {
+      "heading": { "en": "Partition-level maintenance" },
+      "body": {
+        "en": "Rebuild or reorganize a single partition instead of the whole index: `ALTER INDEX IX ON dbo.Events REBUILD PARTITION = 5` — crucial when only the newest partition fragments. Statistics can be incremental (`STATISTICS_INCREMENTAL`). Compression can differ per partition: PAGE-compress cold partitions, leave hot ones ROW/NONE. Columnstore + partitioning combine naturally for very large fact tables (partition by date, columnstore within)."
+      }
+    },
+    {
+      "heading": { "en": "When to partition" },
+      "body": {
+        "en": "Partition when: the table is large (commonly 50 GB+ as a rough bar, or hundreds of millions of rows), data has a natural range key (almost always date), and you need fast archiving/purging, partition-scoped maintenance, or staged loads via SWITCH. Don't partition small tables for 'performance' — added complexity, no gain; the exam's wrong answers love offering partitioning as a general speed boost."
+      }
+    }
+  ],
+  "examTips": [
+    { "en": "N boundary values → N+1 partitions. RANGE RIGHT: boundary belongs to the right (upper) partition — idiomatic for dates." },
+    { "en": "Unique indexes on a partitioned table must include the partition column (hence composite PKs)." },
+    { "en": "SWITCH is instant and needs: aligned identical structure, same filegroup, empty target, trusted CHECK on source range." },
+    { "en": "Always SPLIT into empty ranges; MERGE after switching data out. Sliding window = SPLIT head, SWITCH+MERGE tail." },
+    { "en": "Partition elimination requires a sargable predicate on the partition column itself." },
+    { "en": "TRUNCATE ... WITH (PARTITIONS (...)) empties partitions instantly — the modern purge answer." }
+  ],
+  "sources": [
+    "https://learn.microsoft.com/en-us/sql/relational-databases/partitions/partitioned-tables-and-indexes",
+    "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-partition-function-transact-sql",
+    "https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-partition-function-transact-sql"
+  ]
+}
