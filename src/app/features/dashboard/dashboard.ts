@@ -5,6 +5,7 @@ import { ContentService } from '../../core/services/content.service';
 import { LocaleService } from '../../core/services/locale.service';
 import { MockExamService } from '../../core/services/mock-exam.service';
 import { ProgressService } from '../../core/services/progress.service';
+import { notebookEntries } from '../../core/utils/notebook';
 import { BarChart, BarDatum } from '../../shared/bar-chart';
 import { TrendChart, TrendPoint } from '../../shared/trend-chart';
 
@@ -63,6 +64,22 @@ import { TrendChart, TrendPoint } from '../../shared/trend-chart';
         }
         <div class="actions">
           <a routerLink="/review" class="btn" [class.btn-primary]="dueCount() > 0">{{ locale.t('dash.startReview') }}</a>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>{{ locale.t('notebook.title') }}</h2>
+        @if (notebook().all > 0) {
+          <ul class="nb-counts">
+            <li><strong>{{ notebook().wrong }}</strong> {{ locale.t('notebook.k.wrong') }}</li>
+            <li><strong>{{ notebook().guessed }}</strong> {{ locale.t('notebook.k.guessed') }}</li>
+            <li><strong>{{ notebook().note }}</strong> {{ locale.t('notebook.f.note') }}</li>
+          </ul>
+        } @else {
+          <p class="dim">{{ locale.t('notebook.emptyHint') }}</p>
+        }
+        <div class="actions">
+          <a routerLink="/notebook" class="btn">{{ locale.t('dash.openNotebook') }}</a>
         </div>
       </section>
 
@@ -126,6 +143,8 @@ import { TrendChart, TrendPoint } from '../../shared/trend-chart';
     .stat-label { color: var(--text-dim); font-size: 0.85rem; }
     .overall-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
     .overall-bar .pbar { flex: 1; height: 10px; }
+    .nb-counts { list-style: none; margin: 0 0 6px; padding: 0; display: flex; gap: 18px; flex-wrap: wrap; }
+    .nb-counts strong { font-size: 1.4rem; font-variant-numeric: tabular-nums; margin-right: 4px; }
     .due-line { display: flex; align-items: baseline; gap: 10px; margin: 0 0 6px; }
     .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
     .dim { color: var(--text-dim); font-size: 0.9rem; }
@@ -146,6 +165,14 @@ export class Dashboard {
   protected readonly importMsg = signal<string | null>(null);
 
   protected readonly dueCount = computed(() => this.progress.dueItems().length);
+  protected readonly notebook = computed(() => {
+    const c = { all: 0, wrong: 0, guessed: 0, note: 0 };
+    for (const e of notebookEntries(this.progress.progress())) {
+      c.all++;
+      for (const k of e.kinds) c[k]++;
+    }
+    return c;
+  });
   protected readonly dueWeek = computed(() =>
     this.progress.upcoming(7).reduce((sum, n) => sum + n, 0),
   );

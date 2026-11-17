@@ -15,6 +15,10 @@ Developer Associate).
   *Guessing* before checking it: a wrong answer goes back to box 1, a confident
   correct answer moves up a box, and a correct guess stays where it is. The
   **Review** page works through what is due today (`src/app/core/utils/srs.ts`).
+- **Mistake notebook:** the **Notebook** page collects wrong answers, lucky
+  guesses (correct but marked *Guessing*) and questions you wrote a note on,
+  grouped by subtopic, with filters and a "Practice these" session. Notes are
+  added from the ✎ button on any question (or `T`) and survive a progress reset.
 
 ## Run it
 
@@ -106,7 +110,7 @@ No code changes are required.
 ## Keyboard shortcuts (study mode)
 
 `←/→` prev/next question · `1–9`/`A–F` select option · `Enter` check ·
-`S`/`G` mark sure/guessing · `H` show/hide answer · `X` show/hide example · `M` bookmark ·
+`S`/`G` mark sure/guessing · `T` note · `H` show/hide answer · `X` show/hide example · `M` bookmark ·
 `P/N` prev/next subtopic · `?` help · `Esc` close.
 
 ## Verification & sources

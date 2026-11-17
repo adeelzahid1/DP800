@@ -17,6 +17,7 @@
         <span class="nav-badge" [attr.aria-label]="locale.t('nav.dueBadge').replace('{n}', '' + dueCount())">{{ dueCount() }}</span>
       }
     </a>
+    <a routerLink="/notebook" routerLinkActive="active">{{ locale.t('nav.notebook') }}</a>
     <a routerLink="/mock" routerLinkActive="active">{{ locale.t('nav.mock') }}</a>
     <a routerLink="/search" routerLinkActive="active">{{ locale.t('nav.search') }}</a>
   </nav>

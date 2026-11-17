@@ -1,12 +1,20 @@
 import { Injectable, computed, signal } from '@angular/core';
 import {
+  CaseStudy,
   ContentManifest,
   DomainMeta,
   Lesson,
+  Question,
   QuestionBank,
   SubtopicMeta,
   TopicMeta,
 } from '../models/content.models';
+
+/** A question together with the case study it belongs to, if any. */
+export interface LoadedQuestion {
+  q: Question;
+  caseStudy: CaseStudy | null;
+}
 
 export interface SubtopicRef {
   domain: DomainMeta;
@@ -70,6 +78,32 @@ export class ContentService {
       this.lessonCache.set(sub.id, p);
     }
     return p;
+  }
+
+  /**
+   * Load specific questions (with their case studies) from their banks.
+   * Ids no longer present in a bank are left out.
+   */
+  async loadQuestions(
+    wanted: readonly { id: string; subtopic: string }[],
+  ): Promise<LoadedQuestion[]> {
+    const refs = this.refById();
+    const subtopics = [...new Set(wanted.map((w) => w.subtopic))];
+    const banks = await Promise.all(
+      subtopics.map((s) => {
+        const ref = refs.get(s);
+        return ref ? this.getBank(ref.subtopic) : Promise.resolve(null);
+      }),
+    );
+    const byId = new Map<string, LoadedQuestion>();
+    for (const bank of banks) {
+      if (!bank) continue;
+      for (const q of bank.questions) {
+        const caseStudy = q.caseId ? (bank.cases?.find((c) => c.id === q.caseId) ?? null) : null;
+        byId.set(q.id, { q, caseStudy });
+      }
+    }
+    return wanted.map((w) => byId.get(w.id)).filter((x): x is LoadedQuestion => !!x);
   }
 
   getBank(sub: SubtopicMeta): Promise<QuestionBank> {

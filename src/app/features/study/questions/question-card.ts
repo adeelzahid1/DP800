@@ -2,6 +2,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   ElementRef,
+  Injector,
   afterNextRender,
   computed,
   inject,
@@ -10,6 +11,9 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
+import { map } from 'rxjs';
 import { CaseStudy, Question } from '../../../core/models/content.models';
 import { QuestionProgress } from '../../../core/models/progress.models';
 import { LocaleService } from '../../../core/services/locale.service';
@@ -24,7 +28,7 @@ import { QuestionInput } from './question-input';
 @Component({
   selector: 'app-question-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CodeBlock, RichText, QuestionInput],
+  imports: [CodeBlock, RichText, QuestionInput, ReactiveFormsModule],
   host: {
     '[class.current]': 'current()',
     '[attr.id]': '"q-" + q().id',
@@ -58,6 +62,15 @@ import { QuestionInput } from './question-input';
         [attr.aria-label]="locale.t('q.markRead')"
         [title]="locale.t('q.markRead')"
       >{{ prog()?.read ? '◉' : '○' }}</button>
+      <button
+        type="button"
+        class="icon-btn"
+        [class.on]="!!prog()?.note"
+        (click)="editingNote() ? cancelNote() : openNote()"
+        [attr.aria-expanded]="editingNote()"
+        [attr.aria-label]="locale.t('q.note')"
+        [title]="locale.t('q.note')"
+      >✎</button>
     </header>
 
     @if (caseStudy(); as cs) {
@@ -133,6 +146,34 @@ import { QuestionInput } from './question-input';
       <button type="button" class="btn btn-sm" (click)="resetQuestion()">{{ locale.t('q.reset') }}</button>
     </div>
 
+    @if (editingNote()) {
+      <form class="note-form" (ngSubmit)="saveNote()" (keydown)="onNoteKey($event)">
+        <label class="note-label" [attr.for]="'note-' + q().id">{{ locale.t('q.noteLabel') }}</label>
+        <textarea
+          #noteBox
+          [id]="'note-' + q().id"
+          rows="3"
+          [formControl]="noteCtrl"
+          [attr.maxlength]="noteMax"
+          [placeholder]="locale.t('q.notePlaceholder')"
+        ></textarea>
+        <div class="note-actions">
+          <span class="note-count">{{ noteLength() }} / {{ noteMax }}</span>
+          <span class="spacer"></span>
+          <button type="button" class="btn btn-sm" (click)="cancelNote()">{{ locale.t('q.noteCancel') }}</button>
+          <button type="submit" class="btn btn-sm btn-primary" [disabled]="noteCtrl.invalid">
+            {{ locale.t('q.noteSave') }}
+          </button>
+        </div>
+      </form>
+    } @else if (prog()?.note) {
+      <aside class="note-view">
+        <span class="note-label">{{ locale.t('q.noteLabel') }}</span>
+        <p>{{ prog()?.note }}</p>
+        <button type="button" class="btn btn-sm" (click)="openNote()">{{ locale.t('q.noteEdit') }}</button>
+      </aside>
+    }
+
     @if (revealed()) {
       <section class="explain">
         <h4>{{ locale.t('q.explanation') }}</h4>
@@ -199,6 +240,22 @@ import { QuestionInput } from './question-input';
     }
     .explain h4, .example h4 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-dim); }
     .sources { font-size: 0.82rem; color: var(--text-dim); }
+    .note-form, .note-view {
+      margin-top: 12px; border: 1px solid var(--border); border-left: 4px solid var(--warn);
+      border-radius: 0 10px 10px 0; background: var(--bg-sunken); padding: 10px 12px;
+    }
+    .note-label {
+      display: block; font-size: 0.8rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.5px; color: var(--text-dim); margin-bottom: 6px;
+    }
+    .note-form textarea {
+      width: 100%; box-sizing: border-box; resize: vertical; min-height: 4.5em;
+      font: inherit; color: var(--text); background: var(--bg-elev);
+      border: 1px solid var(--border); border-radius: 8px; padding: 8px;
+    }
+    .note-actions { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+    .note-count { font-size: 0.8rem; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+    .note-view p { margin: 0 0 8px; white-space: pre-wrap; overflow-wrap: anywhere; }
   `,
 })
 export class QuestionCard {
@@ -218,6 +275,18 @@ export class QuestionCard {
   readonly answeredChange = output<boolean>();
 
   private readonly qinput = viewChild<QuestionInput>('qinput');
+  private readonly noteBox = viewChild<ElementRef<HTMLTextAreaElement>>('noteBox');
+  private readonly injector = inject(Injector);
+
+  protected readonly noteMax = ProgressService.NOTE_MAX;
+  protected readonly noteCtrl = new FormControl('', {
+    nonNullable: true,
+    validators: [Validators.maxLength(ProgressService.NOTE_MAX)],
+  });
+  protected readonly noteLength = toSignal(this.noteCtrl.valueChanges.pipe(map((v) => v.length)), {
+    initialValue: 0,
+  });
+  protected readonly editingNote = signal(false);
 
   protected readonly response = signal<Response>({});
   protected readonly submitted = signal(false);
@@ -301,6 +370,33 @@ export class QuestionCard {
 
   protected toggleRead(): void {
     this.progress.markRead(this.q().id, this.q().subtopic, !(this.prog()?.read ?? false));
+  }
+
+  /** Open the note editor (also the T shortcut on the study page). */
+  openNote(): void {
+    this.noteCtrl.setValue(this.prog()?.note ?? '');
+    this.editingNote.set(true);
+    afterNextRender(() => this.noteBox()?.nativeElement.focus(), { injector: this.injector });
+  }
+
+  protected saveNote(): void {
+    if (this.noteCtrl.invalid) return;
+    this.progress.setNote(this.q().id, this.q().subtopic, this.noteCtrl.value);
+    this.editingNote.set(false);
+  }
+
+  protected cancelNote(): void {
+    this.editingNote.set(false);
+  }
+
+  protected onNoteKey(event: KeyboardEvent): void {
+    if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+      event.preventDefault();
+      this.saveNote();
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      this.cancelNote();
+    }
   }
 
   toggleAnswer(): void {

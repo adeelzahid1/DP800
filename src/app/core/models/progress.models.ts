@@ -21,6 +21,8 @@ export interface QuestionProgress {
   lastAt?: number;
   /** The most recent attempt was marked as a guess. */
   guessed?: boolean;
+  /** The learner's own note on this question (kept when progress is reset). */
+  note?: string;
 }
 
 export type ProgressMap = Record<string, QuestionProgress>;

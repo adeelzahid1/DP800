@@ -61,4 +61,28 @@ describe('ProgressService spaced repetition', () => {
     const v3 = JSON.stringify({ format: 'dp800-progress', version: 3, progress: {} });
     expect(svc.importAll(v3)).toContain('newer version');
   });
+
+  it('saves, trims and removes notes', () => {
+    svc.setNote('q1', 'sub-a', '  check the isolation level  ');
+    expect(svc.q('q1')?.note).toBe('check the isolation level');
+    svc.setNote('q1', 'sub-a', 'x'.repeat(ProgressService.NOTE_MAX + 50));
+    expect(svc.q('q1')?.note?.length).toBe(ProgressService.NOTE_MAX);
+    svc.setNote('q1', 'sub-a', '   ');
+    expect(svc.q('q1')?.note).toBeUndefined();
+    expect(svc.q('q1')?.s).toBe('sub-a');
+  });
+
+  it('keeps notes when progress is reset', () => {
+    svc.recordAttempt('q1', 'sub-a', false, false, now);
+    svc.toggleBookmark('q1', 'sub-a');
+    svc.setNote('q1', 'sub-a', 'my note');
+    svc.recordAttempt('q2', 'sub-a', true, false, now);
+
+    svc.resetQuestions(['q1', 'q2', 'missing']);
+
+    expect(svc.q('q1')).toEqual({ s: 'sub-a', note: 'my note' });
+    expect(svc.q('q2')).toBeUndefined();
+    expect(svc.q('missing')).toBeUndefined();
+    expect(svc.dueItems(today + 5)).toEqual([]);
+  });
 });

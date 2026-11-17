@@ -100,6 +100,23 @@ export class ProgressService {
     this.patch(id, subtopic, { bookmarked: !cur });
   }
 
+  /** Maximum length of a question note. */
+  static readonly NOTE_MAX = 2000;
+
+  /** Save (or, when blank, remove) the learner's note on a question. */
+  setNote(id: string, subtopic: string, note: string): void {
+    const text = note.trim().slice(0, ProgressService.NOTE_MAX);
+    if (text) {
+      this.patch(id, subtopic, { note: text });
+      return;
+    }
+    this.progress.update((map) => {
+      if (!map[id]?.note) return map;
+      const { note: _removed, ...rest } = map[id];
+      return { ...map, [id]: rest };
+    });
+  }
+
   recordAttempt(
     id: string,
     subtopic: string,
@@ -153,18 +170,20 @@ export class ProgressService {
     return counts;
   });
 
+  /** Clears read/attempt/bookmark/review state; the learner's own note is kept. */
   resetQuestion(id: string): void {
-    this.progress.update((map) => {
-      const next = { ...map };
-      delete next[id];
-      return next;
-    });
+    this.resetQuestions([id]);
   }
 
   resetQuestions(ids: readonly string[]): void {
     this.progress.update((map) => {
       const next = { ...map };
-      for (const id of ids) delete next[id];
+      for (const id of ids) {
+        const p = next[id];
+        if (!p) continue;
+        if (p.note) next[id] = { s: p.s, note: p.note };
+        else delete next[id];
+      }
       return next;
     });
   }

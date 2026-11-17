@@ -333,6 +333,11 @@ export class StudyPage {
       case 'G':
         card?.setConfidence('guess');
         break;
+      case 't':
+      case 'T':
+        event.preventDefault();
+        card?.openNote();
+        break;
       case 'm':
       case 'M':
         if (card) this.progress.toggleBookmark(

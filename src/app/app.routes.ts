@@ -19,6 +19,10 @@ export const routes: Routes = [
     loadComponent: () => import('./features/review/review-page').then((m) => m.ReviewPage),
   },
   {
+    path: 'notebook',
+    loadComponent: () => import('./features/notebook/notebook-page').then((m) => m.NotebookPage),
+  },
+  {
     path: 'mock',
     loadComponent: () => import('./features/mock/mock-setup').then((m) => m.MockSetup),
   },
