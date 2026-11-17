@@ -15,7 +15,7 @@
       "answer": ["a"],
       "explanation": { "en": "The MSSQL extension connects to databases and feeds schema context to Copilot (including the @mssql chat participant); Copilot provides the AI. The other pairings lack either the AI or the database awareness." },
       "example": { "en": "In chat: '@mssql list tables with their row counts' runs against your actual connection." },
-      "sources": ["https://learn.microsoft.com/en-us/sql/tools/visual-studio-code-extensions/mssql/mssql-copilot"]
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/visual-studio-code-extensions/github-copilot/overview"]
     },
     {
       "id": "d1-cop-0002",
@@ -96,7 +96,7 @@
       "answer": ["a", "b", "c"],
       "explanation": { "en": "Data boundary, output quality, and inherited permissions are the three pillars the 'interpret security impact' bullet targets. Copilot doesn't touch database encryption (d), and suggestions are probabilistic, not deterministic (e) — the opposite of that claim is part of the risk." },
       "example": { "en": "Mitigations map 1:1: content exclusions/policies, mandatory review, least-privilege connections." },
-      "sources": ["https://learn.microsoft.com/en-us/fabric/fundamentals/copilot-fabric-privacy-security"]
+      "sources": ["https://learn.microsoft.com/en-us/fabric/fundamentals/copilot-privacy-security"]
     },
     {
       "id": "d1-cop-0007",
@@ -127,7 +127,7 @@
       "answerMap": { "s1": "yes", "s2": "yes", "s3": "no" },
       "explanation": { "en": "Ask = Q&A, Edit = applies code changes, Agent = plans and executes multi-step work with tools. Nothing bypasses security: every action runs under your credentials and permissions — which is exactly why least-privilege connections matter more in agent mode, not less." },
       "example": { "en": "Agent mode + sysadmin connection + production database = the risk combination to veto." },
-      "sources": ["https://learn.microsoft.com/en-us/sql/tools/visual-studio-code-extensions/mssql/mssql-copilot"]
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/visual-studio-code-extensions/github-copilot/overview"]
     },
     {
       "id": "d1-cop-0009",
@@ -159,7 +159,7 @@
       "answer": ["a"],
       "explanation": { "en": "Grounding is metadata-based: table/column names and types inform suggestions. Row data isn't wholesale shipped to the model (b) — a key privacy point; tenant isolation prevents (c); history alone (d) wouldn't enable schema-correct generation." },
       "example": { "en": "That's why Copilot can name your actual columns without having read your rows." },
-      "sources": ["https://learn.microsoft.com/en-us/fabric/fundamentals/copilot-fabric-privacy-security"]
+      "sources": ["https://learn.microsoft.com/en-us/fabric/fundamentals/copilot-privacy-security"]
     },
     {
       "id": "d1-cop-0011",
@@ -229,7 +229,7 @@
       "answer": ["a"],
       "explanation": { "en": "Hostile instructions embedded in DATA the model reads is prompt injection — distinct from SQL injection (b), which targets query construction. Models can and do follow injected text (d is dangerously wrong), so bound the agent's permissions and gate destructive tools behind confirmation." },
       "example": { "en": "Agent reading user-generated content + write-capable tools = the highest-risk configuration." },
-      "sources": ["https://learn.microsoft.com/en-us/fabric/fundamentals/copilot-fabric-privacy-security"]
+      "sources": ["https://learn.microsoft.com/en-us/fabric/fundamentals/copilot-privacy-security"]
     },
     {
       "id": "d1-cop-0015",
@@ -245,7 +245,7 @@
       "answer": ["a"],
       "explanation": { "en": "Explanation/summarization of existing code is a headline Copilot use case (and low-risk — it changes nothing). Unreviewed production rewrites (b) violate the review principle. Completion (c) is for writing, not understanding. Copilot reads open files/selected code fine (d)." },
       "example": { "en": "'/explain' or 'Explain this procedure step by step, note any bugs' — then verify claims." },
-      "sources": ["https://learn.microsoft.com/en-us/sql/tools/visual-studio-code-extensions/mssql/mssql-copilot"]
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/visual-studio-code-extensions/github-copilot/overview"]
     },
     {
       "id": "d1-cop-0016",
@@ -260,7 +260,7 @@
       "answerMap": { "s1": "yes", "s2": "no", "s3": "yes" },
       "explanation": { "en": "Tenant settings support security-group scoping; Microsoft documents that Fabric Copilot data isn't used to train the underlying models; usage consumes capacity units. The no-training guarantee is the recurring privacy anchor." },
       "example": { "en": "Pilot pattern: enable for a 'Copilot-Pilot' security group before tenant-wide rollout." },
-      "sources": ["https://learn.microsoft.com/en-us/fabric/fundamentals/copilot-fabric-privacy-security"]
+      "sources": ["https://learn.microsoft.com/en-us/fabric/fundamentals/copilot-privacy-security"]
     },
     {
       "id": "d1-cop-0017",
@@ -276,7 +276,7 @@
       "answer": ["a"],
       "explanation": { "en": "Chat participants add tool/domain context: @mssql queries your connection's metadata, so generated SQL references real tables instead of guessed ones. The model provider doesn't change (b), a connection is the point (c), and it's a full SQL assistant (d)." },
       "example": { "en": "'@mssql write a query joining customers to their open orders' → uses your actual column names." },
-      "sources": ["https://learn.microsoft.com/en-us/sql/tools/visual-studio-code-extensions/mssql/mssql-copilot"]
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/visual-studio-code-extensions/github-copilot/overview"]
     },
     {
       "id": "d1-cop-0018",
@@ -292,7 +292,7 @@
       "answer": ["a"],
       "explanation": { "en": "Governance attaches to the CHANGE, not its author. 'Pre-tested' (b) is a fiction; licensing (c) and speed (d) are irrelevant. This principle connects the AI-assisted skill to the CI/CD domain." },
       "example": { "en": "Same branch policies, same approvals, same drift checks — AI is just another author." },
-      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/sql-projects"]
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/sql-database-projects"]
     },
     {
       "id": "d1-cop-0019",
@@ -337,7 +337,7 @@
       "answer": ["a"],
       "explanation": { "en": "Prompts travel to the service; pasting PII into them is an exfiltration event under most data policies (GDPR etc.). Chat is not local (b). It's compliance, not performance (c), and the task itself is fine with safe data (d)." },
       "example": { "en": "Generate from masked exports or ask for parameterized templates instead." },
-      "sources": ["https://learn.microsoft.com/en-us/fabric/fundamentals/copilot-fabric-privacy-security"]
+      "sources": ["https://learn.microsoft.com/en-us/fabric/fundamentals/copilot-privacy-security"]
     },
     {
       "id": "d1-cop-0021",
@@ -369,7 +369,7 @@
       "answer": ["a"],
       "explanation": { "en": "LLMs produce syntactically perfect, semantically confident fabrications — the distinctive AI failure mode. Keyword typos (b) are rare for models (and common for humans!), while semicolons (c) and formatting (d) are trivia linters catch." },
       "example": { "en": "Review ritual: verify every object exists, run against test data, compare row counts to expectations." },
-      "sources": ["https://learn.microsoft.com/en-us/sql/tools/visual-studio-code-extensions/mssql/mssql-copilot"]
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/visual-studio-code-extensions/github-copilot/overview"]
     },
     {
       "id": "d1-cop-0023",
@@ -401,7 +401,7 @@
       "answerMap": { "s1": "yes", "s2": "yes", "s3": "no", "s4": "yes" },
       "explanation": { "en": "Draft-for-review, explanation and test-data generation are canonical strengths. Unattended production schema changes violate every governance principle this skill area teaches — pipelines with human approval own that path." },
       "example": { "en": "The pattern in every answer: AI accelerates, humans authorize." },
-      "sources": ["https://learn.microsoft.com/en-us/sql/tools/visual-studio-code-extensions/mssql/mssql-copilot"]
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/visual-studio-code-extensions/github-copilot/overview"]
     },
     {
       "id": "d1-cop-0025",
@@ -431,9 +431,9 @@
         { "id": "d", "text": { "en": "Inside the SQL engine process" } }
       ],
       "answer": ["a"],
-      "explanation": { "en": "Fabric Copilot calls Azure OpenAI service models managed by Microsoft; customers configure governance, not infrastructure. No local (b), customer-deployed (c) or in-engine (d) model hosting is involved — contrast with SQL Server 2025's optional local ONNX models for EMBEDDINGS, a different feature." },
+      "explanation": { "en": "By default, Fabric Copilot calls Azure OpenAI service models managed by Microsoft (admins can opt in to OpenAI as a Microsoft subprocessor instead); customers configure governance, not infrastructure. No local (b), customer-deployed (c) or in-engine (d) model hosting is involved — contrast with SQL Server 2025's optional local ONNX models for EMBEDDINGS, a different feature." },
       "example": { "en": "Processing location is why the cross-geo tenant setting exists." },
-      "sources": ["https://learn.microsoft.com/en-us/fabric/fundamentals/copilot-fabric-privacy-security"]
+      "sources": ["https://learn.microsoft.com/en-us/fabric/fundamentals/copilot-privacy-security"]
     },
     {
       "id": "d1-cop-0027",
@@ -481,7 +481,7 @@
       "answer": ["a"],
       "explanation": { "en": "Two complementary surfaces: ghost-text completions for flow, chat for reasoning/explanation/multi-file work. They're distinct (b), both require connectivity (c), and completions predate and don't need agent mode (d)." },
       "example": { "en": "Typing 'CREATE PROCEDURE dbo.GetOrders' → completion drafts the body; chat refactors it on request." },
-      "sources": ["https://learn.microsoft.com/en-us/sql/tools/visual-studio-code-extensions/mssql/mssql-copilot"]
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/visual-studio-code-extensions/github-copilot/overview"]
     },
     {
       "id": "d1-cop-0030",
@@ -497,7 +497,7 @@
       "answer": ["a"],
       "explanation": { "en": "Access-scoped metadata grounding: Copilot sees what YOU can see in the workspace, nothing cross-tenant (b — also a privacy violation it avoids by design). Manual pasting (c) is the pre-Copilot workflow it replaces; grounding is metadata-first, not data-scanning (d)." },
       "example": { "en": "Your permissions bound Copilot's visibility — least privilege again governs the AI." },
-      "sources": ["https://learn.microsoft.com/en-us/fabric/fundamentals/copilot-fabric-privacy-security"]
+      "sources": ["https://learn.microsoft.com/en-us/fabric/fundamentals/copilot-privacy-security"]
     },
     {
       "id": "d1-cop-0031",
@@ -513,7 +513,7 @@
       "answer": ["a"],
       "explanation": { "en": "Fan-out double-counting is semantically wrong yet syntactically perfect — only result validation (control totals, unit tests, sampled reconciliation) exposes it. Compilation (c) and speed (d) prove nothing about correctness; highlighting (b) is cosmetic." },
       "example": { "en": "Keep a 'golden numbers' test set; every AI-drafted report query must reproduce it." },
-      "sources": ["https://learn.microsoft.com/en-us/sql/tools/visual-studio-code-extensions/mssql/mssql-copilot"]
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/visual-studio-code-extensions/github-copilot/overview"]
     },
     {
       "id": "d1-cop-0032",
@@ -544,7 +544,7 @@
       "answerMap": { "s1": "yes", "s2": "yes", "s3": "no" },
       "explanation": { "en": "Exclusions control CONTEXT (what Copilot reads), configured by admins at org/repo scope. They do nothing about OUTPUT quality — insecure generation is mitigated by review and instructions, not exclusions. Confusing the input and output controls is the trap." },
       "example": { "en": "Exclude: secrets, vendored code, regulated datasets. Review: everything generated." },
-      "sources": ["https://docs.github.com/en/copilot/managing-copilot/configuring-content-exclusions-for-github-copilot"]
+      "sources": ["https://docs.github.com/en/copilot/concepts/security-governance-and-network-settings/content-exclusion"]
     },
     {
       "id": "d1-cop-0034",
@@ -560,7 +560,7 @@
       "answer": ["a"],
       "explanation": { "en": "The integration spans query authoring, schema exploration/design and code understanding, all connection-aware. It is not limited to SELECTs (b), and infrastructure artifacts (c, d) are out of its domain." },
       "example": { "en": "'@mssql design a table for storing product embeddings with a vector column' — schema-aware DDL drafting." },
-      "sources": ["https://learn.microsoft.com/en-us/sql/tools/visual-studio-code-extensions/mssql/mssql-copilot"]
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/visual-studio-code-extensions/github-copilot/overview"]
     },
     {
       "id": "d1-cop-0035",
@@ -576,7 +576,7 @@
       "answer": ["a"],
       "explanation": { "en": "The pre-existing anti-pattern (secrets in code) gains a new exfiltration path (AI context). Secret management (covered in Domain 2's secrets bullet) plus content exclusion is the compound fix. (b) is false, (c) is cosmetic, (d) is absurd." },
       "example": { "en": "AI adoption often surfaces latent hygiene problems — exam scenarios exploit this intersection." },
-      "sources": ["https://docs.github.com/en/copilot/managing-copilot/configuring-content-exclusions-for-github-copilot"]
+      "sources": ["https://docs.github.com/en/copilot/concepts/security-governance-and-network-settings/content-exclusion"]
     },
     {
       "id": "d1-cop-0036",
@@ -608,7 +608,7 @@
       "answer": ["a"],
       "explanation": { "en": "Governance questions resolve to documented data-handling commitments plus the admin controls that tune them. Weights (b) and binaries (c) reveal nothing about data flows, and 'unknowable' (d) contradicts the published privacy documentation." },
       "example": { "en": "Compliance review artifacts: privacy docs, DPAs, tenant-setting screenshots." },
-      "sources": ["https://learn.microsoft.com/en-us/fabric/fundamentals/copilot-fabric-privacy-security"]
+      "sources": ["https://learn.microsoft.com/en-us/fabric/fundamentals/copilot-privacy-security"]
     },
     {
       "id": "d1-cop-0038",
@@ -646,7 +646,7 @@
       "answer": ["a"],
       "explanation": { "en": "'Comprehension debt' is the organizational risk the review culture mitigates: code enters production that no human reasoned about. (b) ignores the compounding costs; (c) and (d) are unrelated fantasies." },
       "example": { "en": "Team norm: you own what you accept — be able to explain every accepted suggestion." },
-      "sources": ["https://learn.microsoft.com/en-us/sql/tools/visual-studio-code-extensions/mssql/mssql-copilot"]
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/visual-studio-code-extensions/github-copilot/overview"]
     },
     {
       "id": "d1-cop-0040",
@@ -678,7 +678,7 @@
       "answer": ["a"],
       "explanation": { "en": "AI-assisted security review (spotting concatenated SQL, missing TRY/CATCH, over-grants) plus codified secure defaults flips the tool to the defensive side. (b), (c) and (d) are each a named anti-pattern from this lesson." },
       "example": { "en": "'Review this proc for injection risks and missing XACT_ABORT' — a high-yield prompt pattern." },
-      "sources": ["https://learn.microsoft.com/en-us/sql/tools/visual-studio-code-extensions/mssql/mssql-copilot"]
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/visual-studio-code-extensions/github-copilot/overview"]
     },
     {
       "id": "d1-cop-0042",
@@ -709,7 +709,7 @@
       "answerMap": { "s1": "yes", "s2": "no", "s3": "yes" },
       "explanation": { "en": "Models learned from oceans of mediocre SQL (NOLOCK everywhere, SELECT *). Compilation and plausible rows prove nothing about correctness — the central review lesson. Instructions bias generation but guarantees remain human." },
       "example": { "en": "Risk literacy, not tool fear, is what the exam rewards." },
-      "sources": ["https://learn.microsoft.com/en-us/sql/tools/visual-studio-code-extensions/mssql/mssql-copilot"]
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/visual-studio-code-extensions/github-copilot/overview"]
     },
     {
       "id": "d1-cop-0044",
@@ -741,7 +741,7 @@
       "answer": ["a"],
       "explanation": { "en": "Dev environments with representative fake data deliver full schema-grounding at zero data risk — the standard pattern. Production access (b) and data screenshots (d) are the exposure paths to avoid; vague verbal schemas (c) produce hallucination-prone output." },
       "example": { "en": "Pairs with Domain 2's static-data and masking topics: one test-data strategy serves CI, Copilot and demos." },
-      "sources": ["https://learn.microsoft.com/en-us/fabric/fundamentals/copilot-fabric-privacy-security"]
+      "sources": ["https://learn.microsoft.com/en-us/fabric/fundamentals/copilot-privacy-security"]
     },
     {
       "id": "d1-cop-0046",
@@ -789,7 +789,7 @@
       "answer": ["a"],
       "explanation": { "en": "The model produces syntactically pristine DDL; what it cannot know is YOUR domain — cardinalities, lifecycle, integrity rules. Review effort goes where AI knowledge ends. Formatting concerns (b–d) are linter work." },
       "example": { "en": "Reviewer prompt: 'What business rules does this schema fail to enforce?'" },
-      "sources": ["https://learn.microsoft.com/en-us/sql/tools/visual-studio-code-extensions/mssql/mssql-copilot"]
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/visual-studio-code-extensions/github-copilot/overview"]
     },
     {
       "id": "d1-cop-0049",
@@ -821,7 +821,7 @@
       "answer": ["i1", "i2", "i3", "i4"],
       "explanation": { "en": "Draft → review → test → pipeline: AI accelerates step 1; steps 2–4 are non-negotiable human/process gates. Any reordering (committing before testing, testing before reviewing logic) weakens a gate." },
       "example": { "en": "The whole subtopic in one sentence: AI writes faster; your process still decides what ships." },
-      "sources": ["https://learn.microsoft.com/en-us/sql/tools/visual-studio-code-extensions/mssql/mssql-copilot"]
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/visual-studio-code-extensions/github-copilot/overview"]
     }
   ]
 }

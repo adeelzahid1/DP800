@@ -369,7 +369,7 @@
       "answer": ["a"],
       "explanation": { "en": "Without intent, the engine sees an old column missing and a new column present. Refactoring records the rename in a refactorlog so publish issues sp_rename and preserves data. Disabling the data-loss block would lose the data." },
       "example": { "en": "The .refactorlog file must be committed with the change." },
-      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/howto/refactor-objects"]
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/refactor-overview"]
     },
     {
       "id": "d2-proj-0023",

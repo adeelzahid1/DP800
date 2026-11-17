@@ -530,7 +530,7 @@
       "answer": ["a"],
       "explanation": { "en": "Without a name, the engine invents one (PK__Orders__C3905BAF…) that varies per database — schema-compare then flags phantom differences and generates drop/recreate churn. Enforcement (b) and performance (c) are identical either way, and names remain optional (d)." },
       "example": { "en": "Naming conventions (PK_, FK_, CK_, DF_, UQ_) make deployment scripts deterministic." },
-      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/sql-projects"]
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/sql-database-projects"]
     },
     {
       "id": "d1-constr-0032",

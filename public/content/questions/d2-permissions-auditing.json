@@ -92,7 +92,7 @@
       "answer": ["a"],
       "explanation": { "en": "Unbroken ownership chains mean only EXECUTE on the procedure is checked. This is the classic pattern for exposing data only through procedures." },
       "example": { "en": "GRANT EXECUTE ON dbo.GetOrders TO AppRole; — no table grants needed." },
-      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/authentication-access/ownership-chains"]
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/execute-as-clause-transact-sql"]
     },
     {
       "id": "d2-perm-0006",
@@ -108,7 +108,7 @@
       "answer": ["a"],
       "explanation": { "en": "Ownership chaining doesn't extend into dynamic SQL. Fixes: EXECUTE AS on the module or module signing with a certificate. Recompiling (d) changes nothing." },
       "example": { "en": "CREATE PROCEDURE ... WITH EXECUTE AS OWNER — or sign it and grant SELECT to a certificate user." },
-      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/authentication-access/ownership-chains"]
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/execute-as-clause-transact-sql"]
     },
     {
       "id": "d2-perm-0007",
@@ -495,7 +495,7 @@
       "answer": ["a"],
       "explanation": { "en": "SHOWPLAN allows viewing plans (still requiring permission on the queried objects). CONTROL is far broader, ALTER ANY USER manages users, and UNMASK reveals masked data." },
       "example": { "en": "GRANT SHOWPLAN TO PerfAnalysts;" },
-      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/performance/showplan-security"]
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/set-showplan-xml-transact-sql"]
     },
     {
       "id": "d2-perm-0030",
@@ -596,7 +596,7 @@
       "answerMap": { "s1": "yes", "s2": "no", "s3": "no" },
       "explanation": { "en": "Different owners break the chain, so the caller needs permission on the table. Cross-database chaining is off by default (and should usually stay off). RLS predicates are always evaluated; chaining affects only permission checks." },
       "example": { "en": "Keep objects in a schema owned by one principal to keep chains simple." },
-      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/authentication-access/ownership-chains"]
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/execute-as-clause-transact-sql"]
     },
     {
       "id": "d2-perm-0036",

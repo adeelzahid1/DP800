@@ -51,7 +51,7 @@
     { "en": "Fabric SQL database supports Git integration that stores the DB as an SDK-style project." }
   ],
   "sources": [
-    "https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/source-control",
+    "https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/tutorials/store-database-schema-git",
     "https://learn.microsoft.com/en-us/fabric/database/sql/source-control",
     "https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets",
     "https://learn.microsoft.com/en-us/azure/developer/github/connect-from-azure-openid-connect",

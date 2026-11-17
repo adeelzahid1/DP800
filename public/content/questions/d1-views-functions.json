@@ -559,7 +559,7 @@
       "answer": ["a"],
       "explanation": { "en": "Ownership chaining checks permissions at the view only (when view and table share an owner) — the user cannot bypass the view to read hidden columns. The grants are decidedly not equivalent (b); no expiry (c) or sysadmin requirement (d) exists." },
       "example": { "en": "This chaining principle also powers stored-procedure-based security APIs." },
-      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/authentication-access/ownership-chains"]
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/execute-as-clause-transact-sql"]
     },
     {
       "id": "d1-viewfn-0034",

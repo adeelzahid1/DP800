@@ -15,7 +15,7 @@
       "answer": ["a"],
       "explanation": { "en": "Build outputs are reproducible and belong in CI artifacts. Source .sql files, deployment scripts and the project file must be committed." },
       "example": { "en": ".gitignore: bin/ obj/" },
-      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/source-control"]
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/tutorials/store-database-schema-git"]
     },
     {
       "id": "d2-git-0002",
@@ -63,7 +63,7 @@
       "answer": ["a"],
       "explanation": { "en": "Git merges text, not meaning. The project build's reference validation catches these semantic conflicts — one reason to require CI status checks before merging." },
       "example": { "en": "Branch protection: require the 'build-sqlproj' check to pass on the merge result." },
-      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/source-control"]
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/tutorials/store-database-schema-git"]
     },
     {
       "id": "d2-git-0005",
@@ -79,7 +79,7 @@
       "answerMap": { "s1": "yes", "s2": "yes", "s3": "no", "s4": "yes" },
       "explanation": { "en": "The refactorlog preserves rename intent; profiles and deployment scripts are source. Credentials never belong in Git." },
       "example": { "en": "Pipelines inject credentials or use identity-based auth." },
-      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/source-control"]
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/tutorials/store-database-schema-git"]
     },
     {
       "id": "d2-git-0006",
@@ -175,7 +175,7 @@
       "answer": ["a"],
       "explanation": { "en": "Resolve like code: combine the logic, validate with build and tests. Random picks lose work; production edits create drift." },
       "example": { "en": "Use VS Code's merge editor, then dotnet build." },
-      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/source-control"]
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/tutorials/store-database-schema-git"]
     },
     {
       "id": "d2-git-0012",
@@ -258,7 +258,7 @@
       "answer": ["a"],
       "explanation": { "en": "Per-object files make reviews and history clear and reduce overlap between developers. It's a convention, not an engine requirement, and doesn't affect runtime." },
       "example": { "en": "Tables/Sales.Orders.sql, Procedures/Sales.GetOrders.sql" },
-      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/source-control"]
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/tutorials/store-database-schema-git"]
     },
     {
       "id": "d2-git-0016",
@@ -289,7 +289,7 @@
       "answer": ["a"],
       "explanation": { "en": "A shared repo keeps coordinated changes in one review. Separate repos fit shared databases with independent consumers, using versioned dacpac packages." },
       "example": { "en": "Monorepo: /src/Api and /src/Database/Sales.sqlproj." },
-      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/source-control"]
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/tutorials/store-database-schema-git"]
     },
     {
       "id": "d2-git-0018",
@@ -413,7 +413,7 @@
       "answerMap": { "s1": "yes", "s2": "no", "s3": "yes" },
       "explanation": { "en": "Per-object files localize conflicts, but semantic breakages slip through clean merges, so building the merged result is essential." },
       "example": { "en": "GitHub merge queues build the combined result before merging." },
-      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/source-control"]
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/tutorials/store-database-schema-git"]
     },
     {
       "id": "d2-git-0025",
@@ -639,7 +639,7 @@
       "answerMap": { "b1": "c1", "b2": "c1" },
       "explanation": { "en": "bin and obj hold build output; object folders are source and must be committed." },
       "example": { "en": "The CI pipeline uploads the dacpac from bin/Release as an artifact." },
-      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/source-control"]
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/tutorials/store-database-schema-git"]
     },
     {
       "id": "d2-git-0038",
@@ -702,7 +702,7 @@
       "answerMap": { "s1": "yes", "s2": "no", "s3": "yes" },
       "explanation": { "en": "Git provides authorship and timeline; production changes only via a deployment of the reverted state (which may involve data loss checks)." },
       "example": { "en": "git log -p -- Tables/dbo.Orders.sql" },
-      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/source-control"]
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/tutorials/store-database-schema-git"]
     },
     {
       "id": "d2-git-0042",
@@ -829,7 +829,7 @@
       "answer": ["a"],
       "explanation": { "en": "Ephemeral databases isolate PRs and give reliable tests. A shared dev database causes interference; production deployments of PRs are unsafe." },
       "example": { "en": "services: mssql: image: mcr.microsoft.com/mssql/server:2025-latest" },
-      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/continuous-integration-deployment"]
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/sql-projects-automation"]
     },
     {
       "id": "d2-git-0050",

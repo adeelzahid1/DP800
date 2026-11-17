@@ -47,7 +47,7 @@
       "answer": ["a"],
       "explanation": { "en": "Unit tests isolate one object; integration tests validate how objects (and apps) work together after deployment." },
       "example": { "en": "Deploy the dacpac to a container, run API tests that insert orders and read through RLS." },
-      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/continuous-integration-deployment"]
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/sql-projects-automation"]
     },
     {
       "id": "d2-test-0004",
@@ -111,7 +111,7 @@
       "answer": ["i1", "i2", "i3", "i4"],
       "explanation": { "en": "Validate early, produce one artifact, test it deployed, then promote it with approval." },
       "example": { "en": "Build once, deploy many." },
-      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/continuous-integration-deployment"]
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/sql-projects-automation"]
     },
     {
       "id": "d2-test-0008",
@@ -159,7 +159,7 @@
       "answer": ["a"],
       "explanation": { "en": "'Build once, deploy many' prevents differences introduced by rebuilding (dependency or tool version changes). Environment differences come from publish profiles." },
       "example": { "en": "actions/upload-artifact → actions/download-artifact across jobs." },
-      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/continuous-integration-deployment"]
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/sql-projects-automation"]
     },
     {
       "id": "d2-test-0011",
@@ -322,7 +322,7 @@
       "answer": ["a"],
       "explanation": { "en": "Realistic data reveals constraint violations, data-loss blocks and long operations that empty test databases hide." },
       "example": { "en": "Refresh staging from a masked production copy regularly." },
-      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/continuous-integration-deployment"]
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/sql-projects-automation"]
     },
     {
       "id": "d2-test-0020",
@@ -446,7 +446,7 @@
       "answer": ["i1", "i2", "i3", "i4"],
       "explanation": { "en": "Gate, check drift/impact, deploy, verify and record. Skipping the pre-check risks overwriting hotfixes or surprising rebuilds." },
       "example": { "en": "Fail the job if the DeployReport contains unexpected drops." },
-      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/continuous-integration-deployment"]
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/sql-projects-automation"]
     },
     {
       "id": "d2-test-0027",
@@ -547,7 +547,7 @@
       "answerMap": { "s1": "yes", "s2": "yes", "s3": "yes" },
       "explanation": { "en": "A layered strategy balances feedback speed and coverage; using production data in lower environments requires masking or anonymization." },
       "example": { "en": "PR: build + tSQLt (2 min). Merge: container integration tests (10 min). Nightly: staging deployment test." },
-      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/continuous-integration-deployment"]
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/sql-projects-automation"]
     },
     {
       "id": "d2-test-0033",
@@ -815,7 +815,7 @@
       "answer": ["a"],
       "explanation": { "en": "Smoke tests are fast, low-impact sanity checks after deployment; they complement earlier test layers." },
       "example": { "en": "EXEC dbo.HealthCheck; SELECT TOP (1) 1 FROM dbo.Orders;" },
-      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/continuous-integration-deployment"]
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/sql-projects-automation"]
     },
     {
       "id": "d2-test-0049",
@@ -831,7 +831,7 @@
       "answer": ["a"],
       "explanation": { "en": "Empty or synthetic CI databases don't contain production's data quirks. Rehearsing the deployment against realistic data catches these failures. FakeTable removes constraints, so it can't catch FK issues." },
       "example": { "en": "Nightly: restore masked prod → publish → run post-deployment → report." },
-      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/continuous-integration-deployment"]
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/sql-projects-automation"]
     },
     {
       "id": "d2-test-0050",
@@ -853,7 +853,7 @@
       "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
       "explanation": { "en": "A layered testing strategy assigns each risk to the cheapest test that can catch it." },
       "example": { "en": "The 'testing strategy, including unit tests and integration tests' bullet in practice." },
-      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/continuous-integration-deployment"]
+      "sources": ["https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/sql-projects-automation"]
     }
   ]
 }

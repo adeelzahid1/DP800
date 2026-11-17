@@ -65,7 +65,7 @@
   "sources": [
     "https://learn.microsoft.com/en-us/sql/relational-databases/in-memory-oltp/in-memory-oltp-in-memory-optimization",
     "https://learn.microsoft.com/en-us/sql/relational-databases/tables/temporal-tables",
-    "https://learn.microsoft.com/en-us/sql/relational-databases/tables/create-use-external-tables",
+    "https://learn.microsoft.com/en-us/sql/t-sql/statements/create-external-table-transact-sql",
     "https://learn.microsoft.com/en-us/sql/relational-databases/security/ledger/ledger-overview",
     "https://learn.microsoft.com/en-us/sql/relational-databases/graphs/sql-graph-overview"
   ]

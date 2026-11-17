@@ -124,7 +124,7 @@
       "answer": ["a"],
       "explanation": { "en": "GRANT EXECUTE on the procedure suffices (same-owner chaining skips table checks) — tables stay un-granted, the procedure is the narrow door. No automatic encryption exists (b). Parameterized procs *help* against injection but apps can still concatenate strings badly (c). Auditing still sees everything (d)." },
       "example": { "en": "GRANT EXECUTE ON SCHEMA::Sales TO AppRole; -- the entire API surface in one grant" },
-      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/security/authentication-access/ownership-chains"]
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/execute-as-clause-transact-sql"]
     },
     {
       "id": "d1-proc-0008",

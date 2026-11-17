@@ -829,7 +829,7 @@
       "answerMap": { "s1": "yes", "s2": "no", "s3": "yes" },
       "explanation": { "en": "External tables are metadata over remote data: queries fetch from the source live, nothing is copied at creation (that's what distinguishes them from imports), and they participate in joins like any table — the key reason they're useful." },
       "example": { "en": "SELECT c.Name, s.Amount FROM dbo.Customer c JOIN dbo.SalesExt s ON s.CustId = c.Id;" },
-      "sources": ["https://learn.microsoft.com/en-us/sql/relational-databases/tables/create-use-external-tables"]
+      "sources": ["https://learn.microsoft.com/en-us/sql/t-sql/statements/create-external-table-transact-sql"]
     },
     {
       "id": "d1-spec-0050",

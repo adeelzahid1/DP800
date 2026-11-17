@@ -54,7 +54,7 @@
     { "en": "Any option implying 'auto-apply AI SQL to production without review' is wrong." }
   ],
   "sources": [
-    "https://learn.microsoft.com/en-us/sql/tools/visual-studio-code-extensions/mssql/mssql-copilot",
+    "https://learn.microsoft.com/en-us/sql/tools/visual-studio-code-extensions/github-copilot/overview",
     "https://learn.microsoft.com/en-us/fabric/fundamentals/copilot-fabric-overview",
     "https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/add-custom-instructions/add-repository-instructions",
     "https://learn.microsoft.com/en-us/fabric/admin/service-admin-portal-copilot"

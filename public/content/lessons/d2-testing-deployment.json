@@ -52,7 +52,7 @@
     { "en": "Required status checks block merging until CI passes." }
   ],
   "sources": [
-    "https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/concepts/continuous-integration-deployment",
+    "https://learn.microsoft.com/en-us/sql/tools/sql-database-projects/sql-projects-automation",
     "https://learn.microsoft.com/en-us/sql/tools/sqlpackage/sqlpackage-deploy-drift-report",
     "https://github.com/Azure/sql-action",
     "https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners",
