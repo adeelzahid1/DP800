@@ -9,6 +9,7 @@ import {
   SubtopicMeta,
   TopicMeta,
 } from '../models/content.models';
+import { FlashcardPrompts } from '../utils/flashcards';
 
 /** A question together with the case study it belongs to, if any. */
 export interface LoadedQuestion {
@@ -31,6 +32,7 @@ export class ContentService {
 
   private readonly lessonCache = new Map<string, Promise<Lesson>>();
   private readonly bankCache = new Map<string, Promise<QuestionBank>>();
+  private flashcardPrompts: Promise<FlashcardPrompts> | null = null;
 
   /** Flattened subtopic list in tree order. */
   readonly subtopicRefs = computed<SubtopicRef[]>(() => {
@@ -104,6 +106,18 @@ export class ContentService {
       }
     }
     return wanted.map((w) => byId.get(w.id)).filter((x): x is LoadedQuestion => !!x);
+  }
+
+  /** Recall prompts for every lesson's exam tips (public/content/flashcards.json). */
+  getFlashcardPrompts(): Promise<FlashcardPrompts> {
+    if (!this.flashcardPrompts) {
+      this.flashcardPrompts = fetch('content/flashcards.json').then((r) => {
+        if (!r.ok) throw new Error(`Flashcards: HTTP ${r.status}`);
+        return r.json() as Promise<FlashcardPrompts>;
+      });
+      this.flashcardPrompts.catch(() => (this.flashcardPrompts = null));
+    }
+    return this.flashcardPrompts;
   }
 
   getBank(sub: SubtopicMeta): Promise<QuestionBank> {

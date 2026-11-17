@@ -23,6 +23,14 @@ export const routes: Routes = [
     loadComponent: () => import('./features/notebook/notebook-page').then((m) => m.NotebookPage),
   },
   {
+    path: 'flashcards',
+    loadComponent: () => import('./features/flashcards/flashcards-page').then((m) => m.FlashcardsPage),
+  },
+  {
+    path: 'flashcards/:subtopicId',
+    loadComponent: () => import('./features/flashcards/flashcards-page').then((m) => m.FlashcardsPage),
+  },
+  {
     path: 'mock',
     loadComponent: () => import('./features/mock/mock-setup').then((m) => m.MockSetup),
   },

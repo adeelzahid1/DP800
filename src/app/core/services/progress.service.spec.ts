@@ -3,7 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { dayNumber } from '../utils/srs';
 import { ProgressService } from './progress.service';
 
-const KEYS = ['dp800.progress.v1', 'dp800.settings.v1', 'dp800.mocks.v1'];
+const KEYS = ['dp800.progress.v1', 'dp800.settings.v1', 'dp800.mocks.v1', 'dp800.cards.v1'];
 
 describe('ProgressService spaced repetition', () => {
   let svc: ProgressService;
@@ -84,5 +84,20 @@ describe('ProgressService spaced repetition', () => {
     expect(svc.q('q2')).toBeUndefined();
     expect(svc.q('missing')).toBeUndefined();
     expect(svc.dueItems(today + 5)).toEqual([]);
+  });
+
+  it('schedules flashcards separately from questions and exports them', () => {
+    svc.recordCard('card-1', 'sub-a', true, now);
+    svc.recordCard('card-2', 'sub-a', false, now);
+    expect(svc.cards()['card-1']).toEqual(jasmine.objectContaining({ box: 2, dueDay: today + 3, attempts: 1 }));
+    expect(svc.cards()['card-2']).toEqual(jasmine.objectContaining({ box: 1, dueDay: today + 1 }));
+    expect(svc.progress()).toEqual({});
+    expect(svc.cardDueCount(today)).toBe(0);
+    expect(svc.cardDueCount(today + 3)).toBe(2);
+
+    const exported = svc.exportAll();
+    svc.cards.set({});
+    expect(svc.importAll(exported)).toBeNull();
+    expect(Object.keys(svc.cards()).sort()).toEqual(['card-1', 'card-2']);
   });
 });

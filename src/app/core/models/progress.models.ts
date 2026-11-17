@@ -27,6 +27,20 @@ export interface QuestionProgress {
 
 export type ProgressMap = Record<string, QuestionProgress>;
 
+/** Spaced-repetition state of one flashcard, stored apart from question progress. */
+export interface CardProgress {
+  /** Subtopic id. */
+  s: string;
+  box?: number;
+  dueDay?: number;
+  lastAt?: number;
+  /** "Knew it" on the last review. */
+  lastCorrect?: boolean;
+  attempts?: number;
+}
+
+export type CardMap = Record<string, CardProgress>;
+
 export interface PortalSettings {
   theme: 'system' | 'light' | 'dark';
   locale: string;

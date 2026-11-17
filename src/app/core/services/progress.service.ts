@@ -1,5 +1,6 @@
 import { Injectable, computed, effect, signal } from '@angular/core';
 import {
+  CardMap,
   DEFAULT_SETTINGS,
   MockAttempt,
   PortalSettings,
@@ -15,6 +16,7 @@ const KEY_PROGRESS = 'dp800.progress.v1';
 const KEY_SETTINGS = 'dp800.settings.v1';
 const KEY_MOCKS = 'dp800.mocks.v1';
 const KEY_ACTIVE_MOCK = 'dp800.mock.active.v1';
+const KEY_CARDS = 'dp800.cards.v1';
 
 function readJson<T>(key: string, fallback: T): T {
   try {
@@ -65,8 +67,11 @@ export class ProgressService {
   readonly progress = signal<ProgressMap>(readJsonRaw<ProgressMap>(KEY_PROGRESS, {}));
   readonly settings = signal<PortalSettings>(readJson(KEY_SETTINGS, DEFAULT_SETTINGS));
   readonly mockHistory = signal<MockAttempt[]>(readJsonRaw<MockAttempt[]>(KEY_MOCKS, []));
+  /** Flashcard review state, kept apart so cards don't affect question stats. */
+  readonly cards = signal<CardMap>(readJsonRaw<CardMap>(KEY_CARDS, {}));
 
   constructor() {
+    effect(() => writeJson(KEY_CARDS, this.cards()));
     effect(() => writeJson(KEY_PROGRESS, this.progress()));
     effect(() => writeJson(KEY_SETTINGS, this.settings()));
     effect(() => writeJson(KEY_MOCKS, this.mockHistory()));
@@ -188,6 +193,29 @@ export class ProgressService {
     });
   }
 
+  // ----- flashcards --------------------------------------------------------
+
+  /** Record a flashcard review: "knew it" promotes the card, "didn't know" resets it to box 1. */
+  recordCard(id: string, subtopic: string, knew: boolean, now: number = Date.now()): void {
+    this.cards.update((map) => {
+      const cur = map[id];
+      const { box, dueDay } = scheduleNext(cur, knew, false, now);
+      return {
+        ...map,
+        [id]: { s: subtopic, attempts: (cur?.attempts ?? 0) + 1, lastCorrect: knew, box, dueDay, lastAt: now },
+      };
+    });
+  }
+
+  /** Number of seen flashcards due on `today`. */
+  cardDueCount(today: number = dayNumber(Date.now())): number {
+    let n = 0;
+    for (const c of Object.values(this.cards())) {
+      if (c.dueDay !== undefined && c.dueDay <= today) n++;
+    }
+    return n;
+  }
+
   // ----- aggregates --------------------------------------------------------
 
   /** Stats for one subtopic. `total` comes from the manifest question count. */
@@ -261,6 +289,7 @@ export class ProgressService {
         progress: this.progress(),
         settings: this.settings(),
         mockHistory: this.mockHistory(),
+        cards: this.cards(),
       },
       null,
       2,
@@ -276,6 +305,7 @@ export class ProgressService {
         progress?: ProgressMap;
         settings?: PortalSettings;
         mockHistory?: MockAttempt[];
+        cards?: CardMap;
       };
       if (data.format !== 'dp800-progress') return 'Not a DP-800 progress export file.';
       if ((data.version ?? 1) > EXPORT_VERSION) {
@@ -284,6 +314,7 @@ export class ProgressService {
       if (data.progress) this.progress.set(data.progress);
       if (data.settings) this.settings.set({ ...DEFAULT_SETTINGS, ...data.settings });
       if (data.mockHistory) this.mockHistory.set(data.mockHistory);
+      if (data.cards) this.cards.set(data.cards);
       return null;
     } catch {
       return 'The file is not valid JSON.';

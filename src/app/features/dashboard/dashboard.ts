@@ -62,8 +62,12 @@ import { TrendChart, TrendPoint } from '../../shared/trend-chart';
         @if (dueWeek() > 0) {
           <p class="dim">{{ locale.t('dash.dueWeek').replace('{n}', '' + dueWeek()) }}</p>
         }
+        @if (cardsDue() > 0) {
+          <p class="dim">{{ locale.t('dash.cardsDue').replace('{n}', '' + cardsDue()) }}</p>
+        }
         <div class="actions">
           <a routerLink="/review" class="btn" [class.btn-primary]="dueCount() > 0">{{ locale.t('dash.startReview') }}</a>
+          <a routerLink="/flashcards" class="btn">{{ locale.t('nav.flashcards') }}</a>
         </div>
       </section>
 
@@ -165,6 +169,7 @@ export class Dashboard {
   protected readonly importMsg = signal<string | null>(null);
 
   protected readonly dueCount = computed(() => this.progress.dueItems().length);
+  protected readonly cardsDue = computed(() => this.progress.cardDueCount());
   protected readonly notebook = computed(() => {
     const c = { all: 0, wrong: 0, guessed: 0, note: 0 };
     for (const e of notebookEntries(this.progress.progress())) {

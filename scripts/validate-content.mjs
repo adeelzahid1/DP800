@@ -10,6 +10,7 @@
  *  - manifest questionCount matches the actual bank size
  *  - no duplicate question ids across the whole portal
  *  - no duplicate question text within a bank (exact-match filler check)
+ *  - flashcards.json has exactly one non-empty prompt per lesson exam tip
  *
  * Usage: node scripts/validate-content.mjs [--fix-counts]
  *   --fix-counts  rewrite manifest questionCount values from the banks
@@ -51,6 +52,11 @@ if (!manifest) {
 const allIds = new Map(); // question id -> subtopic
 const counts = [];
 let manifestChanged = false;
+const flashcards = loadJson('flashcards.json');
+if (!flashcards || typeof flashcards.prompts !== 'object') err('flashcards.json missing or has no "prompts" object');
+const flashPrompts = flashcards?.prompts ?? {};
+const seenSubtopics = new Set();
+let cardCount = 0;
 
 function checkLocalized(obj, field, where) {
   if (!obj || typeof obj !== 'object' || typeof obj.en !== 'string' || obj.en.trim() === '') {
@@ -164,6 +170,7 @@ function checkQuestion(q, sub, bank, textSeen) {
 for (const domain of manifest.domains) {
   for (const topic of domain.topics) {
     for (const sub of topic.subtopics) {
+      seenSubtopics.add(sub.id);
       // Lesson
       const lesson = loadJson(sub.lessonFile);
       if (!lesson) {
@@ -173,6 +180,17 @@ for (const domain of manifest.domains) {
         if (!Array.isArray(lesson.sections) || lesson.sections.length === 0)
           err(`${sub.id}: lesson has no sections`);
         if (!Array.isArray(lesson.examTips)) err(`${sub.id}: lesson has no examTips array`);
+        else {
+          const prompts = flashPrompts[sub.id];
+          if (!Array.isArray(prompts)) {
+            if (lesson.examTips.length > 0) err(`${sub.id}: flashcards.json has no prompts for this subtopic`);
+          } else {
+            if (prompts.length !== lesson.examTips.length)
+              err(`${sub.id}: ${prompts.length} flashcard prompts for ${lesson.examTips.length} exam tips`);
+            prompts.forEach((pr, i) => checkLocalized(pr, `prompt ${i}`, `${sub.id} flashcards`));
+            cardCount += Math.min(prompts.length, lesson.examTips.length);
+          }
+        }
         if (!Array.isArray(lesson.sources) || lesson.sources.length === 0)
           err(`${sub.id}: lesson has no sources`);
       }
@@ -220,6 +238,9 @@ for (const domain of manifest.domains) {
   }
 }
 
+for (const id of Object.keys(flashPrompts))
+  if (!seenSubtopics.has(id)) err(`flashcards.json: unknown subtopic "${id}"`);
+
 if (FIX_COUNTS && manifestChanged) {
   writeFileSync(join(CONTENT, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
   console.log('manifest.json questionCount values updated.');
@@ -232,6 +253,7 @@ for (const c of counts) {
 }
 const totalQ = counts.reduce((s, c) => s + c.n, 0);
 console.log(`${'TOTAL'.padEnd(28)} ${String(totalQ).padStart(4)}`);
+console.log(`${'FLASHCARDS'.padEnd(28)} ${String(cardCount).padStart(4)}`);
 
 if (warnings.length) {
   console.log(`\n--- ${warnings.length} warning(s) ---`);

@@ -1,0 +1,829 @@
+{
+ "version": 1,
+ "description": "Recall prompts (card fronts) for each lesson's examTips, in the same order. The tip itself is the card back.",
+ "prompts": {
+  "f-tsql-refresher": [
+   {
+    "en": "What is the logical query processing order of a SELECT statement?"
+   },
+   {
+    "en": "What happens with NOT IN when the subquery returns a NULL, and what should you use instead?"
+   },
+   {
+    "en": "What happens to a LEFT JOIN when you filter the right-hand table in WHERE, and how do you fix it?"
+   },
+   {
+    "en": "How do COUNT(col) and COUNT(*) differ when there are NULLs?"
+   },
+   {
+    "en": "TRUNCATE TABLE vs DELETE: WHERE support, logging, IDENTITY and required permission?"
+   }
+  ],
+  "f-json-basics": [
+   {
+    "en": "JSON_VALUE vs JSON_QUERY vs OPENJSON: what does each return, and what happens if you pick the wrong one?"
+   },
+   {
+    "en": "Which storage should JSON use on SQL Server 2025 / Azure SQL / Fabric, and what remains for older compatibility?"
+   },
+   {
+    "en": "What does OPENJSON return without a WITH clause, and with one?"
+   },
+   {
+    "en": "Strict vs lax JSON path mode: what happens when a property is missing?"
+   }
+  ],
+  "f-vectors-basics": [
+   {
+    "en": "Cosine vs Euclidean vs dot product: what does each capture, and does a smaller distance mean more or less similar?"
+   },
+   {
+    "en": "Exact (ENN/kNN) vs approximate (ANN/DiskANN) search: what's the trade-off?"
+   },
+   {
+    "en": "Why are documents chunked, and why do chunks overlap?"
+   },
+   {
+    "en": "What are the three steps of RAG, and does the LLM query the database itself in basic RAG?"
+   }
+  ],
+  "d1-tables-indexes": [
+   {
+    "en": "Which index type does a PRIMARY KEY create by default, and which does UNIQUE?"
+   },
+   {
+    "en": "Where do INCLUDE columns live, and what can and can't they be used for?"
+   },
+   {
+    "en": "Which scenario keywords point to columnstore, and which to rowstore?"
+   },
+   {
+    "en": "Which data type should store money, and why not the alternative?"
+   },
+   {
+    "en": "Why avoid GUID clustered keys, and what's preferred?"
+   },
+   {
+    "en": "Can a vector column be a B-tree or columnstore index key?"
+   }
+  ],
+  "d1-specialized-tables": [
+   {
+    "en": "What does DURABILITY = SCHEMA_ONLY do to data on restart?"
+   },
+   {
+    "en": "Hash index vs memory-optimized nonclustered index: which suits equality seeks and which suits ranges?"
+   },
+   {
+    "en": "Temporal queries: what do AS OF and ALL return, and can you modify the history table while versioning is ON?"
+   },
+   {
+    "en": "Append-only vs updatable ledger tables: how do they treat UPDATE and DELETE?"
+   },
+   {
+    "en": "Do external tables import data? What does CETAS do?"
+   },
+   {
+    "en": "Graph tables: how do you declare node and edge tables, and which columns populate an edge?"
+   }
+  ],
+  "d1-json-columns": [
+   {
+    "en": "Where is the native json type available, and how does it treat invalid JSON?"
+   },
+   {
+    "en": "What is the status of CREATE JSON INDEX in SQL Server 2025, and how can it target specific paths?"
+   },
+   {
+    "en": "What's the classic, version-independent way to index a value inside JSON?"
+   },
+   {
+    "en": "Which data belongs in regular columns and which in JSON?"
+   },
+   {
+    "en": "How can ISJSON check the JSON kind, and why can't you add a well-formedness CHECK to a native json column?"
+   }
+  ],
+  "d1-constraints-sequences": [
+   {
+    "en": "How many NULLs does a UNIQUE constraint allow, and how do you allow many?"
+   },
+   {
+    "en": "Does a CHECK constraint reject NULL? How do you force a value?"
+   },
+   {
+    "en": "Are FK columns indexed automatically? What must an FK reference? What does NOCHECK cause?"
+   },
+   {
+    "en": "Where can NEXT VALUE FOR be used, and can a sequence be shared or cycle?"
+   },
+   {
+    "en": "Do IDENTITY or SEQUENCE guarantee gapless numbers?"
+   },
+   {
+    "en": "\"Delete children automatically\" vs \"prevent deleting parents with children\": which ON DELETE action is each?"
+   }
+  ],
+  "d1-partitioning": [
+   {
+    "en": "How many partitions do N boundary values create, and where does a boundary value go with RANGE RIGHT?"
+   },
+   {
+    "en": "What must a unique index on a partitioned table include?"
+   },
+   {
+    "en": "What does a partition SWITCH require?"
+   },
+   {
+    "en": "In a sliding window, when do you SPLIT and when do you MERGE?"
+   },
+   {
+    "en": "What does partition elimination require?"
+   },
+   {
+    "en": "What's the modern way to empty whole partitions instantly?"
+   }
+  ],
+  "d1-views-functions": [
+   {
+    "en": "Inline TVF vs multi-statement TVF: which is optimizer-friendly?"
+   },
+   {
+    "en": "What does an indexed view require, and what extra if it aggregates?"
+   },
+   {
+    "en": "What does WITH CHECK OPTION do on a view?"
+   },
+   {
+    "en": "Can views take parameters or guarantee order? Where does ORDER BY belong?"
+   },
+   {
+    "en": "What fixes many slow scalar UDFs automatically from SQL Server 2019, and how do you check it applies?"
+   },
+   {
+    "en": "What does SCHEMABINDING prevent, and what else does it bind?"
+   }
+  ],
+  "d1-procs-triggers": [
+   {
+    "en": "How often does an AFTER trigger fire, and how should it be written?"
+   },
+   {
+    "en": "In an UPDATE trigger, what do the deleted and inserted tables hold?"
+   },
+   {
+    "en": "Which trigger type enables updates through multi-table views?"
+   },
+   {
+    "en": "Where must the OUTPUT keyword appear for an OUTPUT parameter?"
+   },
+   {
+    "en": "What causes parameter sniffing problems, and what are the fixes?"
+   },
+   {
+    "en": "How should callers get access to data through procedures, and what makes that work?"
+   },
+   {
+    "en": "For trigger-based auditing or history questions, which cleaner answers should you look for?"
+   }
+  ],
+  "d1-cte-window": [
+   {
+    "en": "With ties, what do RANK, DENSE_RANK and ROW_NUMBER return?"
+   },
+   {
+    "en": "Can window functions appear in WHERE? How do you filter on them?"
+   },
+   {
+    "en": "What's the structure of a recursive CTE, and the MAXRECURSION default?"
+   },
+   {
+    "en": "Which frame should a running total use, and why?"
+   },
+   {
+    "en": "Are CTEs materialized?"
+   },
+   {
+    "en": "NOT EXISTS or NOT IN when NULLs are possible?"
+   },
+   {
+    "en": "Which arguments do LAG/LEAD take, and what does the third one do?"
+   }
+  ],
+  "d1-json-functions": [
+   {
+    "en": "OPENJSON with and without WITH: what's returned, and when do you need AS JSON?"
+   },
+   {
+    "en": "Default NULL handling of JSON_OBJECT vs JSON_ARRAY?"
+   },
+   {
+    "en": "Which SQL Server 2025 aggregates build JSON from groups?"
+   },
+   {
+    "en": "JSON_PATH_EXISTS vs JSON_CONTAINS: what does each check?"
+   },
+   {
+    "en": "FOR JSON PATH vs AUTO, and how do you output a single object?"
+   },
+   {
+    "en": "Which compatibility level does OPENJSON need?"
+   },
+   {
+    "en": "What type does JSON_VALUE return by default, and how do you get numbers or dates?"
+   }
+  ],
+  "d1-regex-fuzzy": [
+   {
+    "en": "Which REGEXP function needs compatibility level 170, and in which version did REGEXP functions arrive?"
+   },
+   {
+    "en": "Which regex flags exist, which is the default, and what happens with conflicting flags?"
+   },
+   {
+    "en": "When can a regex predicate be SARGable?"
+   },
+   {
+    "en": "How do EDIT_DISTANCE, JARO_WINKLER_DISTANCE and the SIMILARITY variants scale?"
+   },
+   {
+    "en": "Jaro-Winkler vs edit distance: which suits names and which suits typos or codes?"
+   },
+   {
+    "en": "Where do you use REGEXP_SPLIT_TO_TABLE and REGEXP_MATCHES?"
+   },
+   {
+    "en": "Does regex honor collation? Does LIKE?"
+   }
+  ],
+  "d1-graph-error": [
+   {
+    "en": "Where does MATCH go, how are tables listed in FROM, and which way does the arrow point?"
+   },
+   {
+    "en": "How can multiple MATCH patterns be combined?"
+   },
+   {
+    "en": "What does SHORTEST_PATH need, and what do + and {1,n} mean?"
+   },
+   {
+    "en": "How long do ERROR_* functions and @@ERROR keep their values?"
+   },
+   {
+    "en": "What are the rules for parameterless and custom THROW?"
+   },
+   {
+    "en": "What can TRY…CATCH not catch?"
+   },
+   {
+    "en": "What do XACT_STATE() values 1, -1 and 0 mean?"
+   }
+  ],
+  "d1-copilot": [
+   {
+    "en": "What does Copilot in Fabric require, and where does its consumption bill?"
+   },
+   {
+    "en": "What do you need for GitHub Copilot database work in VS Code, and what is @mssql?"
+   },
+   {
+    "en": "Repo-wide vs scoped Copilot instruction files: which file is which?"
+   },
+   {
+    "en": "What are the security impact pillars of AI assistants for database work?"
+   },
+   {
+    "en": "Which Copilot plan features answer \"protect proprietary code\"?"
+   },
+   {
+    "en": "How should you treat an option to auto-apply AI-generated SQL to production without review?"
+   }
+  ],
+  "d1-mcp-config": [
+   {
+    "en": "What is MCP, and which roles take part?"
+   },
+   {
+    "en": "Where does VS Code MCP configuration live, and which mode exposes the tools?"
+   },
+   {
+    "en": "What do the model picker and the tools picker control?"
+   },
+   {
+    "en": "What bounds an MCP agent's power over the database, and what's the default right answer?"
+   },
+   {
+    "en": "How should MCP tool results be treated, and why?"
+   },
+   {
+    "en": "Which MCP transport is local and which is remote?"
+   }
+  ],
+  "d2-encryption": [
+   {
+    "en": "Always Encrypted: where does encryption happen, and where do the CMK and CEK live?"
+   },
+   {
+    "en": "Deterministic vs randomized encryption: what's possible server-side and what leaks?"
+   },
+   {
+    "en": "Which collation do deterministically encrypted string columns require?"
+   },
+   {
+    "en": "What do secure enclaves unlock?"
+   },
+   {
+    "en": "What is the ENCRYPTBYKEY key hierarchy, and what's its weakness?"
+   },
+   {
+    "en": "Does TDE provide access control? Which feature protects data from admins?"
+   },
+   {
+    "en": "Can the vector type be used with Always Encrypted?"
+   },
+   {
+    "en": "What does CMK rotation re-encrypt?"
+   }
+  ],
+  "d2-masking-rls": [
+   {
+    "en": "Which dynamic data masking functions exist, and which permission reveals data?"
+   },
+   {
+    "en": "Does DDM change stored data, and does it protect against attackers or DBAs?"
+   },
+   {
+    "en": "What makes up RLS, and what do FILTER and BLOCK predicates do?"
+   },
+   {
+    "en": "What's the gap in filter-only RLS for multi-tenant inserts?"
+   },
+   {
+    "en": "How do shared-login apps pass the user to RLS?"
+   },
+   {
+    "en": "What should you focus on for RLS performance?"
+   }
+  ],
+  "d2-permissions-auditing": [
+   {
+    "en": "DENY vs GRANT vs REVOKE: which wins, and what does REVOKE do?"
+   },
+   {
+    "en": "At what scope should you grant, and how do you restrict columns?"
+   },
+   {
+    "en": "How does ownership chaining work, and what breaks it?"
+   },
+   {
+    "en": "How do you set up passwordless access with a managed identity?"
+   },
+   {
+    "en": "What does Entra-only authentication do?"
+   },
+   {
+    "en": "What are the parts of SQL Server Audit, and which targets does Azure SQL auditing support?"
+   },
+   {
+    "en": "Auditing vs RLS/permissions vs ledger: what does each do?"
+   }
+  ],
+  "d2-endpoint-security": [
+   {
+    "en": "How do you authenticate outbound calls, and what's the preferred identity?"
+   },
+   {
+    "en": "What does a managed identity need to call Azure OpenAI?"
+   },
+   {
+    "en": "What does SQL Server 2025 need for managed identity and REST calls?"
+   },
+   {
+    "en": "Which permissions are needed for REST endpoints, credentials and AI functions?"
+   },
+   {
+    "en": "Which limit applies to Azure SQL outbound calls, and how do you reach other services?"
+   },
+   {
+    "en": "What are the key Data API builder security settings?"
+   },
+   {
+    "en": "What is Data API builder's Simulator auth provider for?"
+   },
+   {
+    "en": "How do you enforce row security when the API uses one shared identity?"
+   }
+  ],
+  "d2-config-concurrency": [
+   {
+    "en": "RCSI vs SNAPSHOT: scope, defaults and conflicts?"
+   },
+   {
+    "en": "REPEATABLE READ vs SERIALIZABLE: which prevents phantoms?"
+   },
+   {
+    "en": "What do NOLOCK / READ UNCOMMITTED risk?"
+   },
+   {
+    "en": "What is optimized locking, and what does it require?"
+   },
+   {
+    "en": "How do you prevent lost updates?"
+   },
+   {
+    "en": "What does the compatibility level gate?"
+   },
+   {
+    "en": "Business Critical vs Hyperscale vs serverless: when do you pick each?"
+   }
+  ],
+  "d2-query-analysis": [
+   {
+    "en": "Actual or estimated plan for diagnosis, and what should you look for?"
+   },
+   {
+    "en": "dm_exec_query_stats vs Query Store: which keeps history?"
+   },
+   {
+    "en": "How do you fix a plan regression?"
+   },
+   {
+    "en": "You can't change vendor code: how do you influence its queries?"
+   },
+   {
+    "en": "When does Query Store go READ_ONLY, and how do you check?"
+   },
+   {
+    "en": "What is Query Performance Insight?"
+   },
+   {
+    "en": "What does sys.dm_db_resource_stats show, and at what granularity?"
+   }
+  ],
+  "d2-performance-issues": [
+   {
+    "en": "What error does a deadlock victim get, and where do you find deadlock graphs?"
+   },
+   {
+    "en": "What prevents most deadlocks?"
+   },
+   {
+    "en": "How do you spot the head blocker, and what does a sleeping session with an open transaction mean?"
+   },
+   {
+    "en": "Which blocking does RCSI remove, and which does it not?"
+   },
+   {
+    "en": "What are common SARGable rewrites?"
+   },
+   {
+    "en": "How should you treat unused indexes and missing-index DMV suggestions?"
+   },
+   {
+    "en": "When should you scale, and when should you tune?"
+   }
+  ],
+  "d2-sql-projects": [
+   {
+    "en": "What characterizes SDK-style SQL projects?"
+   },
+   {
+    "en": "What does building a SQL project validate, and what does it output?"
+   },
+   {
+    "en": "What's a classic build-failure cause when using new syntax?"
+   },
+   {
+    "en": "How many pre/post-deployment scripts per project, and how do you include more?"
+   },
+   {
+    "en": "How do you deploy reference or static data?"
+   },
+   {
+    "en": "Which SqlPackage actions exist, and what's the default for BlockOnPossibleDataLoss?"
+   },
+   {
+    "en": "How do you handle cross-database references across environments?"
+   }
+  ],
+  "d2-source-control": [
+   {
+    "en": "What do you commit for a SQL project, and what do you ignore?"
+   },
+   {
+    "en": "What's the expected branching workflow?"
+   },
+   {
+    "en": "Why rebuild after resolving merge conflicts?"
+   },
+   {
+    "en": "How do OIDC federated credentials help, and which workflow permission do they need?"
+   },
+   {
+    "en": "Which jobs can see environment secrets?"
+   },
+   {
+    "en": "What must you do after a secret is pushed to Git?"
+   },
+   {
+    "en": "How does Fabric SQL database integrate with Git?"
+   }
+  ],
+  "d2-testing-deployment": [
+   {
+    "en": "Unit vs integration tests for databases: what does each cover?"
+   },
+   {
+    "en": "How do you detect schema drift, and which option stops deployments?"
+   },
+   {
+    "en": "What's the build/deploy principle for dacpacs?"
+   },
+   {
+    "en": "Which tools deploy dacpacs from GitHub Actions?"
+   },
+   {
+    "en": "How do you force DBA approval for database paths?"
+   },
+   {
+    "en": "Which GitHub environment features gate production?"
+   },
+   {
+    "en": "What blocks merging until CI passes?"
+   }
+  ],
+  "d2-dab-config": [
+   {
+    "en": "What are Data API builder's config sections, and how do you reference connection strings?"
+   },
+   {
+    "en": "What's the Data API builder CLI workflow?"
+   },
+   {
+    "en": "What are Data API builder's defaults for paths, paging, cache and host mode?"
+   },
+   {
+    "en": "What do views and stored procedures need in Data API builder?"
+   },
+   {
+    "en": "What replaces mappings and key-fields in DAB 2.0?"
+   },
+   {
+    "en": "How is Data API builder caching enabled, and which levels exist?"
+   },
+   {
+    "en": "What does development mode enable?"
+   },
+   {
+    "en": "Which GraphQL settings hide the schema and limit nesting?"
+   }
+  ],
+  "d2-dab-endpoints": [
+   {
+    "en": "What's the REST path to GET by key, and what if the key isn't found?"
+   },
+   {
+    "en": "PUT vs PATCH, and when can they upsert?"
+   },
+   {
+    "en": "What GraphQL queries and mutations does Data API builder generate?"
+   },
+   {
+    "en": "How are stored procedures called through REST, and what's not supported?"
+   },
+   {
+    "en": "Where are relationships available, and how is many-to-many configured?"
+   },
+   {
+    "en": "Data API builder container: image, config path and port?"
+   },
+   {
+    "en": "What happened to Static Web Apps database connections?"
+   },
+   {
+    "en": "Which health and Swagger endpoints exist, and when are they available?"
+   }
+  ],
+  "d2-monitoring-change": [
+   {
+    "en": "Resource logs vs metrics, and which destination is for what?"
+   },
+   {
+    "en": "What does Application Insights cover, and how does Data API builder send telemetry?"
+   },
+   {
+    "en": "What are Change Tracking's properties and functions?"
+   },
+   {
+    "en": "What are CDC's properties, operation codes and Azure SQL Database specifics?"
+   },
+   {
+    "en": "What does Change Event Streaming (CES) do, and what are its limits?"
+   },
+   {
+    "en": "How does the Azure Functions SQL trigger work, and what are its defaults?"
+   },
+   {
+    "en": "What do the Logic Apps SQL triggers need for created and modified items?"
+   }
+  ],
+  "d3-external-models": [
+   {
+    "en": "Which criteria should you use to evaluate models?"
+   },
+   {
+    "en": "How many dimensions do ada-002, 3-small and 3-large produce, and what's the float32 vector limit?"
+   },
+   {
+    "en": "What are the main arguments of CREATE EXTERNAL MODEL?"
+   },
+   {
+    "en": "How should the credential be named, and which authentication is preferred?"
+   },
+   {
+    "en": "Which permissions let users call or manage external models?"
+   },
+   {
+    "en": "How do you set retries for an external model, and which PARAMETERS win?"
+   },
+   {
+    "en": "Can query vectors and stored vectors come from different models?"
+   }
+  ],
+  "d3-embedding-design": [
+   {
+    "en": "What should you embed, and what should stay as filter columns?"
+   },
+   {
+    "en": "How do you embed content from several fields?"
+   },
+   {
+    "en": "What are the parameters of AI_GENERATE_CHUNKS?"
+   },
+   {
+    "en": "Which output columns does AI_GENERATE_CHUNKS return?"
+   },
+   {
+    "en": "What goes wrong with chunks that are too large or too small?"
+   },
+   {
+    "en": "How should you store chunks?"
+   },
+   {
+    "en": "Which data-hygiene steps apply before embedding?"
+   }
+  ],
+  "d3-embedding-maintenance": [
+   {
+    "en": "When must embeddings be regenerated?"
+   },
+   {
+    "en": "How should you backfill embeddings?"
+   },
+   {
+    "en": "Triggers for embeddings: pros, cons, and what to avoid?"
+   },
+   {
+    "en": "Change Tracking vs CDC for embedding maintenance?"
+   },
+   {
+    "en": "Azure Functions SQL trigger for embeddings: how does it work, and which loop must you avoid?"
+   },
+   {
+    "en": "Logic Apps vs CES for embedding pipelines?"
+   },
+   {
+    "en": "What is Microsoft Foundry's role in embedding maintenance?"
+   },
+   {
+    "en": "What should you do with the vector index after re-embedding most rows?"
+   }
+  ],
+  "d3-search-strategy": [
+   {
+    "en": "When do you use full-text, vector or hybrid search?"
+   },
+   {
+    "en": "What are the rules for a full-text index?"
+   },
+   {
+    "en": "CONTAINS vs FREETEXT, and what do the TABLE variants return?"
+   },
+   {
+    "en": "Full-text syntax: prefix wildcard, inflectional forms and proximity?"
+   },
+   {
+    "en": "What are the limits of LIKE '%x%'?"
+   },
+   {
+    "en": "What's the trade-off of hybrid search?"
+   }
+  ],
+  "d3-vector-data": [
+   {
+    "en": "Vector float32 vs float16: maximum dimensions and bytes per dimension?"
+   },
+   {
+    "en": "Which constraints and features are allowed or not on vector columns?"
+   },
+   {
+    "en": "VECTOR_DISTANCE vs VECTOR_SEARCH, and what's special about the dot metric?"
+   },
+   {
+    "en": "What do VECTOR_NORM, VECTOR_NORMALIZE and VECTORPROPERTY do?"
+   },
+   {
+    "en": "CREATE VECTOR INDEX: syntax and requirements?"
+   },
+   {
+    "en": "Latest vs earlier vector index versions: what's different?"
+   }
+  ],
+  "d3-ann-enn": [
+   {
+    "en": "When do you use ENN and when ANN?"
+   },
+   {
+    "en": "How is recall@k calculated?"
+   },
+   {
+    "en": "Which vector index type and metrics exist, and how must the metrics match?"
+   },
+   {
+    "en": "What's the latest ANN query syntax, and what happened to TOP_N?"
+   },
+   {
+    "en": "Iterative filtering vs post-filtering?"
+   },
+   {
+    "en": "How do you combine vector search with GROUP BY, window functions or CROSS APPLY?"
+   },
+   {
+    "en": "What does FORCE_ANN_ONLY require?"
+   }
+  ],
+  "d3-hybrid-rrf": [
+   {
+    "en": "What is the RRF formula, and the usual k?"
+   },
+   {
+    "en": "Which items get the highest RRF scores?"
+   },
+   {
+    "en": "What do a smaller vs larger k and weights do in RRF?"
+   },
+   {
+    "en": "How do you build the keyword and vector branches for RRF?"
+   },
+   {
+    "en": "How do you join the branches, and where should filters go?"
+   },
+   {
+    "en": "How do you evaluate a search system?"
+   }
+  ],
+  "d3-rag-usecases": [
+   {
+    "en": "What are RAG's steps, and what does it ground answers in?"
+   },
+   {
+    "en": "RAG vs fine-tuning: when do you pick each?"
+   },
+   {
+    "en": "When should you not use RAG?"
+   },
+   {
+    "en": "How can SQL orchestrate RAG end to end?"
+   },
+   {
+    "en": "Where does the LLM run, and what must SQL Server 2025 / Managed Instance enable?"
+   },
+   {
+    "en": "What are the safety rules for RAG retrieval?"
+   }
+  ],
+  "d3-rag-implementation": [
+   {
+    "en": "Which FOR JSON options shape RAG context?"
+   },
+   {
+    "en": "How do you build the chat payload, and which settings control the answer?"
+   },
+   {
+    "en": "sp_invoke_external_rest_endpoint: defaults and return value?"
+   },
+   {
+    "en": "Which permissions and role does calling Azure OpenAI from SQL need?"
+   },
+   {
+    "en": "Which JSON paths give the answer, the HTTP status and the token usage?"
+   },
+   {
+    "en": "What's JSON_VALUE's length limit, and what should you use for long answers?"
+   },
+   {
+    "en": "What does finish_reason = 'length' mean?"
+   }
+  ]
+ }
+}

@@ -39,7 +39,10 @@
 
           @if (l.examTips.length > 0) {
             <section class="tips">
-              <h2>{{ locale.t('study.examTips') }}</h2>
+              <div class="tips-head">
+                <h2>{{ locale.t('study.examTips') }}</h2>
+                <a class="btn btn-sm" [routerLink]="['/flashcards', l.subtopic]">{{ locale.t('cards.practiceTips') }}</a>
+              </div>
               <ul>
                 @for (tip of l.examTips; track $index) {
                   <li><app-rich-text [text]="tip" /></li>

@@ -19,6 +19,12 @@ Developer Associate).
   guesses (correct but marked *Guessing*) and questions you wrote a note on,
   grouped by subtopic, with filters and a "Practice these" session. Notes are
   added from the ✎ button on any question (or `T`) and survive a progress reset.
+- **Flashcards:** every lesson exam tip is a card (249 in total). The front is
+  a recall question from `public/content/flashcards.json` (one prompt per tip,
+  in the same order — the validator enforces this), the back is the tip.
+  Space/Enter flips, `1` = knew it, `2` = didn't know; on touch screens tap to
+  flip and swipe right/left. Cards use the same Leitner boxes as questions but
+  are stored separately (`dp800.cards.v1`) and included in the progress export.
 
 ## Run it
 
