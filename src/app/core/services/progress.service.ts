@@ -6,6 +6,10 @@ import {
   ProgressMap,
   QuestionProgress,
 } from '../models/progress.models';
+import { dayNumber, effectiveDueDay, scheduleNext } from '../utils/srs';
+
+/** Export format version; files from version 1 (before spaced repetition) still import. */
+const EXPORT_VERSION = 2;
 
 const KEY_PROGRESS = 'dp800.progress.v1';
 const KEY_SETTINGS = 'dp800.settings.v1';
@@ -36,6 +40,13 @@ function writeJson(key: string, value: unknown): void {
   } catch {
     // storage unavailable (private mode / quota) — keep working in memory
   }
+}
+
+/** A question that is due for spaced-repetition review. */
+export interface DueItem {
+  id: string;
+  subtopic: string;
+  dueDay: number;
 }
 
 /** Aggregate stats for a set of questions (a subtopic, topic or domain). */
@@ -89,14 +100,58 @@ export class ProgressService {
     this.patch(id, subtopic, { bookmarked: !cur });
   }
 
-  recordAttempt(id: string, subtopic: string, correct: boolean): void {
+  recordAttempt(
+    id: string,
+    subtopic: string,
+    correct: boolean,
+    guessed = false,
+    now: number = Date.now(),
+  ): void {
     const cur = this.progress()[id];
     this.patch(id, subtopic, {
       attempts: (cur?.attempts ?? 0) + 1,
       correct: (cur?.correct ?? 0) + (correct ? 1 : 0),
       lastCorrect: correct,
+      ...scheduleNext(cur, correct, guessed, now),
     });
   }
+
+  // ----- spaced repetition -------------------------------------------------
+
+  /** Questions due for review on `today` (a local day number), oldest first. */
+  dueItems(today: number = dayNumber(Date.now())): DueItem[] {
+    const items: DueItem[] = [];
+    const map = this.progress();
+    for (const id of Object.keys(map)) {
+      const p = map[id];
+      if (!p.s) continue;
+      const due = effectiveDueDay(p, today);
+      if (due !== undefined && due <= today) items.push({ id, subtopic: p.s, dueDay: due });
+    }
+    return items.sort((a, b) => a.dueDay - b.dueDay || a.id.localeCompare(b.id));
+  }
+
+  /** How many scheduled questions fall due on each of the next `days` days (index 0 = tomorrow). */
+  upcoming(days: number, today: number = dayNumber(Date.now())): number[] {
+    const counts = new Array<number>(days).fill(0);
+    const map = this.progress();
+    for (const id of Object.keys(map)) {
+      const due = effectiveDueDay(map[id], today);
+      if (due === undefined) continue;
+      const offset = due - today - 1;
+      if (offset >= 0 && offset < days) counts[offset]++;
+    }
+    return counts;
+  }
+
+  /** Count of questions in each box 1–5 (index 0 = box 1). */
+  readonly boxCounts = computed(() => {
+    const counts = [0, 0, 0, 0, 0];
+    for (const p of Object.values(this.progress())) {
+      if (p.box && p.box >= 1 && p.box <= 5) counts[p.box - 1]++;
+    }
+    return counts;
+  });
 
   resetQuestion(id: string): void {
     this.progress.update((map) => {
@@ -182,7 +237,7 @@ export class ProgressService {
     return JSON.stringify(
       {
         format: 'dp800-progress',
-        version: 1,
+        version: EXPORT_VERSION,
         exportedAt: new Date().toISOString(),
         progress: this.progress(),
         settings: this.settings(),
@@ -198,11 +253,15 @@ export class ProgressService {
     try {
       const data = JSON.parse(json) as {
         format?: string;
+        version?: number;
         progress?: ProgressMap;
         settings?: PortalSettings;
         mockHistory?: MockAttempt[];
       };
       if (data.format !== 'dp800-progress') return 'Not a DP-800 progress export file.';
+      if ((data.version ?? 1) > EXPORT_VERSION) {
+        return 'This file was exported by a newer version of the portal. Update the portal and try again.';
+      }
       if (data.progress) this.progress.set(data.progress);
       if (data.settings) this.settings.set({ ...DEFAULT_SETTINGS, ...data.settings });
       if (data.mockHistory) this.mockHistory.set(data.mockHistory);

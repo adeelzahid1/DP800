@@ -325,6 +325,14 @@ export class StudyPage {
       case 'X':
         card?.toggleExample();
         break;
+      case 's':
+      case 'S':
+        card?.setConfidence('sure');
+        break;
+      case 'g':
+      case 'G':
+        card?.setConfidence('guess');
+        break;
       case 'm':
       case 'M':
         if (card) this.progress.toggleBookmark(

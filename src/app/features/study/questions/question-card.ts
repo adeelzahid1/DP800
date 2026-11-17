@@ -15,6 +15,7 @@ import { QuestionProgress } from '../../../core/models/progress.models';
 import { LocaleService } from '../../../core/services/locale.service';
 import { ProgressService } from '../../../core/services/progress.service';
 import { Response, isAnswered, isCorrect } from '../../../core/utils/grade';
+import { dayNumber } from '../../../core/utils/srs';
 import { CodeBlock } from '../../../shared/code-block';
 import { RichText } from '../../../shared/rich-text';
 import { QuestionInput } from './question-input';
@@ -87,6 +88,24 @@ import { QuestionInput } from './question-input';
 
     <div class="q-actions">
       @if (!submitted()) {
+        <div class="confidence" role="group" [attr.aria-label]="locale.t('q.confidence')">
+          <button
+            type="button"
+            class="seg"
+            [class.on]="!guessed()"
+            [attr.aria-pressed]="!guessed()"
+            (click)="setConfidence('sure')"
+            [title]="locale.t('q.sureHint')"
+          >{{ locale.t('q.sure') }}</button>
+          <button
+            type="button"
+            class="seg"
+            [class.on]="guessed()"
+            [attr.aria-pressed]="guessed()"
+            (click)="setConfidence('guess')"
+            [title]="locale.t('q.guessHint')"
+          >{{ locale.t('q.guess') }}</button>
+        </div>
         <button
           type="button"
           class="btn btn-primary"
@@ -97,6 +116,9 @@ import { QuestionInput } from './question-input';
         <span class="verdict" [class.ok]="lastResult()" [class.err]="!lastResult()" role="status">
           {{ lastResult() ? locale.t('q.correctFb') : locale.t('q.incorrectFb') }}
         </span>
+        @if (nextReviewLabel(); as label) {
+          <span class="next-review">{{ label }}</span>
+        }
         <button type="button" class="btn" (click)="retry()">{{ locale.t('q.tryAgain') }}</button>
       }
       <span class="spacer"></span>
@@ -160,6 +182,16 @@ import { QuestionInput } from './question-input';
     .q-text { margin-bottom: 12px; }
     .q-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
     .verdict { font-weight: 700; }
+    .next-review { font-size: 0.85rem; color: var(--text-dim); }
+    .confidence {
+      display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+    }
+    .seg {
+      border: 0; background: transparent; color: var(--text-dim); cursor: pointer;
+      padding: 0 12px; min-height: 36px; font: inherit; font-size: 0.88rem;
+    }
+    .seg + .seg { border-left: 1px solid var(--border); }
+    .seg.on { background: var(--primary-soft); color: var(--text); font-weight: 600; }
     .verdict.ok { color: var(--ok); }
     .verdict.err { color: var(--err); }
     .explain, .example {
@@ -182,13 +214,16 @@ export class QuestionCard {
   readonly globalShowExample = input(true);
   readonly current = input(false);
 
-  readonly answeredChange = output<void>();
+  /** Emits whether the submitted answer was correct. */
+  readonly answeredChange = output<boolean>();
 
   private readonly qinput = viewChild<QuestionInput>('qinput');
 
   protected readonly response = signal<Response>({});
   protected readonly submitted = signal(false);
   protected readonly lastResult = signal(false);
+  /** Learner marked the current attempt as a guess (spaced repetition won't promote it). */
+  protected readonly guessed = signal(false);
   /** null = follow global toggle. */
   private readonly showAnswerLocal = signal<boolean | null>(null);
   private readonly showExampleLocal = signal<boolean | null>(null);
@@ -207,6 +242,16 @@ export class QuestionCard {
   protected readonly revealed = computed(() => this.showAnswerEff() || this.submitted());
 
   protected readonly canSubmit = computed(() => isAnswered(this.q(), this.response()));
+
+  /** "Next review: …" after an attempt, from the scheduled due day. */
+  protected readonly nextReviewLabel = computed(() => {
+    const due = this.prog()?.dueDay;
+    if (due === undefined) return null;
+    const days = due - dayNumber(Date.now());
+    if (days <= 0) return this.locale.t('q.nextToday');
+    if (days === 1) return this.locale.t('q.nextTomorrow');
+    return this.locale.t('q.nextInDays').replace('{n}', String(days));
+  });
 
   constructor() {
     afterNextRender(() => {
@@ -237,18 +282,20 @@ export class QuestionCard {
     const ok = isCorrect(this.q(), this.response());
     this.lastResult.set(ok);
     this.submitted.set(true);
-    this.progress.recordAttempt(this.q().id, this.q().subtopic, ok);
-    this.answeredChange.emit();
+    this.progress.recordAttempt(this.q().id, this.q().subtopic, ok, this.guessed());
+    this.answeredChange.emit(ok);
   }
 
   protected retry(): void {
     this.submitted.set(false);
     this.response.set({});
+    this.guessed.set(false);
   }
 
   protected resetQuestion(): void {
     this.submitted.set(false);
     this.response.set({});
+    this.guessed.set(false);
     this.progress.resetQuestion(this.q().id);
   }
 
@@ -267,6 +314,11 @@ export class QuestionCard {
   /** Keyboard shortcuts from the study page. */
   selectOption(i: number): void {
     this.qinput()?.selectByIndex(i);
+  }
+
+  /** Sure / guessing, set before checking the answer. */
+  setConfidence(level: 'sure' | 'guess'): void {
+    if (!this.submitted()) this.guessed.set(level === 'guess');
   }
 
   submitFromKeyboard(): void {

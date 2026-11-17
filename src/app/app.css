@@ -67,6 +67,21 @@
   color: var(--text);
 }
 
+.nav-badge {
+  display: inline-block;
+  min-width: 1.4em;
+  padding: 0 5px;
+  margin-left: 2px;
+  border-radius: 999px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.4em;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
 .main-nav a.active {
   background: var(--primary-soft);
   color: var(--primary);
@@ -113,15 +128,24 @@
   .main-nav {
     order: 3;
     width: 100%;
+    gap: 0;
+    flex-wrap: nowrap;
     justify-content: space-between;
   }
 
   .main-nav a {
-    padding: 6px 8px;
-    font-size: 0.9rem;
+    padding: 6px 6px;
+    font-size: 0.85rem;
+    white-space: nowrap;
   }
 
   .main-outlet {
     padding: 10px;
+  }
+}
+
+@media (max-width: 359px) {
+  .main-nav {
+    flex-wrap: wrap;
   }
 }

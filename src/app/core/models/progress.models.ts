@@ -13,6 +13,14 @@ export interface QuestionProgress {
   /** Result of the most recent attempt. */
   lastCorrect?: boolean;
   bookmarked?: boolean;
+  /** Spaced-repetition box (1–5); see core/utils/srs.ts. */
+  box?: number;
+  /** Local day number when the question is next due for review. */
+  dueDay?: number;
+  /** Timestamp (ms) of the most recent attempt. */
+  lastAt?: number;
+  /** The most recent attempt was marked as a guess. */
+  guessed?: boolean;
 }
 
 export type ProgressMap = Record<string, QuestionProgress>;

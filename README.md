@@ -10,6 +10,11 @@ Developer Associate).
 - **Modes:** Study (lessons + filtered practice with instant feedback) and Mock
   exam (120-minute timed exam mirroring the official structure, scored on the
   100–1000 scale with 700 to pass — an estimate of the official scaled score).
+- **Spaced review:** every practice answer is scheduled with a Leitner system
+  (boxes 1–5, reviewed after 1, 3, 7, 14 and 30 days). Mark an answer *Sure* or
+  *Guessing* before checking it: a wrong answer goes back to box 1, a confident
+  correct answer moves up a box, and a correct guess stays where it is. The
+  **Review** page works through what is due today (`src/app/core/utils/srs.ts`).
 
 ## Run it
 
@@ -101,7 +106,7 @@ No code changes are required.
 ## Keyboard shortcuts (study mode)
 
 `←/→` prev/next question · `1–9`/`A–F` select option · `Enter` check ·
-`H` show/hide answer · `X` show/hide example · `M` bookmark ·
+`S`/`G` mark sure/guessing · `H` show/hide answer · `X` show/hide example · `M` bookmark ·
 `P/N` prev/next subtopic · `?` help · `Esc` close.
 
 ## Verification & sources

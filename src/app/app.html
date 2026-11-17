@@ -11,6 +11,12 @@
       {{ locale.t('nav.dashboard') }}
     </a>
     <a routerLink="/study" routerLinkActive="active">{{ locale.t('nav.study') }}</a>
+    <a routerLink="/review" routerLinkActive="active">
+      {{ locale.t('nav.review') }}
+      @if (dueCount() > 0) {
+        <span class="nav-badge" [attr.aria-label]="locale.t('nav.dueBadge').replace('{n}', '' + dueCount())">{{ dueCount() }}</span>
+      }
+    </a>
     <a routerLink="/mock" routerLinkActive="active">{{ locale.t('nav.mock') }}</a>
     <a routerLink="/search" routerLinkActive="active">{{ locale.t('nav.search') }}</a>
   </nav>

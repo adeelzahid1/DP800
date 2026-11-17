@@ -1,8 +1,9 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { LocaleService } from './core/services/locale.service';
 import { ThemeService } from './core/services/theme.service';
 import { ContentService } from './core/services/content.service';
+import { ProgressService } from './core/services/progress.service';
 
 @Component({
   selector: 'app-root',
@@ -15,6 +16,10 @@ export class App {
   protected readonly locale = inject(LocaleService);
   protected readonly theme = inject(ThemeService);
   protected readonly content = inject(ContentService);
+  private readonly progress = inject(ProgressService);
+
+  /** Questions due for spaced-repetition review today. */
+  protected readonly dueCount = computed(() => this.progress.dueItems().length);
 
   protected onLocaleChange(event: Event): void {
     const value = (event.target as HTMLSelectElement).value;

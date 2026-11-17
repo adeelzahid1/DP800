@@ -15,6 +15,10 @@ export const routes: Routes = [
     loadComponent: () => import('./features/study/study-page').then((m) => m.StudyPage),
   },
   {
+    path: 'review',
+    loadComponent: () => import('./features/review/review-page').then((m) => m.ReviewPage),
+  },
+  {
     path: 'mock',
     loadComponent: () => import('./features/mock/mock-setup').then((m) => m.MockSetup),
   },

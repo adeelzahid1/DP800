@@ -48,6 +48,24 @@ import { TrendChart, TrendPoint } from '../../shared/trend-chart';
         </div>
       </section>
 
+      <section class="card due-card">
+        <h2>{{ locale.t('dash.due') }}</h2>
+        @if (dueCount() > 0) {
+          <p class="due-line">
+            <span class="stat-num">{{ dueCount() }}</span>
+            <span class="dim">{{ locale.t('dash.dueToday') }}</span>
+          </p>
+        } @else {
+          <p class="dim">{{ locale.t('dash.dueNone') }}</p>
+        }
+        @if (dueWeek() > 0) {
+          <p class="dim">{{ locale.t('dash.dueWeek').replace('{n}', '' + dueWeek()) }}</p>
+        }
+        <div class="actions">
+          <a routerLink="/review" class="btn" [class.btn-primary]="dueCount() > 0">{{ locale.t('dash.startReview') }}</a>
+        </div>
+      </section>
+
       <section class="card">
         <h2>{{ locale.t('dash.byDomain') }}</h2>
         <app-bar-chart [data]="domainChart()" [caption]="locale.t('dash.byDomain')" />
@@ -108,6 +126,7 @@ import { TrendChart, TrendPoint } from '../../shared/trend-chart';
     .stat-label { color: var(--text-dim); font-size: 0.85rem; }
     .overall-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
     .overall-bar .pbar { flex: 1; height: 10px; }
+    .due-line { display: flex; align-items: baseline; gap: 10px; margin: 0 0 6px; }
     .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
     .dim { color: var(--text-dim); font-size: 0.9rem; }
     .ok-text { color: var(--ok); }
@@ -125,6 +144,11 @@ export class Dashboard {
   protected readonly cfg = EXAM_CONFIG;
   protected readonly weak = this.mock.weakAreas;
   protected readonly importMsg = signal<string | null>(null);
+
+  protected readonly dueCount = computed(() => this.progress.dueItems().length);
+  protected readonly dueWeek = computed(() =>
+    this.progress.upcoming(7).reduce((sum, n) => sum + n, 0),
+  );
 
   protected readonly overall = computed(() => {
     const manifest = this.content.manifest();
