@@ -1,7 +1,7 @@
 {
   "subtopic": "d1-mcp-config",
   "title": { "en": "MCP servers, instruction files & model configuration" },
-  "lastVerified": "2026-11-15",
+  "lastVerified": "2026-11-17",
   "status": "ga",
   "prerequisiteRecap": [
     {
@@ -19,17 +19,17 @@
       }
     },
     {
-      "heading": { "en": "The MSSQL MCP server" },
+      "heading": { "en": "SQL Server tools for agents: the MSSQL extension and SQL MCP Server" },
       "body": {
-        "en": "Microsoft provides an **MSSQL MCP server** that exposes SQL Server/Azure SQL databases to AI agents with tools like listing tables, describing schema, reading data and running queries (write operations are typically gated/configurable). Configured in VS Code via `mcp.json` (workspace `.vscode/mcp.json` or user-level), giving the command/URL plus connection settings. Once registered, Copilot agent mode lists its tools; you can enable/disable individual tools per chat session via the tools picker. A similar pattern applies to the **Fabric lakehouse/Fabric MCP endpoints**, letting agents explore lakehouse tables and run queries against Fabric items — the study guide names both connection targets."
+        "en": "Two Microsoft-documented ways give an agent SQL Server / Azure SQL access from VS Code:\n- **MSSQL extension agent-mode tools**: with GitHub Copilot in agent mode, the extension contributes tools such as `connect`, `list_databases`, `list_tables`, `show_schema` and `run_query`. They use the extension's existing connection and credentials, and every tool call needs your approval.\n- **SQL MCP Server** (part of Data API builder 1.7+): an open-source MCP server that exposes the tables, views and stored procedures you configure in `dab-config.json` through seven DML tools (`describe_entities`, `read_records`, `create_record`, `update_record`, `delete_record`, `execute_entity`, `aggregate_records`). Every call respects the role's permissions, individual tools can be switched off under `runtime.mcp.dml-tools`, there are no DDL tools, and it deliberately doesn't run model-written SQL (no NL2SQL). It runs over stdio (`dab start --mcp-stdio role:<role>`) or Streamable HTTP (the `/mcp` endpoint).\n\nVS Code reads MCP server definitions from a workspace-root `.mcp.json` or the user-level `~/.copilot/mcp-config.json` (Copilot harness, top-level key `mcpServers`), or from the editor-format `.vscode/mcp.json` / profile `mcp.json` (key `servers`), which the Local harness reads — that harness is deprecated, with removal planned for February 2027. Once a server is registered, agent mode can call its tools, and you choose which tools the agent may use (tools picker / Tools tab). The study guide also names **Fabric lakehouse** endpoints as a connection target; the same idea applies — the agent works through governed tools, limited by the identity the server uses."
       },
-      "code": "// .vscode/mcp.json\n{\n  \"servers\": {\n    \"mssql\": {\n      \"command\": \"npx\",\n      \"args\": [\"-y\", \"@azure/mssql-mcp\"],\n      \"env\": {\n        \"SERVER_NAME\": \"localhost\",\n        \"DATABASE_NAME\": \"AdventureWorks\",\n        \"READONLY\": \"true\"\n      }\n    }\n  }\n}",
+      "code": "// .vscode/mcp.json — editor format, as in the SQL MCP Server quickstart\n{\n  \"servers\": {\n    \"sql-mcp-server\": {\n      \"type\": \"stdio\",\n      \"command\": \"dab\",\n      \"args\": [\"start\", \"--mcp-stdio\", \"role:reader\",\n               \"--config\", \"${workspaceFolder}/dab-config.json\"]\n    }\n  }\n}\n// Copilot harness: put the same server in .mcp.json at the workspace root,\n// under \"mcpServers\" instead of \"servers\".\n// dab-config.json grants the \"reader\" role only the read action.",
       "codeLang": "json"
     },
     {
       "heading": { "en": "Configuring models and tools in a chat session" },
       "body": {
-        "en": "In a GitHub Copilot (or Copilot in Fabric) chat session you can configure:\n- **Model picker**: choose the underlying model (different models trade speed, reasoning depth and cost/premium-request multipliers). Pick lighter models for boilerplate, stronger ones for complex refactoring.\n- **Mode**: ask / edit / agent — agent mode is where MCP tools become available.\n- **Tools picker**: enable/disable specific tools (from MCP servers and built-ins) for the session; fewer, relevant tools = better tool selection by the model and smaller attack surface.\n- **Context**: attach files, use participants (@mssql), reference instruction files.\nGovernance note: organizations can control which models and MCP servers are allowed via policy."
+        "en": "In a GitHub Copilot (or Copilot in Fabric) chat session you can configure:\n- **Model picker**: choose the underlying model — a fast model for quick edits and simple questions, a reasoning model for complex refactoring or multi-step tasks (higher thinking effort uses more AI credits).\n- **Mode**: ask / edit / agent — agent mode is where MCP tools become available.\n- **Tool selection**: choose which tools (from MCP servers, extensions and built-ins) the agent may use — the tools picker in the Local harness, the Tools tab of the Agent Customizations editor in the Copilot harness. Keep it to tools relevant to the task (a request can have at most 128 tools); fewer tools also means a smaller attack surface.\n- **Context**: attach files, use participants (@mssql), reference instruction files.\nGovernance note: organizations can control which models and MCP servers are allowed via policy."
       }
     },
     {
@@ -41,22 +41,26 @@
     {
       "heading": { "en": "Why this matters for DP-800" },
       "body": {
-        "en": "The study guide's bullets map directly: 'configure model and MCP tool options in a chat session' (model picker, tools picker, modes), 'create and configure GitHub Copilot instruction files' (previous subtopic), and 'connect to MCP server endpoints, including Microsoft SQL Server and Fabric lakehouse' (mcp.json / endpoint registration). Expect configuration-shaped questions (where does the file go, which mode exposes tools) and judgment questions (which login should the MCP server use)."
+        "en": "The study guide's bullets map directly: 'configure model and MCP tool options in a chat session' (model picker, tools picker, modes), 'create and configure GitHub Copilot instruction files' (previous subtopic), and 'connect to MCP server endpoints, including Microsoft SQL Server and Fabric lakehouse' (.mcp.json or .vscode/mcp.json — endpoint registration). Expect configuration-shaped questions (where does the file go, which mode exposes tools) and judgment questions (which login should the MCP server use)."
       }
     }
   ],
   "examTips": [
-    { "en": "MCP = open protocol for AI tool calling. Host (VS Code/Copilot) ↔ client ↔ server (MSSQL, Fabric lakehouse…)." },
-    { "en": "VS Code MCP config lives in mcp.json (workspace .vscode/mcp.json or user profile); agent mode exposes the tools." },
-    { "en": "Model picker trades capability vs speed/cost; tools picker scopes what the agent may call in the session." },
+    { "en": "MCP = open protocol for AI tool calling. Host (VS Code/Copilot) ↔ client ↔ server (SQL Server, Fabric lakehouse…)." },
+    { "en": "VS Code MCP config: workspace-root .mcp.json or ~/.copilot/mcp-config.json (mcpServers) for the Copilot harness; editor-format .vscode/mcp.json (servers) for the deprecated Local harness. Agent mode exposes the tools." },
+    { "en": "Model picker trades capability vs speed/cost; tool selection scopes what the agent may call." },
     { "en": "The MCP server's credentials bound the agent's power — least privilege/read-only is the default right answer." },
     { "en": "Tool results are untrusted content: prompt injection can ride database rows into the agent's reasoning." },
-    { "en": "stdio = local process transport; HTTP/SSE = remote servers." }
+    { "en": "stdio = local process transport; Streamable HTTP (or legacy SSE) = remote servers." }
   ],
   "sources": [
-    "https://learn.microsoft.com/en-us/sql/tools/visual-studio-code-extensions/mssql/mssql-mcp-server",
     "https://code.visualstudio.com/docs/agent-customization/mcp-servers",
     "https://modelcontextprotocol.io/introduction",
-    "https://learn.microsoft.com/en-us/fabric/fundamentals/copilot-fabric-overview"
+    "https://learn.microsoft.com/en-us/fabric/fundamentals/copilot-fabric-overview",
+    "https://learn.microsoft.com/en-us/azure/data-api-builder/mcp/overview",
+    "https://learn.microsoft.com/en-us/azure/data-api-builder/mcp/data-manipulation-language-tools",
+    "https://learn.microsoft.com/en-us/sql/tools/visual-studio-code-extensions/github-copilot/agent-mode",
+    "https://code.visualstudio.com/docs/agents/reference/mcp-configuration",
+    "https://code.visualstudio.com/docs/agents/run/tools"
   ]
 }

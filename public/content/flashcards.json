@@ -307,7 +307,7 @@
     "en": "Where does VS Code MCP configuration live, and which mode exposes the tools?"
    },
    {
-    "en": "What do the model picker and the tools picker control?"
+    "en": "What do the model picker and tool selection control?"
    },
    {
     "en": "What bounds an MCP agent's power over the database, and what's the default right answer?"
