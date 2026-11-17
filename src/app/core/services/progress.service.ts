@@ -1,5 +1,6 @@
 import { Injectable, computed, effect, signal } from '@angular/core';
 import {
+  ActivityMap,
   CardMap,
   DEFAULT_SETTINGS,
   MockAttempt,
@@ -17,6 +18,21 @@ const KEY_SETTINGS = 'dp800.settings.v1';
 const KEY_MOCKS = 'dp800.mocks.v1';
 const KEY_ACTIVE_MOCK = 'dp800.mock.active.v1';
 const KEY_CARDS = 'dp800.cards.v1';
+const KEY_ACTIVITY = 'dp800.activity.v1';
+
+/**
+ * Activity saved before the log existed: one entry per day that still shows up
+ * as some question's or card's last attempt. Older days are unknown.
+ */
+function seedActivity(progress: ProgressMap, cards: CardMap): ActivityMap {
+  const out: ActivityMap = {};
+  for (const p of [...Object.values(progress), ...Object.values(cards)]) {
+    if (p.lastAt === undefined) continue;
+    const day = String(dayNumber(p.lastAt));
+    out[day] = { n: (out[day]?.n ?? 0) + 1 };
+  }
+  return out;
+}
 
 function readJson<T>(key: string, fallback: T): T {
   try {
@@ -69,8 +85,13 @@ export class ProgressService {
   readonly mockHistory = signal<MockAttempt[]>(readJsonRaw<MockAttempt[]>(KEY_MOCKS, []));
   /** Flashcard review state, kept apart so cards don't affect question stats. */
   readonly cards = signal<CardMap>(readJsonRaw<CardMap>(KEY_CARDS, {}));
+  /** Per-day activity, for streaks and the daily plan. */
+  readonly activity = signal<ActivityMap>(
+    readJsonRaw<ActivityMap | null>(KEY_ACTIVITY, null) ?? seedActivity(this.progress(), this.cards()),
+  );
 
   constructor() {
+    effect(() => writeJson(KEY_ACTIVITY, this.activity()));
     effect(() => writeJson(KEY_CARDS, this.cards()));
     effect(() => writeJson(KEY_PROGRESS, this.progress()));
     effect(() => writeJson(KEY_SETTINGS, this.settings()));
@@ -130,11 +151,24 @@ export class ProgressService {
     now: number = Date.now(),
   ): void {
     const cur = this.progress()[id];
+    this.logActivity(now, (cur?.attempts ?? 0) === 0 ? 'new' : 'repeat');
     this.patch(id, subtopic, {
       attempts: (cur?.attempts ?? 0) + 1,
       correct: (cur?.correct ?? 0) + (correct ? 1 : 0),
       lastCorrect: correct,
       ...scheduleNext(cur, correct, guessed, now),
+    });
+  }
+
+  private logActivity(now: number, kind: 'new' | 'repeat' | 'card'): void {
+    const day = String(dayNumber(now));
+    this.activity.update((map) => {
+      const cur = map[day] ?? { n: 0 };
+      const next =
+        kind === 'card'
+          ? { ...cur, c: (cur.c ?? 0) + 1 }
+          : { ...cur, n: cur.n + 1, ...(kind === 'new' ? { q: (cur.q ?? 0) + 1 } : {}) };
+      return { ...map, [day]: next };
     });
   }
 
@@ -197,6 +231,7 @@ export class ProgressService {
 
   /** Record a flashcard review: "knew it" promotes the card, "didn't know" resets it to box 1. */
   recordCard(id: string, subtopic: string, knew: boolean, now: number = Date.now()): void {
+    this.logActivity(now, 'card');
     this.cards.update((map) => {
       const cur = map[id];
       const { box, dueDay } = scheduleNext(cur, knew, false, now);
@@ -290,6 +325,7 @@ export class ProgressService {
         settings: this.settings(),
         mockHistory: this.mockHistory(),
         cards: this.cards(),
+        activity: this.activity(),
       },
       null,
       2,
@@ -306,6 +342,7 @@ export class ProgressService {
         settings?: PortalSettings;
         mockHistory?: MockAttempt[];
         cards?: CardMap;
+        activity?: ActivityMap;
       };
       if (data.format !== 'dp800-progress') return 'Not a DP-800 progress export file.';
       if ((data.version ?? 1) > EXPORT_VERSION) {
@@ -315,6 +352,7 @@ export class ProgressService {
       if (data.settings) this.settings.set({ ...DEFAULT_SETTINGS, ...data.settings });
       if (data.mockHistory) this.mockHistory.set(data.mockHistory);
       if (data.cards) this.cards.set(data.cards);
+      if (data.activity) this.activity.set(data.activity);
       return null;
     } catch {
       return 'The file is not valid JSON.';

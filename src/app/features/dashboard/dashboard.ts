@@ -8,11 +8,12 @@ import { ProgressService } from '../../core/services/progress.service';
 import { notebookEntries } from '../../core/utils/notebook';
 import { BarChart, BarDatum } from '../../shared/bar-chart';
 import { TrendChart, TrendPoint } from '../../shared/trend-chart';
+import { PlanCard } from './plan-card';
 
 @Component({
   selector: 'app-dashboard',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, BarChart, TrendChart],
+  imports: [RouterLink, BarChart, TrendChart, PlanCard],
   template: `
     <h1>{{ locale.t('dash.title') }}</h1>
 
@@ -48,6 +49,8 @@ import { TrendChart, TrendPoint } from '../../shared/trend-chart';
           <a routerLink="/mock" class="btn">{{ locale.t('dash.takeMock') }}</a>
         </div>
       </section>
+
+      <app-plan-card class="wide" />
 
       <section class="card due-card">
         <h2>{{ locale.t('dash.due') }}</h2>
@@ -140,7 +143,7 @@ import { TrendChart, TrendPoint } from '../../shared/trend-chart';
   `,
   styles: `
     .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
-    .stat-card { grid-column: 1 / -1; }
+    .stat-card, .wide { grid-column: 1 / -1; }
     .stats { display: flex; gap: 28px; flex-wrap: wrap; margin-bottom: 12px; }
     .stat { display: flex; flex-direction: column; }
     .stat-num { font-size: 1.9rem; font-weight: 800; font-variant-numeric: tabular-nums; }

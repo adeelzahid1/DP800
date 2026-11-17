@@ -41,6 +41,19 @@ export interface CardProgress {
 
 export type CardMap = Record<string, CardProgress>;
 
+/** What the learner did on one local day. */
+export interface DayActivity {
+  /** Question attempts (practice, review, notebook). */
+  n: number;
+  /** Of those, questions attempted for the first time. */
+  q?: number;
+  /** Flashcard reviews. */
+  c?: number;
+}
+
+/** Local day number (see core/utils/srs.ts dayNumber) -> activity. */
+export type ActivityMap = Record<string, DayActivity>;
+
 export interface PortalSettings {
   theme: 'system' | 'light' | 'dark';
   locale: string;
@@ -50,6 +63,8 @@ export interface PortalSettings {
   showExamples: boolean;
   /** Auto-mark questions read when viewed. */
   autoMarkRead: boolean;
+  /** Planned exam date as YYYY-MM-DD (local), for the daily study plan. */
+  examDate?: string;
 }
 
 export const DEFAULT_SETTINGS: PortalSettings = {

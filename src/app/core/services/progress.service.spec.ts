@@ -3,7 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { dayNumber } from '../utils/srs';
 import { ProgressService } from './progress.service';
 
-const KEYS = ['dp800.progress.v1', 'dp800.settings.v1', 'dp800.mocks.v1', 'dp800.cards.v1'];
+const KEYS = ['dp800.progress.v1', 'dp800.settings.v1', 'dp800.mocks.v1', 'dp800.cards.v1', 'dp800.activity.v1'];
 
 describe('ProgressService spaced repetition', () => {
   let svc: ProgressService;
@@ -99,5 +99,20 @@ describe('ProgressService spaced repetition', () => {
     svc.cards.set({});
     expect(svc.importAll(exported)).toBeNull();
     expect(Object.keys(svc.cards()).sort()).toEqual(['card-1', 'card-2']);
+  });
+
+  it('logs daily activity for new questions, repeats and cards', () => {
+    svc.recordAttempt('q1', 'sub-a', false, false, now);
+    svc.recordAttempt('q1', 'sub-a', true, false, now);
+    svc.recordAttempt('q2', 'sub-a', true, false, now);
+    svc.recordCard('c1', 'sub-a', true, now);
+    svc.recordAttempt('q3', 'sub-a', true, false, now + 86_400_000);
+    expect(svc.activity()[String(today)]).toEqual({ n: 3, q: 2, c: 1 });
+    expect(svc.activity()[String(today + 1)]).toEqual({ n: 1, q: 1 });
+
+    const exported = svc.exportAll();
+    svc.activity.set({});
+    expect(svc.importAll(exported)).toBeNull();
+    expect(svc.activity()[String(today)].n).toBe(3);
   });
 });

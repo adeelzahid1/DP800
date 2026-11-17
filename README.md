@@ -25,6 +25,12 @@ Developer Associate).
   Space/Enter flips, `1` = knew it, `2` = didn't know; on touch screens tap to
   flip and swipe right/left. Cards use the same Leitner boxes as questions but
   are stored separately (`dp800.cards.v1`) and included in the progress export.
+- **Today's plan (Dashboard):** set your exam date and the portal spreads the
+  unattempted questions evenly over the days left (keeping the last 2 days for
+  mock exams and review), next to today's spaced-review and flashcard counts.
+  It shows a daily streak, a nudge after 2+ days without practice, and suggests
+  weak or least-covered subtopics. Daily activity is logged in
+  `dp800.activity.v1` (`src/app/core/utils/study-plan.ts`).
 
 ## Run it
 
