@@ -1,6 +1,8 @@
 {
   "subtopic": "d1-copilot",
   "title": { "en": "GitHub Copilot & Copilot in Fabric" },
+  "lastVerified": "2026-11-15",
+  "status": "ga",
   "prerequisiteRecap": [
     {
       "heading": { "en": "What AI-assisted SQL development means" },
@@ -54,7 +56,7 @@
   "sources": [
     "https://learn.microsoft.com/en-us/sql/tools/visual-studio-code-extensions/mssql/mssql-copilot",
     "https://learn.microsoft.com/en-us/fabric/fundamentals/copilot-fabric-overview",
-    "https://docs.github.com/en/copilot/customizing-copilot/adding-repository-custom-instructions-for-github-copilot",
+    "https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/add-custom-instructions/add-repository-instructions",
     "https://learn.microsoft.com/en-us/fabric/admin/service-admin-portal-copilot"
   ]
 }

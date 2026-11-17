@@ -1,6 +1,8 @@
 {
   "subtopic": "f-vectors-basics",
   "title": { "en": "Vectors, embeddings & AI concepts from scratch" },
+  "lastVerified": "2026-11-15",
+  "status": "ga",
   "sections": [
     {
       "heading": { "en": "The core idea: meaning as numbers" },

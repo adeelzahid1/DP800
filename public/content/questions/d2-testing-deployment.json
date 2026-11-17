@@ -95,7 +95,7 @@
       "answer": ["a"],
       "explanation": { "en": "Environment protection rules pause jobs until listed reviewers approve; wait timers and branch restrictions add further control." },
       "example": { "en": "jobs.deploy.environment: production (Settings → Environments → Required reviewers)" },
-      "sources": ["https://docs.github.com/en/actions/managing-workflow-runs-and-deployments/managing-deployments/managing-environments-for-deployment"]
+      "sources": ["https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments"]
     },
     {
       "id": "d2-test-0007",
@@ -205,7 +205,7 @@
       "answer": ["a", "b", "c"],
       "explanation": { "en": "Environments support required reviewers, wait timers and restricting which branches/tags can deploy (plus custom protection rules). Backups and Query Store are database features." },
       "example": { "en": "Only main may deploy to production; 15-minute wait; 2 reviewers." },
-      "sources": ["https://docs.github.com/en/actions/managing-workflow-runs-and-deployments/managing-deployments/managing-environments-for-deployment"]
+      "sources": ["https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments"]
     },
     {
       "id": "d2-test-0013",
@@ -243,7 +243,7 @@
       "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
       "explanation": { "en": "Triggers define when pipeline stages run; combining them gives validation, continuous deployment, manual control and periodic checks." },
       "example": { "en": "on: { schedule: [ { cron: '0 2 * * *' } ] }" },
-      "sources": ["https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows"]
+      "sources": ["https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows"]
     },
     {
       "id": "d2-test-0015",
@@ -399,7 +399,7 @@
       "answer": ["a"],
       "explanation": { "en": "needs defines job dependencies, creating stages like build → test → deploy. The other keys aren't valid." },
       "example": { "en": "deploy-prod: { needs: deploy-test, environment: production }" },
-      "sources": ["https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions"]
+      "sources": ["https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax"]
     },
     {
       "id": "d2-test-0024",
@@ -414,7 +414,7 @@
       "answerMap": { "s1": "yes", "s2": "yes", "s3": "yes" },
       "explanation": { "en": "Branch restrictions block other branches; secrets are released after protection rules pass; GitHub provides a 'Prevent self-review' option — without it, a required reviewer could approve their own run." },
       "example": { "en": "Enable 'Prevent self-review' for separation of duties." },
-      "sources": ["https://docs.github.com/en/actions/managing-workflow-runs-and-deployments/managing-deployments/managing-environments-for-deployment"]
+      "sources": ["https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments"]
     },
     {
       "id": "d2-test-0025",
@@ -640,7 +640,7 @@
       "answerMap": { "b1": "c1", "b2": "c1" },
       "explanation": { "en": "needs orders jobs; environment links the job to protection rules and environment secrets. The alternatives aren't GitHub Actions keys." },
       "example": { "en": "The job pauses with 'Waiting for review' until approvers act." },
-      "sources": ["https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions"]
+      "sources": ["https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax"]
     },
     {
       "id": "d2-test-0038",
@@ -735,7 +735,7 @@
       "answer": ["a"],
       "explanation": { "en": "Wait timers delay deployment jobs, enabling a bake period (e.g. monitor staging) and last-minute cancellation." },
       "example": { "en": "30-minute wait after staging deployment before production." },
-      "sources": ["https://docs.github.com/en/actions/managing-workflow-runs-and-deployments/managing-deployments/managing-environments-for-deployment"]
+      "sources": ["https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments"]
     },
     {
       "id": "d2-test-0044",

@@ -1,6 +1,9 @@
 {
   "subtopic": "d3-external-models",
   "title": { "en": "External models (evaluate, create, manage)" },
+  "lastVerified": "2026-11-15",
+  "status": "preview",
+  "previewNote": { "en": "Local ONNX Runtime models (SQL Server 2025 on Windows) are in preview." },
   "prerequisiteRecap": [
     {
       "heading": { "en": "Models, tokens and embeddings in one minute" },

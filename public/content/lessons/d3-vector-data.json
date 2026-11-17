@@ -1,6 +1,9 @@
 {
   "subtopic": "d3-vector-data",
   "title": { "en": "Vector data type, functions & indexes" },
+  "lastVerified": "2026-11-15",
+  "status": "preview",
+  "previewNote": { "en": "Vector indexes, VECTOR_SEARCH and half-precision (float16) vectors are preview features in SQL Server 2025 (PREVIEW_FEATURES). Vector indexes and VECTOR_SEARCH are generally available in Azure SQL Database, SQL database in Fabric and Azure SQL Managed Instance with the Always-up-to-date update policy." },
   "prerequisiteRecap": [
     {
       "heading": { "en": "Where vectors live" },

@@ -198,6 +198,11 @@ button {
   color: var(--ok);
 }
 
+.chip-preview {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
 .chip-outline {
   border-color: var(--border);
   color: var(--text-dim);

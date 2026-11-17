@@ -47,7 +47,7 @@
       "answer": ["a"],
       "explanation": { "en": "Workspace-level mcp.json ships with the repo (user-level config exists for personal servers). Windows INI files (b) and database configuration (c) play no role; package.json (d) manages npm dependencies, not MCP registration." },
       "example": { "en": "Committed .vscode/mcp.json = team-consistent tooling, reviewable like all config." },
-      "sources": ["https://code.visualstudio.com/docs/copilot/chat/mcp-servers"]
+      "sources": ["https://code.visualstudio.com/docs/agent-customization/mcp-servers"]
     },
     {
       "id": "d1-mcp-0004",
@@ -63,7 +63,7 @@
       "answer": ["a"],
       "explanation": { "en": "Tool invocation is an agent-mode capability — the model plans and calls tools iteratively. Ask mode answers from context without tool execution (b), completions are keystroke-level (c), and the modes decidedly differ (d)." },
       "example": { "en": "Switch the chat dropdown to Agent, then open the tools picker to see MCP tools." },
-      "sources": ["https://code.visualstudio.com/docs/copilot/chat/mcp-servers"]
+      "sources": ["https://code.visualstudio.com/docs/agent-customization/mcp-servers"]
     },
     {
       "id": "d1-mcp-0005",
@@ -126,7 +126,7 @@
       "answer": ["a"],
       "explanation": { "en": "Tool RESULTS are untrusted input to the model; embedded instructions can redirect it — the private data + untrusted content + exfiltration-channel triad. Not SQL injection (b — no query manipulation), certainly not intended (c), and no failure occurred (d) — that's the problem." },
       "example": { "en": "Disable web/exfiltration-capable tools in sessions that read untrusted data." },
-      "sources": ["https://code.visualstudio.com/docs/copilot/chat/mcp-servers"]
+      "sources": ["https://code.visualstudio.com/docs/agent-customization/mcp-servers"]
     },
     {
       "id": "d1-mcp-0009",
@@ -171,7 +171,7 @@
       "answer": ["a"],
       "explanation": { "en": "Model selection is a cost/latency/capability trade — matching model to task is the skill the 'configure model options' bullet names. (b) inverts the trade-off, (c) is false, and the picker genuinely changes the backing model (d)." },
       "example": { "en": "Boilerplate DDL → fast model; cross-procedure refactor with reasoning → premium model." },
-      "sources": ["https://code.visualstudio.com/docs/copilot/chat/mcp-servers"]
+      "sources": ["https://code.visualstudio.com/docs/agent-customization/mcp-servers"]
     },
     {
       "id": "d1-mcp-0011",
@@ -187,7 +187,7 @@
       "answer": ["a"],
       "explanation": { "en": "Fewer, relevant tools improve the model's choices (long tool lists degrade selection) AND remove capabilities an injected prompt could abuse. Network (b) and storage (c) are untouched; 'always more' (d) ignores both effects." },
       "example": { "en": "A schema-review session needs list/describe tools — not execute-write or web tools." },
-      "sources": ["https://code.visualstudio.com/docs/copilot/chat/mcp-servers"]
+      "sources": ["https://code.visualstudio.com/docs/agent-customization/mcp-servers"]
     },
     {
       "id": "d1-mcp-0012",
@@ -225,7 +225,7 @@
       "answer": ["a"],
       "explanation": { "en": "An MCP server is arbitrary software holding live credentials — a malicious one can exfiltrate or destroy within its permissions; the protocol specifies MESSAGES, not sandboxing (d is the dangerous myth). Disk (b) and version conflicts (c) are trivia by comparison." },
       "example": { "en": "Prefer official/vetted servers (Microsoft's MSSQL MCP) and review source for anything else." },
-      "sources": ["https://code.visualstudio.com/docs/copilot/chat/mcp-servers"]
+      "sources": ["https://code.visualstudio.com/docs/agent-customization/mcp-servers"]
     },
     {
       "id": "d1-mcp-0014",
@@ -272,7 +272,7 @@
       "answerMap": { "s1": "yes", "s2": "yes", "s3": "no" },
       "explanation": { "en": "Human-in-the-loop confirmation is the default guardrail, with configurable persistence for trusted tools. Blanket auto-approval discards the gate exactly where prompt injection would exploit it — convenience vs safety is the test." },
       "example": { "en": "Reasonable: auto-approve read-only describes; always confirm query execution and writes." },
-      "sources": ["https://code.visualstudio.com/docs/copilot/chat/mcp-servers"]
+      "sources": ["https://code.visualstudio.com/docs/agent-customization/mcp-servers"]
     },
     {
       "id": "d1-mcp-0017",
@@ -288,7 +288,7 @@
       "answer": ["a"],
       "explanation": { "en": "Orthogonal controls: conventions/knowledge (instructions) vs capabilities (tools). Neither substitutes for the other (b, d), and instruction files don't carry transport config (c — that's mcp.json)." },
       "example": { "en": "Agent session = instructions (style, rules) + tools (schema access) + model choice. Three dials." },
-      "sources": ["https://code.visualstudio.com/docs/copilot/chat/mcp-servers"]
+      "sources": ["https://code.visualstudio.com/docs/agent-customization/mcp-servers"]
     },
     {
       "id": "d1-mcp-0018",
@@ -304,7 +304,7 @@
       "answer": ["a"],
       "explanation": { "en": "Read-only still reads PII; combined with any outbound tool it forms the exfiltration triad. 'Read-only = safe' (b) misses the confidentiality axis. Speed (c) is irrelevant and MORE permissions (d) would worsen it." },
       "example": { "en": "Session design rule: sensitive-data tools and outbound tools don't share a session without strict gates." },
-      "sources": ["https://code.visualstudio.com/docs/copilot/chat/mcp-servers"]
+      "sources": ["https://code.visualstudio.com/docs/agent-customization/mcp-servers"]
     },
     {
       "id": "d1-mcp-0019",
@@ -397,7 +397,7 @@
       "answer": ["a"],
       "explanation": { "en": "npx -y skips the 'install this package?' prompt — needed because the host launches the process non-interactively. It's npm tooling, unrelated to YAML (b), permissions (c) or SQL roles (d)." },
       "example": { "en": "Understanding the launch command helps debug 'server failed to start' issues." },
-      "sources": ["https://code.visualstudio.com/docs/copilot/chat/mcp-servers"]
+      "sources": ["https://code.visualstudio.com/docs/agent-customization/mcp-servers"]
     },
     {
       "id": "d1-mcp-0024",
@@ -444,7 +444,7 @@
       "answer": ["a"],
       "explanation": { "en": "The session dials — tool set, prompt clarity, model choice — are exactly the 'configure model and MCP tool options' competency. Retraining (b) and protocol changes (c) aren't user operations; helplessness (d) is wrong." },
       "example": { "en": "Tool-selection quality degrades with huge tool lists: curation is a real skill." },
-      "sources": ["https://code.visualstudio.com/docs/copilot/chat/mcp-servers"]
+      "sources": ["https://code.visualstudio.com/docs/agent-customization/mcp-servers"]
     },
     {
       "id": "d1-mcp-0027",
@@ -492,7 +492,7 @@
       "answer": ["a"],
       "explanation": { "en": "VS Code supports input variables/secret prompts for MCP configs; committed plaintext (b, d) is credential leakage (worsened by AI context reading those files), and chat (c) sends the secret to the model service. Prefer Entra/integrated auth where possible — no secret at all." },
       "example": { "en": "\"inputs\": [{ \"id\": \"sqlPassword\", \"type\": \"promptString\", \"password\": true }]" },
-      "sources": ["https://code.visualstudio.com/docs/copilot/chat/mcp-servers"]
+      "sources": ["https://code.visualstudio.com/docs/agent-customization/mcp-servers"]
     },
     {
       "id": "d1-mcp-0030",
@@ -540,7 +540,7 @@
       "answer": ["a"],
       "explanation": { "en": "Remote MCP servers centralize identity, policy, logging and version control of the integration; hosts allow-list it. Personal sa sprawl (b) is the anti-pattern; email (c) isn't tooling; governance mechanisms exist (d is defeatist)." },
       "example": { "en": "Central gateway + per-user Entra auth = enterprise-grade agent data access." },
-      "sources": ["https://code.visualstudio.com/docs/copilot/chat/mcp-servers"]
+      "sources": ["https://code.visualstudio.com/docs/agent-customization/mcp-servers"]
     },
     {
       "id": "d1-mcp-0033",
@@ -603,7 +603,7 @@
       "answer": ["a"],
       "explanation": { "en": "Tool selection is a reasoning task that scales poorly with menu size; curated, composable tools win. (b) confuses capability with usability; (c) contradicts observed behavior; (d) over-rotates — one mega-tool loses clarity too." },
       "example": { "en": "Session-level curation (tools picker) applies the same principle per task." },
-      "sources": ["https://code.visualstudio.com/docs/copilot/chat/mcp-servers"]
+      "sources": ["https://code.visualstudio.com/docs/agent-customization/mcp-servers"]
     },
     {
       "id": "d1-mcp-0037",
@@ -625,7 +625,7 @@
       "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
       "explanation": { "en": "Four artifacts, four scopes: availability (mcp.json), behavior (instructions), engine (model), and per-session capability (tools picker). The study guide's configuration bullets map one-to-one onto this table." },
       "example": { "en": "Configuration questions almost always reduce to 'which artifact controls that?'" },
-      "sources": ["https://code.visualstudio.com/docs/copilot/chat/mcp-servers"]
+      "sources": ["https://code.visualstudio.com/docs/agent-customization/mcp-servers"]
     },
     {
       "id": "d1-mcp-0038",
@@ -641,7 +641,7 @@
       "answer": ["a"],
       "explanation": { "en": "Standard process debugging: read the launcher's logs, reproduce the command standalone, validate configuration/network. OS reinstalls (b) are absurd escalation; permissions (c) don't fix startup; permanent firewall removal (d) trades a bug for a breach." },
       "example": { "en": "npx -y @azure/mssql-mcp run by hand surfaces the real error message instantly." },
-      "sources": ["https://code.visualstudio.com/docs/copilot/chat/mcp-servers"]
+      "sources": ["https://code.visualstudio.com/docs/agent-customization/mcp-servers"]
     },
     {
       "id": "d1-mcp-0039",
@@ -673,7 +673,7 @@
       "answer": ["a"],
       "explanation": { "en": "Copilot policy management extends to MCP enablement — admins decide availability for managed users. 'Unrestrictable' (b) is false; approval is organizational, not vendor-gated (c); themes (d) is noise." },
       "example": { "en": "Governance story: org policy (may we?) + mcp.json (what exists?) + approvals (may it act now?)." },
-      "sources": ["https://docs.github.com/en/copilot/managing-copilot/managing-github-copilot-in-your-organization"]
+      "sources": ["https://docs.github.com/en/copilot/how-tos/administer-copilot/manage-for-organization"]
     },
     {
       "id": "d1-mcp-0041",
@@ -768,7 +768,7 @@
       "answer": ["a"],
       "explanation": { "en": "Knowledge vs capability — the one-line summary. Instructions never execute anything (c), servers don't hold style rules (d), and neither is cosmetic (b)." },
       "example": { "en": "If a question asks 'where to put X': rule/convention → instructions; access/action → MCP." },
-      "sources": ["https://code.visualstudio.com/docs/copilot/chat/mcp-servers"]
+      "sources": ["https://code.visualstudio.com/docs/agent-customization/mcp-servers"]
     },
     {
       "id": "d1-mcp-0047",
@@ -784,7 +784,7 @@
       "answer": ["a"],
       "explanation": { "en": "Session curation is the immediate lever for tool-selection quality — the 'MCP tool options' competency in action. Adding more (b) worsens it, and (c)/(d) are cargo-cult non-fixes." },
       "example": { "en": "Curate per task like you'd curate context: only what the job needs." },
-      "sources": ["https://code.visualstudio.com/docs/copilot/chat/mcp-servers"]
+      "sources": ["https://code.visualstudio.com/docs/agent-customization/mcp-servers"]
     },
     {
       "id": "d1-mcp-0048",
@@ -800,7 +800,7 @@
       "answer": ["a"],
       "explanation": { "en": "Capability = configured servers × their tools × their credentials — all enumerable from configuration. Marketing (b) describes the model, not your deployment; history (c) shows what WAS done, not what COULD be; inventories are precisely possible (d)." },
       "example": { "en": "Auditable capability inventories are what make agent adoption defensible." },
-      "sources": ["https://code.visualstudio.com/docs/copilot/chat/mcp-servers"]
+      "sources": ["https://code.visualstudio.com/docs/agent-customization/mcp-servers"]
     },
     {
       "id": "d1-mcp-0049",

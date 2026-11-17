@@ -130,6 +130,12 @@ export interface Lesson {
   /** Key points / exam tips / common traps. */
   examTips: LocalizedText[];
   sources: string[];
+  /** Date (YYYY-MM-DD) the lesson was last checked against Microsoft Learn. */
+  lastVerified?: string;
+  /** "preview" when the lesson covers features that are in preview somewhere. */
+  status?: 'ga' | 'preview';
+  /** Which features are in preview, and where. Required when status is "preview". */
+  previewNote?: LocalizedText;
 }
 
 export interface SubtopicMeta {

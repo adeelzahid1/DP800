@@ -13,6 +13,22 @@
       @if (lesson(); as l) {
         <article class="lesson card">
           <h1>{{ locale.lt(l.title) }}</h1>
+          @if (l.status === 'preview' || l.lastVerified) {
+            <p class="lesson-meta">
+              @if (l.status === 'preview') {
+                <span class="chip chip-preview">{{ locale.t('study.previewBadge') }}</span>
+              }
+              @if (verifiedLabel(l.lastVerified); as v) {
+                <span class="verified">{{ v }}</span>
+              }
+            </p>
+          }
+          @if (l.status === 'preview' && l.previewNote) {
+            <aside class="preview-note">
+              <strong>{{ locale.t('study.previewTitle') }}</strong>
+              {{ locale.lt(l.previewNote) }}
+            </aside>
+          }
 
           @if (l.prerequisiteRecap && l.prerequisiteRecap.length > 0) {
             <details class="prereq">

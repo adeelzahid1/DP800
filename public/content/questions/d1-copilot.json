@@ -63,7 +63,7 @@
       "answer": ["a"],
       "explanation": { "en": ".github/copilot-instructions.md is the documented repo-wide location, automatically included in chat context. Machine-local files (b) and database metadata (c) aren't read by Copilot; VS Code settings can point to instruction files but the canonical shareable location is the repo file (d)." },
       "example": { "en": "Being in the repo means the instructions are code-reviewed and shared with every teammate." },
-      "sources": ["https://docs.github.com/en/copilot/customizing-copilot/adding-repository-custom-instructions-for-github-copilot"]
+      "sources": ["https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/add-custom-instructions/add-repository-instructions"]
     },
     {
       "id": "d1-cop-0005",
@@ -79,7 +79,7 @@
       "answer": ["a"],
       "explanation": { "en": "Scoped instruction files use applyTo glob patterns in their frontmatter; Copilot includes them when the files being worked on match. Filenames alone (b) carry no semantics, comments (c) aren't an instruction mechanism, and scoping is explicitly supported (d)." },
       "example": { "en": "---\\napplyTo: \"**/*.sql\"\\n---\\nAlways schema-qualify object names." },
-      "sources": ["https://docs.github.com/en/copilot/customizing-copilot/adding-repository-custom-instructions-for-github-copilot"]
+      "sources": ["https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/add-custom-instructions/add-repository-instructions"]
     },
     {
       "id": "d1-cop-0006",
@@ -112,7 +112,7 @@
       "answer": ["a"],
       "explanation": { "en": "Business/Enterprise tiers contractually exclude customer prompts/code from training and add org policy + content exclusion controls — the standard enterprise answer. (b) and (c) are non-answers, and (d) is false: governance tiers exist precisely for this." },
       "example": { "en": "Content exclusions can also hide specific sensitive paths (e.g. /migrations/secrets) from Copilot context." },
-      "sources": ["https://docs.github.com/en/copilot/managing-copilot/managing-github-copilot-in-your-organization"]
+      "sources": ["https://docs.github.com/en/copilot/how-tos/administer-copilot/manage-for-organization"]
     },
     {
       "id": "d1-cop-0008",
@@ -181,7 +181,7 @@
       "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
       "explanation": { "en": "Each governance tool answers one risk: exclusions keep secrets out of context; grounding + review catches fabrications; scoped permissions bound the blast radius; instruction files standardize conventions." },
       "example": { "en": "Expect scenario questions pairing exactly these risks and mitigations." },
-      "sources": ["https://docs.github.com/en/copilot/managing-copilot/managing-github-copilot-in-your-organization"]
+      "sources": ["https://docs.github.com/en/copilot/how-tos/administer-copilot/manage-for-organization"]
     },
     {
       "id": "d1-cop-0012",
@@ -213,7 +213,7 @@
       "answer": ["a"],
       "explanation": { "en": "Instructions are conventions and guardrails — reviewable prose that shapes generation. Secrets (b, c) must NEVER go in repo files (they'd also leak into AI context), and data dumps (d) belong nowhere near instruction context." },
       "example": { "en": "Think of it as the team's style guide that the AI actually reads." },
-      "sources": ["https://docs.github.com/en/copilot/customizing-copilot/adding-repository-custom-instructions-for-github-copilot"]
+      "sources": ["https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/add-custom-instructions/add-repository-instructions"]
     },
     {
       "id": "d1-cop-0014",
@@ -321,7 +321,7 @@
       "answerMap": { "b1": "c1", "b2": "c1" },
       "explanation": { "en": "applyTo is the documented frontmatter key for scoping instruction files. NOLOCK is the classic 'please stop suggesting this' hint (dirty reads); banning ORDER BY or JOIN would be absurd." },
       "example": { "en": "Teams encode their lint rules as AI instructions — same rules, new enforcement point." },
-      "sources": ["https://docs.github.com/en/copilot/customizing-copilot/adding-repository-custom-instructions-for-github-copilot"]
+      "sources": ["https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/add-custom-instructions/add-repository-instructions"]
     },
     {
       "id": "d1-cop-0020",
@@ -385,7 +385,7 @@
       "answer": ["a"],
       "explanation": { "en": "The tier ladder adds organizational governance as you climb — Business/Enterprise bring the policy, privacy and exclusion controls enterprises require. Licensing is per developer seat, not per database (c) or SQL edition (d)." },
       "example": { "en": "Enterprise questions: the answer usually hinges on governance features, not raw capability." },
-      "sources": ["https://docs.github.com/en/copilot/about-github-copilot/subscription-plans-for-github-copilot"]
+      "sources": ["https://docs.github.com/en/copilot/get-started/plans"]
     },
     {
       "id": "d1-cop-0024",
@@ -417,7 +417,7 @@
       "answer": ["a"],
       "explanation": { "en": "Persistent conventions belong in instruction files — fix the system, not each instance (b). Renaming environments (c) inverts the problem; disabling the tool (d) discards the benefit over a configurable behavior." },
       "example": { "en": "Three-part names also break SQL Database Projects portability — the rule has deployment grounding." },
-      "sources": ["https://docs.github.com/en/copilot/customizing-copilot/adding-repository-custom-instructions-for-github-copilot"]
+      "sources": ["https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/add-custom-instructions/add-repository-instructions"]
     },
     {
       "id": "d1-cop-0026",
@@ -694,7 +694,7 @@
       "answer": ["a"],
       "explanation": { "en": "The four properties that make them engineering artifacts: git history, team-wide consistency, PR review, zero per-prompt effort. No encryption is involved (b), 'execution speed' isn't the dimension (c), and visibility is the point, not invisibility (d)." },
       "example": { "en": "Treat instruction files like lint configs: owned, reviewed, evolved." },
-      "sources": ["https://docs.github.com/en/copilot/customizing-copilot/adding-repository-custom-instructions-for-github-copilot"]
+      "sources": ["https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/add-custom-instructions/add-repository-instructions"]
     },
     {
       "id": "d1-cop-0043",
@@ -757,7 +757,7 @@
       "answer": ["a"],
       "explanation": { "en": "Per-repo + automatic + git-audited = instruction files exactly. Personal habits (b) fail 'without developer action' and auditability; wikis (c) aren't applied automatically; defaults (d) know nothing of your conventions." },
       "example": { "en": "Requirement-triplet matching is the skeleton of harder configuration questions." },
-      "sources": ["https://docs.github.com/en/copilot/customizing-copilot/adding-repository-custom-instructions-for-github-copilot"]
+      "sources": ["https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/add-custom-instructions/add-repository-instructions"]
     },
     {
       "id": "d1-cop-0047",
@@ -805,7 +805,7 @@
       "answer": ["a"],
       "explanation": { "en": "The layered configuration covers governance (tier), data boundary (exclusions), quality (instructions) and blast radius (dev connections). (b)/(d) ignore risk, and (c) forfeits value without analysis — exams reward calibrated adoption over extremes." },
       "example": { "en": "Defense in depth applies to AI tooling just as to database security." },
-      "sources": ["https://docs.github.com/en/copilot/managing-copilot/managing-github-copilot-in-your-organization"]
+      "sources": ["https://docs.github.com/en/copilot/how-tos/administer-copilot/manage-for-organization"]
     },
     {
       "id": "d1-cop-0050",

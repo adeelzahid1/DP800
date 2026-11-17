@@ -1,6 +1,8 @@
 {
   "subtopic": "d1-json-functions",
   "title": { "en": "JSON functions" },
+  "lastVerified": "2026-11-15",
+  "status": "ga",
   "prerequisiteRecap": [
     {
       "heading": { "en": "The function families" },

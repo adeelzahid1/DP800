@@ -21,6 +21,7 @@ import { ContentService, SubtopicRef } from '../../core/services/content.service
 import { LocaleService } from '../../core/services/locale.service';
 import { ProgressService } from '../../core/services/progress.service';
 import { createRng, shuffled } from '../../core/utils/rng';
+import { parseDateInput } from '../../core/utils/study-plan';
 import { CodeBlock } from '../../shared/code-block';
 import { RichText } from '../../shared/rich-text';
 import { QuestionCard } from './questions/question-card';
@@ -162,6 +163,15 @@ export class StudyPage {
         this.loading.set(false);
       });
     });
+  }
+
+  /** "Verified: Nov 2026" from a YYYY-MM-DD date, in the user's locale. */
+  protected verifiedLabel(date: string | undefined): string | null {
+    const day = parseDateInput(date);
+    if (day === undefined || !date) return null;
+    const [y, m] = date.split('-').map(Number);
+    const month = new Date(y, m - 1, 1).toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
+    return this.locale.t('study.verified').replace('{d}', month);
   }
 
   protected caseFor(q: Question): CaseStudy | null {

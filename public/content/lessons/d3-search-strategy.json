@@ -1,6 +1,8 @@
 {
   "subtopic": "d3-search-strategy",
   "title": { "en": "Search strategy & full-text search" },
+  "lastVerified": "2026-11-15",
+  "status": "ga",
   "prerequisiteRecap": [
     {
       "heading": { "en": "Keywords vs meaning" },

@@ -1,6 +1,9 @@
 {
   "subtopic": "d1-json-columns",
   "title": { "en": "JSON columns & JSON indexes" },
+  "lastVerified": "2026-11-15",
+  "status": "preview",
+  "previewNote": { "en": "JSON indexes (CREATE JSON INDEX) are a preview feature in SQL Server 2025 and need the PREVIEW_FEATURES database scoped configuration." },
   "prerequisiteRecap": [
     {
       "heading": { "en": "JSON in 30 seconds" },

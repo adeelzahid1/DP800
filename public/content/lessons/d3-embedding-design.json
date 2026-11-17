@@ -1,6 +1,8 @@
 {
   "subtopic": "d3-embedding-design",
   "title": { "en": "Embedding design: column selection & chunking" },
+  "lastVerified": "2026-11-15",
+  "status": "ga",
   "prerequisiteRecap": [
     {
       "heading": { "en": "One embedding = one focused piece of meaning" },

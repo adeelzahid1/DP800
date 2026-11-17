@@ -1,6 +1,9 @@
 {
   "subtopic": "d3-hybrid-rrf",
   "title": { "en": "Hybrid search, RRF & performance evaluation" },
+  "lastVerified": "2026-11-15",
+  "status": "preview",
+  "previewNote": { "en": "The vector branch uses VECTOR_SEARCH, which is a preview feature in SQL Server 2025 and in Azure SQL Managed Instance with the SQL Server 2025 update policy; it's generally available in Azure SQL Database, SQL database in Fabric and Managed Instance with the Always-up-to-date update policy." },
   "prerequisiteRecap": [
     {
       "heading": { "en": "Two ranked lists, one answer" },

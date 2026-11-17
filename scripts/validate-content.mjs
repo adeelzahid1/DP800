@@ -11,6 +11,8 @@
  *  - no duplicate question ids across the whole portal
  *  - no duplicate question text within a bank (exact-match filler check)
  *  - flashcards.json has exactly one non-empty prompt per lesson exam tip
+ *  - every lesson has lastVerified (YYYY-MM-DD, not in the future; warns when
+ *    older than STALE_DAYS) and status "ga" | "preview" (preview needs previewNote)
  *
  * Usage: node scripts/validate-content.mjs [--fix-counts]
  *   --fix-counts  rewrite manifest questionCount values from the banks
@@ -26,6 +28,31 @@ const MIN_QUESTIONS = 50;
 const TYPES = new Set(['single', 'multiple', 'dragdrop-order', 'dragdrop-match', 'yesno', 'dropdown']);
 const DIFFS = new Set(['easy', 'medium', 'hard']);
 const FIX_COUNTS = process.argv.includes('--fix-counts');
+/** Lessons verified longer ago than this get a "re-verify" warning. */
+const STALE_DAYS = 180;
+const STATUSES = new Set(['ga', 'preview']);
+const previewLessons = [];
+
+function checkVerification(lesson, subId) {
+  const v = lesson.lastVerified;
+  const m = typeof v === 'string' ? /^(\d{4})-(\d{2})-(\d{2})$/.exec(v) : null;
+  const date = m ? new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])) : null;
+  if (!date || date.getUTCMonth() !== +m[2] - 1) {
+    err(`${subId}: lesson lastVerified must be a YYYY-MM-DD date (got ${JSON.stringify(v)})`);
+  } else {
+    const ageDays = Math.floor((Date.now() - date.getTime()) / 86_400_000);
+    if (ageDays < -1) err(`${subId}: lesson lastVerified ${v} is in the future`);
+    else if (ageDays > STALE_DAYS) warn(`${subId}: lesson last verified ${v} (${ageDays} days ago) — re-check against current docs`);
+  }
+  if (!STATUSES.has(lesson.status)) {
+    err(`${subId}: lesson status must be "ga" or "preview" (got ${JSON.stringify(lesson.status)})`);
+  } else if (lesson.status === 'preview') {
+    checkLocalized(lesson.previewNote, 'previewNote', `${subId} lesson`);
+    previewLessons.push(subId);
+  } else if (lesson.previewNote) {
+    warn(`${subId}: previewNote is ignored because status is "ga"`);
+  }
+}
 
 const errors = [];
 const warnings = [];
@@ -177,6 +204,7 @@ for (const domain of manifest.domains) {
         err(`${sub.id}: lesson file missing (${sub.lessonFile})`);
       } else {
         checkLocalized(lesson.title, 'title', `${sub.id} lesson`);
+        checkVerification(lesson, sub.id);
         if (!Array.isArray(lesson.sections) || lesson.sections.length === 0)
           err(`${sub.id}: lesson has no sections`);
         if (!Array.isArray(lesson.examTips)) err(`${sub.id}: lesson has no examTips array`);
@@ -254,6 +282,8 @@ for (const c of counts) {
 const totalQ = counts.reduce((s, c) => s + c.n, 0);
 console.log(`${'TOTAL'.padEnd(28)} ${String(totalQ).padStart(4)}`);
 console.log(`${'FLASHCARDS'.padEnd(28)} ${String(cardCount).padStart(4)}`);
+console.log(`
+Lessons covering preview features (${previewLessons.length}): ${previewLessons.join(', ') || 'none'}`);
 
 if (warnings.length) {
   console.log(`\n--- ${warnings.length} warning(s) ---`);

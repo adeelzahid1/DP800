@@ -1,6 +1,8 @@
 {
   "subtopic": "d2-endpoint-security",
   "title": { "en": "Securing model, REST, GraphQL & MCP endpoints" },
+  "lastVerified": "2026-11-15",
+  "status": "ga",
   "prerequisiteRecap": [
     {
       "heading": { "en": "Which endpoints are we talking about?" },

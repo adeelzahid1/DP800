@@ -1,6 +1,8 @@
 {
   "subtopic": "d2-query-analysis",
   "title": { "en": "Query analysis (plans, DMVs, Query Store, Query Performance Insight)" },
+  "lastVerified": "2026-11-15",
+  "status": "ga",
   "prerequisiteRecap": [
     {
       "heading": { "en": "How a query becomes a plan" },

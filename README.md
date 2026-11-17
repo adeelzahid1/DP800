@@ -133,6 +133,20 @@ every question and lesson carries source links. No real-exam or "braindump"
 content is used. Scores are estimates: Microsoft does not publish the exact
 scaling or question count.
 
+### Content health
+
+- Every lesson has `lastVerified` (the date it was last checked against
+  Microsoft Learn) and `status`: `"ga"`, or `"preview"` with a `previewNote`
+  saying which features are in preview and where. The study page shows an
+  "Includes preview features" badge, the note, and "Verified: <month year>".
+  `npm run validate:content` enforces these fields and warns when a lesson
+  hasn't been re-verified for 180 days.
+- `npm run check:links` requests every source URL (and markdown link) once and
+  reports broken links (exit code 1) and redirects to update. Options:
+  `--json report.json`, `--strict` (fail on redirects too), `--only <text>`,
+  `--concurrency <n>`, `--timeout <ms>`. Example URLs inside code samples are
+  not checked.
+
 ## Content coverage
 
 | Domain | Subtopics | Questions |

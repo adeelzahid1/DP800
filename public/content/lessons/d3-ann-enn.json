@@ -1,6 +1,9 @@
 {
   "subtopic": "d3-ann-enn",
   "title": { "en": "ANN vs ENN & implementing vector search" },
+  "lastVerified": "2026-11-15",
+  "status": "preview",
+  "previewNote": { "en": "Vector indexes and VECTOR_SEARCH are preview features in SQL Server 2025 and in Azure SQL Managed Instance with the SQL Server 2025 update policy (they need PREVIEW_FEATURES). They're generally available in Azure SQL Database, SQL database in Fabric and Managed Instance with the Always-up-to-date update policy." },
   "prerequisiteRecap": [
     {
       "heading": { "en": "Exact vs approximate in one picture" },

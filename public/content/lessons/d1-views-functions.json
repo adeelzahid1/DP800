@@ -1,6 +1,8 @@
 {
   "subtopic": "d1-views-functions",
   "title": { "en": "Views & user-defined functions" },
+  "lastVerified": "2026-11-15",
+  "status": "ga",
   "prerequisiteRecap": [
     {
       "heading": { "en": "Programmability objects in one line each" },

@@ -1,6 +1,8 @@
 {
   "subtopic": "d2-testing-deployment",
   "title": { "en": "Testing, schema drift & deployment controls" },
+  "lastVerified": "2026-11-15",
+  "status": "ga",
   "prerequisiteRecap": [
     {
       "heading": { "en": "The pipeline mental model" },
@@ -54,7 +56,7 @@
     "https://learn.microsoft.com/en-us/sql/tools/sqlpackage/sqlpackage-deploy-drift-report",
     "https://github.com/Azure/sql-action",
     "https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners",
-    "https://docs.github.com/en/actions/managing-workflow-runs-and-deployments/managing-deployments/managing-environments-for-deployment",
+    "https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments",
     "https://tsqlt.org/"
   ]
 }

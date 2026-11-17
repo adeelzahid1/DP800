@@ -1,6 +1,8 @@
 {
   "subtopic": "d1-mcp-config",
   "title": { "en": "MCP servers, instruction files & model configuration" },
+  "lastVerified": "2026-11-15",
+  "status": "ga",
   "prerequisiteRecap": [
     {
       "heading": { "en": "What MCP is" },
@@ -53,7 +55,7 @@
   ],
   "sources": [
     "https://learn.microsoft.com/en-us/sql/tools/visual-studio-code-extensions/mssql/mssql-mcp-server",
-    "https://code.visualstudio.com/docs/copilot/chat/mcp-servers",
+    "https://code.visualstudio.com/docs/agent-customization/mcp-servers",
     "https://modelcontextprotocol.io/introduction",
     "https://learn.microsoft.com/en-us/fabric/fundamentals/copilot-fabric-overview"
   ]

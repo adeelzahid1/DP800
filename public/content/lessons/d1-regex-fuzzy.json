@@ -1,6 +1,8 @@
 {
   "subtopic": "d1-regex-fuzzy",
   "title": { "en": "Regular expressions & fuzzy matching" },
+  "lastVerified": "2026-11-15",
+  "status": "ga",
   "prerequisiteRecap": [
     {
       "heading": { "en": "Regex in 90 seconds" },

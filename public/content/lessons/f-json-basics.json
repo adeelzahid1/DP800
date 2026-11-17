@@ -1,6 +1,8 @@
 {
   "subtopic": "f-json-basics",
   "title": { "en": "JSON & semi-structured data from scratch" },
+  "lastVerified": "2026-11-15",
+  "status": "ga",
   "sections": [
     {
       "heading": { "en": "What \"semi-structured\" means" },

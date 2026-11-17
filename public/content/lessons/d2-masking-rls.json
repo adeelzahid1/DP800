@@ -1,6 +1,8 @@
 {
   "subtopic": "d2-masking-rls",
   "title": { "en": "Dynamic Data Masking & Row-Level Security" },
+  "lastVerified": "2026-11-15",
+  "status": "ga",
   "prerequisiteRecap": [
     {
       "heading": { "en": "Two different axes of hiding" },

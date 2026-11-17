@@ -47,7 +47,7 @@
       "answer": ["a"],
       "explanation": { "en": "Git history (and forks/clones) still contains the secret. Treat it as compromised: rotate it, then optionally rewrite history. Visibility changes don't revoke copies." },
       "example": { "en": "Enable push protection to block such commits in future." },
-      "sources": ["https://docs.github.com/en/code-security/secret-scanning/introduction/about-push-protection"]
+      "sources": ["https://docs.github.com/en/code-security/concepts/secret-security/push-protection"]
     },
     {
       "id": "d2-git-0004",
@@ -95,7 +95,7 @@
       "answer": ["a"],
       "explanation": { "en": "Environment-scoped secrets are released only to jobs referencing that environment, after required reviewers/wait timers approve. Variables aren't for secrets." },
       "example": { "en": "jobs.deploy.environment: production" },
-      "sources": ["https://docs.github.com/en/actions/managing-workflow-runs-and-deployments/managing-deployments/managing-environments-for-deployment"]
+      "sources": ["https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments"]
     },
     {
       "id": "d2-git-0007",
@@ -143,7 +143,7 @@
       "answer": ["a", "b"],
       "explanation": { "en": "Secret scanning detects known secret patterns; push protection blocks pushes containing them. Pages and Discussions are unrelated." },
       "example": { "en": "Push protection rejects a push containing an Azure storage key." },
-      "sources": ["https://docs.github.com/en/code-security/secret-scanning/introduction/about-push-protection"]
+      "sources": ["https://docs.github.com/en/code-security/concepts/secret-security/push-protection"]
     },
     {
       "id": "d2-git-0010",
@@ -242,7 +242,7 @@
       "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
       "explanation": { "en": "Prefer secretless identity wherever supported; otherwise scope secrets narrowly (environment) or keep them in Key Vault." },
       "example": { "en": "The fewer stored secrets, the fewer rotations and leaks." },
-      "sources": ["https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions"]
+      "sources": ["https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets"]
     },
     {
       "id": "d2-git-0015",
@@ -273,7 +273,7 @@
       "answerMap": { "s1": "yes", "s2": "no", "s3": "yes" },
       "explanation": { "en": "GitHub masks secret values in logs, withholds secrets from fork PR workflows (pull_request event) by default, and supports three scopes." },
       "example": { "en": "Use environment secrets for production credentials." },
-      "sources": ["https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions"]
+      "sources": ["https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets"]
     },
     {
       "id": "d2-git-0017",
@@ -321,7 +321,7 @@
       "answer": ["a"],
       "explanation": { "en": "pull_request events validate proposed changes before merge. Schedules run periodically, release triggers on releases, issues on issue activity." },
       "example": { "en": "on: { pull_request: { branches: [main], paths: ['src/Database/**'] } }" },
-      "sources": ["https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows"]
+      "sources": ["https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows"]
     },
     {
       "id": "d2-git-0020",
@@ -337,7 +337,7 @@
       "answer": ["a"],
       "explanation": { "en": "Path filters limit triggers to relevant changes, saving CI minutes and noise." },
       "example": { "en": "on: { push: { branches: [main], paths: ['src/Database/**'] } }" },
-      "sources": ["https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions"]
+      "sources": ["https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax"]
     },
     {
       "id": "d2-git-0021",
@@ -382,7 +382,7 @@
       "answerMap": { "b1": "c1", "b2": "c1" },
       "explanation": { "en": "pull_request with branches and paths filters scopes CI precisely. 'files'/'folders' aren't valid keys." },
       "example": { "en": "Use paths-ignore for docs-only changes." },
-      "sources": ["https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions"]
+      "sources": ["https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax"]
     },
     {
       "id": "d2-git-0023",
@@ -398,7 +398,7 @@
       "answer": ["a"],
       "explanation": { "en": "Variables hold non-sensitive configuration and can be scoped like secrets. IDs for OIDC aren't secrets but centralizing them avoids duplication." },
       "example": { "en": "${{ vars.AZURE_CLIENT_ID }}" },
-      "sources": ["https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/store-information-in-variables"]
+      "sources": ["https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-variables"]
     },
     {
       "id": "d2-git-0024",
@@ -445,7 +445,7 @@
       "answer": ["i1", "i2", "i3", "i4"],
       "explanation": { "en": "Contain first, investigate, remediate the root cause, then prevent. History rewriting can follow but doesn't replace rotation." },
       "example": { "en": "Treat any exposed secret as compromised." },
-      "sources": ["https://docs.github.com/en/code-security/secret-scanning/introduction/about-push-protection"]
+      "sources": ["https://docs.github.com/en/code-security/concepts/secret-security/push-protection"]
     },
     {
       "id": "d2-git-0027",
@@ -477,7 +477,7 @@
       "answer": ["a"],
       "explanation": { "en": "Pull requests carry diffs, reviews and status checks. Issues track work; wikis document; releases package versions." },
       "example": { "en": "PR = review + CI gate before merge." },
-      "sources": ["https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/about-pull-requests"]
+      "sources": ["https://docs.github.com/en/pull-requests/reference/pull-requests"]
     },
     {
       "id": "d2-git-0029",
@@ -509,7 +509,7 @@
       "answer": ["a", "b"],
       "explanation": { "en": "Environment protection gates secret release behind approval; pull_request_target runs with repository secrets in the base context, so checking out and executing fork code there is dangerous. Broad exposure and YAML credentials are leaks." },
       "example": { "en": "Use pull_request (no secrets) for fork validation builds." },
-      "sources": ["https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions"]
+      "sources": ["https://docs.github.com/en/actions/reference/security/secure-use"]
     },
     {
       "id": "d2-git-0031",
@@ -562,7 +562,7 @@
       "answerMap": { "s1": "yes", "s2": "no", "s3": "yes" },
       "explanation": { "en": "Keys and passwords are secrets; a database name is configuration (though you may still parameterize it per environment)." },
       "example": { "en": "Secrets → secret stores; config → variables/profiles." },
-      "sources": ["https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions"]
+      "sources": ["https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets"]
     },
     {
       "id": "d2-git-0034",
@@ -610,7 +610,7 @@
       "answer": ["a"],
       "explanation": { "en": "Scoped token permissions are a supply-chain safeguard. They don't change speed; OIDC needs id-token: write explicitly." },
       "example": { "en": "permissions: { contents: read }" },
-      "sources": ["https://docs.github.com/en/actions/security-for-github-actions/security-guides/automatic-token-authentication"]
+      "sources": ["https://docs.github.com/en/actions/tutorials/authenticate-with-github_token"]
     },
     {
       "id": "d2-git-0037",
@@ -766,7 +766,7 @@
       "answer": ["a"],
       "explanation": { "en": "Status checks come from CI and can be required by branch protection before merging." },
       "example": { "en": "Required check: 'build-database'." },
-      "sources": ["https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/collaborating-on-repositories-with-code-quality-features/about-status-checks"]
+      "sources": ["https://docs.github.com/en/pull-requests/reference/status-checks"]
     },
     {
       "id": "d2-git-0046",
@@ -797,7 +797,7 @@
       "answerMap": { "s1": "yes", "s2": "no", "s3": "yes" },
       "explanation": { "en": "Masking only hides values in logs; any action receiving the secret can exfiltrate it. Pinning actions to SHAs prevents tag hijacking." },
       "example": { "en": "uses: azure/sql-action@<full-commit-sha>" },
-      "sources": ["https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions"]
+      "sources": ["https://docs.github.com/en/actions/reference/security/secure-use"]
     },
     {
       "id": "d2-git-0048",
@@ -851,7 +851,7 @@
       "answerMap": { "i1": "t1", "i2": "t2", "i3": "t3", "i4": "t4" },
       "explanation": { "en": "Each GitHub capability mitigates a distinct source-control or deployment risk." },
       "example": { "en": "Together they form a secure database delivery pipeline." },
-      "sources": ["https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions"]
+      "sources": ["https://docs.github.com/en/actions/reference/security/secure-use"]
     }
   ]
 }

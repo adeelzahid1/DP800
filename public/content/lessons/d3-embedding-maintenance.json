@@ -1,6 +1,9 @@
 {
   "subtopic": "d3-embedding-maintenance",
   "title": { "en": "Generating & maintaining embeddings" },
+  "lastVerified": "2026-11-15",
+  "status": "preview",
+  "previewNote": { "en": "Change event streaming (CES) is in preview, and vector indexes are a preview feature in SQL Server 2025." },
   "prerequisiteRecap": [
     {
       "heading": { "en": "Embeddings go stale" },

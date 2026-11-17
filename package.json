@@ -8,6 +8,7 @@
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "validate:content": "node scripts/validate-content.mjs",
+    "check:links": "node scripts/check-links.mjs",
     "serve:dist": "node scripts/serve-dist.mjs"
   },
   "prettier": {

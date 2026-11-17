@@ -1,6 +1,8 @@
 {
   "subtopic": "d1-specialized-tables",
   "title": { "en": "Specialized tables (in-memory, temporal, external, ledger, graph)" },
+  "lastVerified": "2026-11-15",
+  "status": "ga",
   "prerequisiteRecap": [
     {
       "heading": { "en": "Why special table types exist" },

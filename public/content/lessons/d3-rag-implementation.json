@@ -1,6 +1,8 @@
 {
   "subtopic": "d3-rag-implementation",
   "title": { "en": "Implementing RAG (sp_invoke_external_rest_endpoint)" },
+  "lastVerified": "2026-11-15",
+  "status": "ga",
   "prerequisiteRecap": [
     {
       "heading": { "en": "The pipeline you're building" },
