@@ -1,0 +1,73 @@
+name: Build and deploy to Surge
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: surge-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate content
+        run: npm run validate:content
+
+      - name: Unit tests
+        run: npx ng test --watch=false --browsers=ChromeHeadless
+
+      - name: Production build
+        run: npx ng build
+
+      - name: Upload build
+        uses: actions/upload-artifact@v4
+        with:
+          name: site
+          path: dist/dp800/browser
+          retention-days: 7
+
+  deploy:
+    # Only deploy what lands on main (PRs just build and test).
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: site
+          path: site
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Deploy to Surge
+        env:
+          SURGE_LOGIN: ${{ secrets.SURGE_LOGIN }}
+          SURGE_TOKEN: ${{ secrets.SURGE_TOKEN }}
+          # SURGE_DOMAIN may be stored as a repository variable or a secret.
+          SURGE_DOMAIN: ${{ vars.SURGE_DOMAIN || secrets.SURGE_DOMAIN }}
+        run: |
+          if [ -z "$SURGE_LOGIN" ] || [ -z "$SURGE_TOKEN" ] || [ -z "$SURGE_DOMAIN" ]; then
+            echo "::error::SURGE_LOGIN, SURGE_TOKEN and SURGE_DOMAIN must be configured in the repository settings."
+            exit 1
+          fi
+          npx --yes surge ./site "$SURGE_DOMAIN"

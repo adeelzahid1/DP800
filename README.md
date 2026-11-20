@@ -46,6 +46,18 @@ The production output in `dist/dp800/browser` is a static site — host it on an
 static host (GitHub Pages, Azure Static Web Apps…). The router uses hash URLs,
 so no rewrite rules are needed.
 
+## Deployment
+
+Every push to `main` runs `.github/workflows/deploy.yml`: content validation,
+unit tests and a production build, then deploys `dist/dp800/browser` to
+[Surge](https://surge.sh). Pull requests only build and test. The workflow needs
+these repository settings (Settings → Secrets and variables → Actions):
+
+- `SURGE_LOGIN` and `SURGE_TOKEN` (secrets; get the token with `npx surge token`)
+- `SURGE_DOMAIN`, e.g. `hello-dp800.surge.sh` (variable or secret)
+
+The app uses hash routing, so no SPA fallback page is needed on Surge.
+
 ## Content structure
 
 ```
